@@ -1,14 +1,29 @@
-# SatisfyForge Brainrot Rush — Roblox Studio setup
+# SatisfyForge Brainrot Rush — Roblox Studio setup and release gate
 
 This is an original playable prototype, not a published Roblox experience yet.
 
+## Verified repository state
+
+- Server source: `src/roblox/BrainrotRush.server.lua`
+- Client HUD: `src/roblox/BrainrotRush.client.lua`
+- Version: v0.3
+- Server blob reviewed: `f60920eaaab70cff3baa10b80f35095d1754b73c`
+- Client blob reviewed: `27f04fbd0af7d5a30e9fb1bee3372a2abbd3e9fc`
+- Gameplay commit: `6fa4caa98e896a4744c9822a036009b521247f08`
+- Mobile HUD commit: `2d01c867e0752cb49f3346a399277d99392b8a20`
+
+Repository review confirms the features exist in source. It does not prove that Roblox Studio, mobile devices, multiplayer servers, DataStore persistence, moderation or public launch work.
+
 ## Install v0.3
-1. Open Roblox Studio on Windows or macOS and create or open the SatisfyForge experience.
+
+1. Open Roblox Studio on Windows or macOS and create or open the SatisfyForge test experience.
 2. In **ServerScriptService**, add a Script and paste `src/roblox/BrainrotRush.server.lua`.
 3. In **StarterPlayer > StarterPlayerScripts**, add a LocalScript and paste `src/roblox/BrainrotRush.client.lua`.
-4. Press **Play**. The server script builds the arena automatically.
+4. Press **Play**. The server script should build the arena automatically.
+5. Keep the first validation place private. Do not overwrite a known-good public place during testing.
 
 ## Current gameplay
+
 - Collect glowing Brainrot orbs.
 - Common / Rare / Epic / Legendary rarity tiers.
 - Green upgrade pad increases earnings up to level 20.
@@ -17,19 +32,106 @@ This is an original playable prototype, not a published Roblox experience yet.
 - A Snackquake event starts every 90 seconds for 20 seconds with 2x rewards and faster spawns.
 - Mobile-friendly HUD shows Brainrot, level, collected count, rebirths and combo.
 - Player progress uses DataStore persistence and autosaves every 60 seconds.
+- Rewards, upgrades, rebirths and rarity rolls are calculated on the server. The only RemoteEvent in v0.3 sends announcements from server to client; it does not accept reward commands from clients.
 
-## Required Studio checks before public launch
-1. Enable **Game Settings > Security > Enable Studio Access to API Services** only in a safe test copy if you want DataStore persistence to work in Studio.
-2. Test solo collection, upgrade costs, rebirth requirements, combo reset and Snackquake timing.
-3. Use **Test > Start** with at least 2 players and confirm Legendary announcements and simultaneous orb collection behave correctly.
-4. Use Studio device emulation for common phone screen sizes and verify the HUD does not cover Roblox controls.
-5. Rejoin the test experience and verify saved Brainrot/level/rebirth data restores correctly.
-6. Check Output for DataStore or script errors.
-7. Only after those checks, configure the experience name, icon, thumbnail, description, age guidance and public permissions in Roblox Creator Dashboard.
+## Safe DataStore preparation
+
+1. Publish only a private test copy first.
+2. In that test copy, enable **Game Settings > Security > Enable Studio Access to API Services** only when persistence testing is required.
+3. Never change `DATASTORE_NAME` on a production build without a deliberate migration plan; a new name makes existing progress appear lost.
+4. Use test accounts and small test values. Do not edit live player data to speed up a test.
+5. Confirm the Output window shows no DataStore budget, authorization or serialization errors.
+
+## Required release-gate matrix
+
+Record Pass / Fail / Blocked plus the date, Studio version and device for every row.
+
+| Area | Test | Pass criteria |
+| --- | --- | --- |
+| Boot | Start a fresh private server | Arena, spawn, upgrade pad and rebirth pad appear once; Output has no red errors. |
+| Collection | Touch each rarity orb | Exactly one reward is granted, Collected increases once and the orb disappears. |
+| Contention | Two players touch the same orb together | Only one player receives the reward; no duplicate payout occurs. |
+| Combo | Collect within and outside the 8-second window | Combo climbs to x5, caps at x5 and resets to x1 after the window. |
+| Upgrade | Buy several levels, then attempt with insufficient funds | Correct cost is deducted once; level rises once; insufficient funds never create a level. |
+| Upgrade cap | Reach level 20 | Further upgrade attempts do nothing and the next-cost attribute becomes 0. |
+| Rebirth | Attempt below requirements, then at level 20 + 2500 Brainrot | Early attempt is rejected; valid attempt resets Brainrot/level and adds exactly one rebirth. |
+| Reward math | Compare base, level, rebirth, combo and Snackquake payouts | Observed integer payout matches server formula with no unexpected client multiplier. |
+| Snackquake | Observe a complete event cycle | Event begins near 90 seconds, lasts near 20 seconds, doubles rewards, speeds spawning and returns to normal. |
+| Announcements | Trigger upgrade, failure, rebirth and Legendary messages | Intended clients receive readable messages; no permanent or overlapping banner remains. |
+| Autosave | Play longer than 60 seconds and inspect Output | Save attempt completes without error or freezing gameplay. |
+| Rejoin | Earn progress, leave cleanly and rejoin | Brainrot, Collected, Level and Rebirths restore correctly. |
+| Failure recovery | Disable API access or simulate unavailable persistence in a test copy | Gameplay remains usable, errors are warnings, and no false “saved” claim is shown. |
+| Shutdown save | Close a private server after changing progress | Rejoin restores the latest confirmed state within Roblox shutdown limits. |
+| Respawn | Reset character during normal play and during Snackquake | HUD remains present, values stay synchronized and collection still works. |
+| Two-player HUD | Run **Test > Start** with at least 2 players | Each player sees only their own stats; global announcements reach both. |
+| Phone portrait | Emulate a narrow phone viewport | Top bar and hint remain readable and do not cover movement/jump controls. |
+| Phone landscape | Emulate common landscape sizes | All five stats fit without clipping or overlap. |
+| Touch interaction | Use device emulation to activate both pads | Prompts are reachable and usable without keyboard input. |
+| Performance | Observe server/client performance with 34 active orbs and Snackquake | No runaway orb count, repeated arena parts, severe frame drop or growing error spam. |
+| Reconnect loop | Join/leave repeatedly with two test accounts | No duplicated leaderstats, HUD, remotes, pads or arena objects. |
+
+## Manual security review
+
+Before public launch, confirm all of the following:
+
+- No client RemoteEvent or RemoteFunction can award Brainrot, change Level or add Rebirths.
+- Upgrade and rebirth prices are recalculated by the server.
+- A client cannot receive the same orb twice.
+- Player data is numeric, non-negative and bounded where the game defines a maximum.
+- Repeated prompt activation cannot produce free currency or duplicate rebirths.
+- DataStore failures never reset a known-good record during a retry.
+- Public-server Output does not expose secrets or personal data.
+
+The current v0.3 source uses server-side rewards and server-side prompt handlers. The runtime behavior still must be verified in Studio.
+
+## Test evidence to capture
+
+Keep one compact evidence packet before launch:
+
+- Screenshot of the clean Output window after boot.
+- Screenshot or short recording of two-player orb contention.
+- Before/after values for one upgrade and one rebirth.
+- Snackquake start/end timestamps and one verified payout.
+- Rejoin screenshot showing restored progress.
+- Phone portrait and landscape HUD screenshots.
+- Studio place version or private-save timestamp.
+- Any error messages copied exactly.
+
+Do not upload credentials, private account information, tax/bank data or secret tokens.
+
+## Release decision
+
+### Ready for private playtest
+
+All Boot, Collection, Combo, Upgrade, Rebirth, Reward math, Snackquake, HUD and Output checks pass.
+
+### Ready for limited external test
+
+Private playtest passes, two-player contention passes, DataStore rejoin passes and at least one real phone test passes.
+
+### Ready for public launch
+
+Limited external test passes, Creator Dashboard metadata/age guidance is complete, moderation accepts the assets, public permissions are deliberately enabled, and a fresh public-server smoke test passes.
+
+Until the public-launch gate passes, describe Brainrot Rush as **source-complete v0.3** or a **private prototype**—never as live, released, popular or earning revenue.
+
+## Rollback
+
+If a new edit breaks the test place:
+
+1. Stop public or external testing.
+2. Preserve the failing Output text and exact reproduction steps.
+3. Restore the last known-good Studio place version.
+4. Compare repository changes against the reviewed v0.3 commits listed above.
+5. Fix in a private copy and rerun the failed row plus the full Boot/Collection/Persistence smoke set.
+
+Do not delete player data or rename the DataStore as a first-line fix.
 
 ## Still intentionally unverified
+
+- Roblox Studio runtime for the current GitHub sources.
 - Real-device mobile performance.
-- Multiplayer load at scale.
+- Multiplayer load beyond a small test server.
 - Public-server DataStore behavior.
 - Roblox moderation/launch approval.
 - Retention and monetization performance.
