@@ -34,16 +34,27 @@ Existing assets include lead tracking, message building, follow-up concepts, aud
 
 The recurring membership should deliver new useful material each month rather than simply rebilling for an unchanged download.
 
-## 3. SatisfyForge Tool Vault — subscription membership
+## 3. SatisfyForge Tool Vault — LIVE paid membership
 
-Bundle calculators, mini-apps, scripts, templates and browser tools into an evolving member library.
+**Current live offer**
+- Product: SatisfyForge Tool Vault
+- Type: Payhip Membership
+- Public URL: https://payhip.com/b/KLjBb
+- Price: $49 one-time Founding Lifetime Access
+- Payment path: existing PayPal connection; no SatisfyForge upfront spend
+- Status: Published and visible
 
-**Possible pricing**
-- $5/month Lite
-- $15/month Creator / Solo Business
-- $39/month Pro Tool Vault
+**Current member content**
+- START HERE — Founding Tool Vault
+- Lead Rescue Pack — 4-Step Follow-Up
+- Profit & Marketing ROI Worksheet
+- True-Story Short Framework
 
-Start with tools that already exist. Add new tools only when they solve a repeatable problem.
+This one-time founding offer is the zero-cost bridge while recurring billing is unavailable. Payhip recurring billing requires Stripe, and Stripe is not connected. Do not connect Stripe, enter banking/tax data, or create recurring charges on the owner's behalf. Once the owner completes Stripe setup separately, evaluate recurring tiers only if the vault is delivering ongoing new value.
+
+**Future recurring pricing candidate after owner Stripe setup**
+- $9/month Founding Monthly
+- $79/year Founding Annual
 
 ## 4. White-label mini-apps and calculators
 
@@ -116,6 +127,14 @@ Potential formats:
 - API / webhook product for businesses
 
 Do not pay listing fees or developer subscriptions from SatisfyForge cash. Use free developer tiers or wait until customer revenue covers required costs.
+
+## Current infrastructure blockers
+
+### Recurring Tool Vault billing
+Payhip recurring payments require Stripe. Stripe is not connected; PayPal is connected. Owner-only financial setup is intentionally deferred.
+
+### Public GitHub Pages site
+The deploy workflow currently fails in `actions/configure-pages` because the GitHub App integration cannot create/enable the Pages site. The code can remain ready in `docs/`, but Pages must be enabled by an account/admin-capable path before the workflow can deploy. Do not pay for hosting as a workaround; use free hosting or the Payhip storefront until this is resolved.
 
 ## Productization rule
 
