@@ -1,0 +1,27 @@
+name: Brainrot Rush source contract
+
+on:
+  push:
+    paths:
+      - "src/roblox/**"
+      - "tests/roblox/**"
+      - ".github/workflows/brainrot-rush-source-contract.yml"
+  pull_request:
+    paths:
+      - "src/roblox/**"
+      - "tests/roblox/**"
+      - ".github/workflows/brainrot-rush-source-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Validate Brainrot Rush contracts
+        run: python3 tests/roblox/validate_brainrot_rush.py
