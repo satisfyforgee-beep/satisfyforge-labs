@@ -1,0 +1,10 @@
+Stage,Timing,Goal,Recommended Message Type,Stop When
+New inquiry,Immediately,Acknowledge and create a next step,Fast first response,They book or opt out
+Unbooked quote,Day 2,Answer objections,Helpful check-in,They reply/book/decline
+Unbooked quote,Day 5,Create a clear next step,Availability or useful reason to respond,They reply/book/decline
+Unbooked quote,Day 10,Close the loop,Permission-based final follow-up,They reply/book/decline
+Old estimate,30-90 days,Reactivate legitimate interest,Project-status check,They reply/decline
+Past customer,3-12 months,Generate repeat/referral work,Maintenance or seasonal check-in,They reply/decline
+Completed job,1-3 days,Collect feedback/review,Review request,Review received/declined
+Missed call,Within 5 minutes,Recover caller,Short missed-call text,They reply/book/decline
+No-show,Same day,Reschedule,Low-pressure reschedule,They reschedule/decline
