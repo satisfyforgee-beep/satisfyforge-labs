@@ -1,0 +1,19 @@
+{
+  "build": "Forge Frenzy 2.1",
+  "date": "2026-10-08",
+  "logic_tests_passed": 19,
+  "browser_playtest": false,
+  "roblox_modified": false,
+  "files": {
+    "README.md": {"sha256": "d3d6c689379207f0c99f761977513cb0378a233427fb3ae86aa77433798d66ff", "bytes": 3447},
+    "apps/experiment-dashboard.html": {"sha256": "dcea7e5b93efa4fc15c2bd64b54efbf1e33a7e9aa00cfca7846e03c975b5768a", "bytes": 5987},
+    "docs/SatisfyForge_Cross_Thread_Checkpoint_2026-10-08.md": {"sha256": "659c99ff29724e0e7012ac1285e6bcf83c083dc0a15dcc3f7c6715470dd4b70f", "bytes": 4337},
+    "games/forge-frenzy-v2.html": {"sha256": "05a5d118ead0c73ce2a6d25fb733c15e80e262388f63e4405ac815d500b34b66", "bytes": 17392},
+    "tests/browser-logic.test.cjs": {"sha256": "31d989c92f123529f490f1ad14b4984516eb295e6f3b2769fb423b0f4916028d", "bytes": 10548}
+  },
+  "reverified_2026_10_13": {
+    "logic_tests": 19,
+    "result": "pass",
+    "truth_boundary": "No browser rendering or live deployment is implied."
+  }
+}
