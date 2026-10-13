@@ -44,3 +44,33 @@ No payment link was sent. Tool Vault checkout remains quarantined until independ
 - No pause, restart, duplicate campaign or recipient mutation was performed. The next verification point is after 14:00 ET.
 - The connected Gmail connector remains `cougarboy1999@gmail.com`. A focused inbox check found no qualified SatisfyForge inquiry; the only match was an unrelated Temu promotion. No email was sent from the personal account.
 - The Dancing Plague Instagram retry through Buffer is verified `sent` at 10:07 ET: https://www.instagram.com/reel/Deb_AXaAGto/
+
+
+## 16:20 ET verification
+
+### Hunter delivery
+
+The original 15-recipient batch has now sent without a restart or recipient mutation.
+
+| Sequence | Sent | Delivered | Bounced | Opened | Replied |
+|---|---:|---:|---:|---:|---:|
+| 904604 — Home Service Lead Rescue | 9 | 8 | 1 | 0 | 0 |
+| 904608 — Lead Follow-Up Automation | 3 | 3 | 0 | 2 | 0 |
+| 904610 — Gym Membership Growth | 3 | 3 | 0 | 0 | 0 |
+| **Total** | **15** | **14** | **1** | **2** | **0** |
+
+No sequence restart, duplicate campaign, recipient addition, or new send was performed. The next useful action is reply monitoring and lead qualification; zero replies were verified in this pass.
+
+### Wix lead intake
+
+A read-only query of the canonical Wix Forms namespace returned zero submissions. No qualified site inquiry or business reply was available to advance.
+
+### Dancing Plague YouTube recovery
+
+- Metricool item 393673008 reached a definite `ERROR` after its scheduled 16:00 ET time: `You have reached your Metricool account limit.`
+- Buffer's YouTube channel `6accefb0778b240e2fe77d27` was connected, unlocked, and had no matching post in the intended time window.
+- One automatic Buffer publish attempt was made using the existing finished media URL. Buffer rejected it before post creation with `Video could not be read from its URL`.
+- No Buffer post was created and no publication is claimed. The unchanged URL was not resubmitted.
+- TikTok item 393673161 remained `PENDING` for 18:00 ET and was not touched before its intended time.
+
+Recovery blocker: the finished video needs a Buffer-readable media asset or another confirmed zero-cost automatic upload route. Do not retry the same Metricool URL.
