@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parent
 QUEUE_PATH = ROOT / "queue.json"
 STATE_PATH = ROOT / "state.json"
 HTTP_TIMEOUT = 60
+SUPPORTED_PLATFORMS = {"instagram", "facebook", "youtube", "tiktok"}
 
 
 class PublishError(RuntimeError):
@@ -58,6 +59,63 @@ def require_env(name: str) -> str:
     if not value:
         raise PublishError(f"Missing required secret: {name}")
     return value
+
+
+def validate_queue(queue: Dict[str, Any]) -> None:
+    """Fail closed before any platform write when queue data is unsafe.
+
+    This guards the cloud runner against duplicated jobs, malformed timestamps,
+    unsupported platforms, and exact same-time duplicate submissions. Validation
+    happens before state is changed or a platform API is contacted.
+    """
+    items = queue.get("items")
+    if not isinstance(items, list):
+        raise ValueError("queue.items must be a list")
+
+    ids: set[str] = set()
+    exact_jobs: set[tuple[str, str, str]] = set()
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            raise ValueError(f"queue.items[{index}] must be an object")
+
+        item_id = str(item.get("id", "")).strip()
+        if not item_id:
+            raise ValueError(f"queue.items[{index}] must have a non-empty id")
+        if item_id in ids:
+            raise ValueError(f"duplicate queue item id: {item_id}")
+        ids.add(item_id)
+
+        publish_at = item.get("publish_at")
+        if not isinstance(publish_at, str):
+            raise ValueError(f"{item_id}: publish_at must be a timezone-aware string")
+        canonical_time = parse_time(publish_at).isoformat()
+
+        video_url = item.get("video_url")
+        if not isinstance(video_url, str) or not video_url.startswith(("https://", "http://")):
+            raise ValueError(f"{item_id}: video_url must be an http(s) URL")
+
+        platforms = item.get("platforms")
+        if not isinstance(platforms, dict) or not platforms:
+            raise ValueError(f"{item_id}: platforms must be a non-empty object")
+
+        enabled_count = 0
+        for platform, cfg in platforms.items():
+            if platform not in SUPPORTED_PLATFORMS:
+                raise ValueError(f"{item_id}: unsupported platform: {platform}")
+            if not isinstance(cfg, dict):
+                raise ValueError(f"{item_id}/{platform}: configuration must be an object")
+            if not cfg.get("enabled", False):
+                continue
+            enabled_count += 1
+            signature = (platform, video_url, canonical_time)
+            if signature in exact_jobs:
+                raise ValueError(
+                    f"exact duplicate publish job: {platform} {video_url} {canonical_time}"
+                )
+            exact_jobs.add(signature)
+
+        if enabled_count == 0:
+            raise ValueError(f"{item_id}: at least one platform must be enabled")
 
 
 def check_json_response(resp: requests.Response, context: str) -> Dict[str, Any]:
@@ -326,6 +384,7 @@ def publish_platform(platform: str, video_url: str, cfg: Dict[str, Any]) -> Dict
 
 def main() -> int:
     queue = load_json(QUEUE_PATH, {"items": []})
+    validate_queue(queue)
     state = load_json(STATE_PATH, {"items": {}})
     state_items = state.setdefault("items", {})
     changed = False
@@ -380,3 +439,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
