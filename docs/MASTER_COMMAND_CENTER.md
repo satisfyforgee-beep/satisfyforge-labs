@@ -75,6 +75,7 @@ This file is the canonical non-sensitive operating index for work that used to b
   - 904610 — Gym Membership Growth - Eastern Window
 - Older 904584 / 904585 / 904586 are paused test sequences.
 - Current sending account is active; do not create duplicate outreach sequences for the same offer/audience without evidence the existing ones are exhausted.
+- 2026-10-13 live sending-window diagnosis: `docs/OUTREACH_AUDIT_2026-10-13.md`.
 - Wix request/form flow remains the safe intake route while checkout verification is paused.
 - `sales/OUTREACH_REPLY_FULFILLMENT_KIT.md` contains the response/sample system.
 - `sales/SCOPING_AND_CLOSE_KIT.md` contains truthful offer boundaries, qualification and close/scoping rules so an interested prospect can move to written scope without invented results or an unverified payment link.
