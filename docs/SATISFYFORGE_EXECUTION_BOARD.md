@@ -29,7 +29,7 @@
 - **Unverified service checkout links:** prior state contained six alleged Payhip service URLs; do not send or promote them until rechecked.
 - **Roblox launch:** Studio/device runtime, multiplayer contention, DataStore persistence, moderation and public-launch validation still require a real Roblox Studio-capable session. No Remote Desktop Commander device is connected as of this pass. This applies to Brainrot Rush and the separate Tile Panic prototype.
 - **Amazon KDP publication:** the PDFs/listing package are prepared, but Amazon authentication plus any owner identity/tax/bank/legal requirements and KDP Previewer acceptance remain owner-controlled gates.
-- **Cleaning-business advisor emails:** the old SBDC and ECDI messages were discovered to be unsent drafts in the personal Gmail account, not previously sent requests. Do not send business mail from that account. A business/multi-account mail connector is needed to send them from the intended business identity; Superhuman Mail was surfaced as an optional connector that can manage multiple Gmail accounts.
+- **Cleaning-business advisor emails:** the old SBDC and ECDI messages were discovered to be unsent drafts in the personal Gmail account, not previously sent requests. Do not send business mail from that account. Superhuman Mail is explicitly rejected because it costs about $40/month and violates the $0 rule. Use only a free supported path to the intended `satisfyforgee@gmail.com` mailbox; the existing Hunter business sender may continue for its approved outreach sequences, but these one-off advisor emails should wait until the business Gmail itself is available through a free send-capable connection.
 - **Replit:** new-app creation currently requires an active paid subscription; do not spend to enable it.
 
 ## Current execution order
@@ -41,7 +41,7 @@
 6. Restore Tool Vault direct checkout only after the exact Payhip price/terms are verified and corrected if needed.
 7. Continue Roblox cloud-side source/docs/security improvements but do not claim launch readiness without Studio evidence. Keep Tile Panic isolated as an alternate prototype.
 8. KDP is locally preflighted; next legitimate step is owner Amazon/KDP setup and KDP Previewer/upload validation, not more duplicate PDF generation.
-9. Send SBDC/ECDI requests only through the intended business mailbox after that mailbox is connected to a supported send-capable mail connector.
+9. Send SBDC/ECDI requests only from the intended business mailbox through a free supported mail connection. Do not use Superhuman Mail or another paid email app.
 10. Keep duplicate legacy trend/upload/retry automations paused. New recurring needs should be merged into the five canonical loops.
 
 ## Operating rules
