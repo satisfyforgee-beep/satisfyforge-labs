@@ -1,0 +1,48 @@
+name: SatisfyForge Cloud Browser
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'browser-runner/**'
+      - '.github/workflows/satisfyforge-cloud-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: satisfyforge-cloud-browser
+  cancel-in-progress: false
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      SF_BROWSER_STATE_GZIP_B64: ${{ secrets.SF_BROWSER_STATE_GZIP_B64 }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Load queued browser task
+        shell: bash
+        run: |
+          echo "SF_TASK=$(node -p \"JSON.parse(require('fs').readFileSync('browser-runner/job.json','utf8')).task\")" >> "$GITHUB_ENV"
+          echo "SF_ALLOW_MUTATIONS=$(node -p \"String(JSON.parse(require('fs').readFileSync('browser-runner/job.json','utf8')).allowMutations === true)\")" >> "$GITHUB_ENV"
+
+      - name: Install Playwright
+        working-directory: browser-runner
+        run: |
+          npm install --no-fund --no-audit
+          npx playwright install --with-deps chromium
+
+      - name: Run SatisfyForge cloud browser task
+        working-directory: browser-runner
+        run: node src/runner.mjs
