@@ -1,0 +1,50 @@
+# SatisfyForge Video Assembly Engine
+
+Owned, zero-cost-first vertical video normalization and QA built on FFmpeg. The goal is to handle the repetitive technical work that creator subscriptions often charge for while keeping the media inputs and publishing decisions under SatisfyForge control.
+
+## What v1 does
+
+- Converts a source video to 1080x1920 vertical output.
+- Forces constant 30 fps to reduce social-publisher frame-rate validation failures.
+- Encodes H.264 with `yuv420p` and fast-start MP4 metadata.
+- Preserves source audio when present or replaces it with an optional voiceover.
+- Applies EBU-style loudness normalization to supplied voiceover.
+- Burns optional SRT/ASS captions into the output.
+- Uses ffprobe after rendering to fail closed when codec, pixel format, resolution, frame rate or duration are wrong.
+- Requires no paid API.
+
+## Requirements
+
+- Python 3.10+
+- `ffmpeg` and `ffprobe` available on PATH
+
+## Render
+
+```bash
+python video-engine/forge_video.py render \
+  --input input.mp4 \
+  --voiceover narration.wav \
+  --captions captions.srt \
+  --output publish-ready.mp4
+```
+
+## Validate an existing file
+
+```bash
+python video-engine/forge_video.py validate --input publish-ready.mp4
+```
+
+A successful validation exits `0`. A format problem exits non-zero and prints the exact failed checks.
+
+## Scope boundary
+
+This tool assembles and validates media. It does not source copyrighted footage, impersonate creators, bypass platform rules, publish without authorization or claim that a post succeeded. Source media must be owned, licensed, public-domain or otherwise lawfully usable.
+
+## Next additions
+
+1. Multi-clip timeline/scene manifest.
+2. Caption generation/import pipeline.
+3. Reusable lower-thirds/title cards.
+4. Safe music ducking and background-bed mixing.
+5. Thumbnail/frame extraction.
+6. GitHub Actions artifact workflow for zero-cost cloud renders when source assets can be supplied safely.
