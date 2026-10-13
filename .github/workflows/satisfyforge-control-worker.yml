@@ -1,0 +1,107 @@
+name: SatisfyForge Control Worker
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: satisfyforge-control-worker
+  cancel-in-progress: false
+
+jobs:
+  browser-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      SF_CONTROL_URL: https://satisfyforge-control.floot.app
+      SF_BROWSER_STATE_GZIP_B64: ${{ secrets.SF_BROWSER_STATE_GZIP_B64 }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Authenticate worker and claim next job
+        shell: bash
+        run: |
+          set -euo pipefail
+          OIDC_JSON="$(curl -fsS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=satisfyforge-control")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | jq -r '.value')"
+          test -n "$OIDC_TOKEN"
+          echo "SF_OIDC_TOKEN=$OIDC_TOKEN" >> "$GITHUB_ENV"
+
+          JOB_JSON="$(curl -fsS -H "Authorization: Bearer $OIDC_TOKEN" "$SF_CONTROL_URL/_api/browser-worker-next")"
+          JOB_ID="$(printf '%s' "$JOB_JSON" | jq -r '.job.id // empty')"
+
+          if [ -z "$JOB_ID" ]; then
+            echo "SF_HAS_JOB=false" >> "$GITHUB_ENV"
+            echo "No queued browser job."
+            exit 0
+          fi
+
+          TASK="$(printf '%s' "$JOB_JSON" | jq -r '.job.task')"
+          MUTATE="$(printf '%s' "$JOB_JSON" | jq -r 'if .job.allowMutations == true then "true" else "false" end')"
+          echo "SF_HAS_JOB=true" >> "$GITHUB_ENV"
+          echo "SF_JOB_ID=$JOB_ID" >> "$GITHUB_ENV"
+          echo "SF_TASK=$TASK" >> "$GITHUB_ENV"
+          echo "SF_ALLOW_MUTATIONS=$MUTATE" >> "$GITHUB_ENV"
+          echo "Claimed $JOB_ID ($TASK)."
+
+      - name: Install Playwright
+        if: env.SF_HAS_JOB == 'true'
+        working-directory: browser-runner
+        run: |
+          npm install --no-fund --no-audit
+          npx playwright install --with-deps chromium
+
+      - name: Run SatisfyForge browser task
+        if: env.SF_HAS_JOB == 'true'
+        id: run_task
+        working-directory: browser-runner
+        shell: bash
+        run: |
+          set +e
+          node src/runner.mjs > "$RUNNER_TEMP/sf-browser-result.log" 2>&1
+          CODE=$?
+          set -e
+          cat "$RUNNER_TEMP/sf-browser-result.log"
+          RESULT="$(tail -n 1 "$RUNNER_TEMP/sf-browser-result.log")"
+          printf '%s' "$RESULT" > "$RUNNER_TEMP/sf-browser-result.json"
+          echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Post sanitized result to Control Center
+        if: env.SF_HAS_JOB == 'true' && always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE="${{ steps.run_task.outputs.exit_code }}"
+          if [ -z "$CODE" ]; then CODE=1; fi
+          if [ "$CODE" = "0" ]; then STATE=success; else STATE=failed; fi
+
+          if [ -f "$RUNNER_TEMP/sf-browser-result.json" ]; then
+            RESULT="$(cat "$RUNNER_TEMP/sf-browser-result.json")"
+          else
+            RESULT='{"ok":false,"code":"WORKER_DID_NOT_RETURN_RESULT"}'
+          fi
+
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          BODY="$(jq -n --arg id "$SF_JOB_ID" --arg state "$STATE" --arg result "$RESULT" --arg externalUrl "$RUN_URL" '{id:$id,state:$state,result:$result,externalUrl:$externalUrl}')"
+
+          curl -fsS \
+            -H "Authorization: Bearer $SF_OIDC_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data "$BODY" \
+            "$SF_CONTROL_URL/_api/browser-worker-result"
+
+      - name: Fail workflow when browser task failed
+        if: env.SF_HAS_JOB == 'true' && steps.run_task.outputs.exit_code != '0'
+        run: exit 1
