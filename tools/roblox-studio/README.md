@@ -26,6 +26,19 @@ python3 tools/roblox-studio/run_smoke.py \
   --game brainrot-rush
 ```
 
+## Existing-place publishing helper
+
+`publish_place.py` prepares the final Open Cloud upload step without storing credentials. It is a dry run unless `--confirm-publish` is supplied.
+
+```bash
+python3 tools/roblox-studio/publish_place.py \
+  --file /absolute/path/game.rbxlx \
+  --universe-id 123 \
+  --place-id 456
+```
+
+For a real update to an **existing** Roblox place, create an Open Cloud API key with `universe-places:write` for that experience. The script reads `ROBLOX_OPEN_CLOUD_KEY` if present or asks for the key with a hidden prompt; it never prints or writes the key. Add `--confirm-publish` only after the target IDs and tested file are verified. First-time creation of a new experience remains a separate Studio/Creator Dashboard step.
+
 ## What this proves
 
 A passing runtime smoke proves that Roblox Studio can load the generated place, start simulation, execute the server scripts, and satisfy the game's explicit structural/runtime assertions.
