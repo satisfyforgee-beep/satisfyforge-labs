@@ -34,8 +34,10 @@ jobs:
       - name: Load queued browser task
         shell: bash
         run: |
-          echo "SF_TASK=$(node -p \"JSON.parse(require('fs').readFileSync('browser-runner/job.json','utf8')).task\")" >> "$GITHUB_ENV"
-          echo "SF_ALLOW_MUTATIONS=$(node -p \"String(JSON.parse(require('fs').readFileSync('browser-runner/job.json','utf8')).allowMutations === true)\")" >> "$GITHUB_ENV"
+          TASK="$(jq -r '.task' browser-runner/job.json)"
+          MUTATE="$(jq -r 'if .allowMutations == true then "true" else "false" end' browser-runner/job.json)"
+          echo "SF_TASK=$TASK" >> "$GITHUB_ENV"
+          echo "SF_ALLOW_MUTATIONS=$MUTATE" >> "$GITHUB_ENV"
 
       - name: Install Playwright
         working-directory: browser-runner
