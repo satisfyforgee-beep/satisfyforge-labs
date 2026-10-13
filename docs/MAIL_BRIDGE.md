@@ -24,6 +24,10 @@ Seeded Floot integration files now exist:
 - `endpoints/auth/google_integrations_authorize_GET.ts`
 - `endpoints/auth/google_integrations_callback_GET.ts`
 
+A fresh connector check on 2026-10-13 at 08:26 UTC confirmed the free Floot build cap is still active and resets at `2026-10-14T06:00:00Z` (02:00 America/New_York). The Control Center remains published at `https://satisfyforge-control.floot.app` on the free plan. No paid upgrade or extra action was purchased.
+
+The currently connected ChatGPT Gmail connector identifies as `cougarboy1999@gmail.com`, not the approved business sender. Do not use that connector to send the two queued business advisor messages. The owned bridge must keep the sender lock and refuse any account other than `satisfyforgee@gmail.com`.
+
 The Control Center database now also contains:
 - `mail_connections`
 - `mail_queue`
