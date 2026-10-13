@@ -1,0 +1,17 @@
+{
+  "name": "SatisfyForge Brainrot Rush v0.3",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "BrainrotRush": { "$path": "BrainrotRush.server.lua" }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "BrainrotRushHUD": { "$path": "BrainrotRush.client.lua" }
+      }
+    }
+  }
+}
