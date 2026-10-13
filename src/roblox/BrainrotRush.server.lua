@@ -17,7 +17,18 @@ local MAX_COMBO = 5
 local SNACKQUAKE_EVERY = 90
 local SNACKQUAKE_DURATION = 20
 
-local store = DataStoreService:GetDataStore(DATASTORE_NAME)
+local store = nil
+local persistenceAvailable = false
+local storeOk, storeResult = pcall(function()
+    return DataStoreService:GetDataStore(DATASTORE_NAME)
+end)
+if storeOk then
+    store = storeResult
+    persistenceAvailable = true
+else
+    warn("Brainrot Rush persistence unavailable in this session: " .. tostring(storeResult))
+end
+
 local arena = Workspace:FindFirstChild("BrainrotRushArena") or Instance.new("Folder")
 arena.Name = "BrainrotRushArena"
 arena.Parent = Workspace
@@ -99,6 +110,7 @@ local function applyData(player, data)
 end
 
 local function savePlayer(player)
+    if not persistenceAvailable or not store then return end
     local stats = player:FindFirstChild("leaderstats")
     if not stats then return end
     local payload = {
@@ -125,14 +137,17 @@ Players.PlayerAdded:Connect(function(player)
     stat(leaderstats, "Rebirths", 0)
     player:SetAttribute("Combo", 1)
     player:SetAttribute("Snackquake", snackquakeActive)
+    player:SetAttribute("PersistenceAvailable", persistenceAvailable)
 
-    local ok, data = pcall(function()
-        return store:GetAsync("u_" .. player.UserId)
-    end)
-    if ok and data then
-        applyData(player, data)
-    elseif not ok then
-        warn("Brainrot Rush load failed for " .. player.Name .. ": " .. tostring(data))
+    if persistenceAvailable and store then
+        local ok, data = pcall(function()
+            return store:GetAsync("u_" .. player.UserId)
+        end)
+        if ok and data then
+            applyData(player, data)
+        elseif not ok then
+            warn("Brainrot Rush load failed for " .. player.Name .. ": " .. tostring(data))
+        end
     end
 
     setDerivedAttributes(player)
@@ -146,11 +161,13 @@ Players.PlayerRemoving:Connect(function(player)
     lastCollectAt[player] = nil
 end)
 
-game:BindToClose(function()
-    for _, player in ipairs(Players:GetPlayers()) do
-        savePlayer(player)
-    end
-end)
+if persistenceAvailable then
+    game:BindToClose(function()
+        for _, player in ipairs(Players:GetPlayers()) do
+            savePlayer(player)
+        end
+    end)
+end
 
 task.spawn(function()
     while true do

@@ -19,9 +19,9 @@ The extracted source matches the previously audited archive structure: one READM
 
 ## Truthful status
 
-This is a prototype, not a commercially ready or published Roblox experience. No claim is made that it has been tested in Roblox Studio in the current environment. Current gaps include:
+This is a prototype, not a commercially ready or published Roblox experience. On 2026-10-13 the owned Roblox Studio runner built this source and passed an engine runtime smoke: the place loaded, simulation started, the lobby existed and all 64 arena tiles were created. Current gaps include:
 
-- Roblox Studio runtime verification
+- full round/elimination/winner-flow playtest
 - multiplayer contention/round testing
 - mobile/gamepad UX
 - persistence/DataStore handling
@@ -32,12 +32,11 @@ This is a prototype, not a commercially ready or published Roblox experience. No
 
 ## Studio test path
 
-1. Open a new Baseplate in Roblox Studio.
-2. Create `ServerScriptService > Script`.
-3. Replace its contents with `ServerScriptService/Game.server.lua`.
-4. Run solo Play and verify lobby, tile generation, HUD, falling/elimination, winner payout and respawn behavior.
-5. Run at least a 2-player local server test before any public launch.
-6. Do not enable paid monetization until persistence/economy behavior is designed and tested.
+1. Automated structural/runtime smoke can be repeated with `python3 tools/roblox-studio/run_smoke.py --game tile-panic`.
+2. Run solo Play and verify HUD, full countdown, falling/elimination, winner payout and respawn behavior.
+3. Run at least a 2-player local server test before any public launch.
+4. Test phone/tablet and gamepad UX.
+5. Do not enable paid monetization until persistence/economy behavior is designed and tested.
 
 ## Project priority
 

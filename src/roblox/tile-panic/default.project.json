@@ -1,0 +1,10 @@
+{
+  "name": "SatisfyForge Tile Panic",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Game": { "$path": "ServerScriptService/Game.server.lua" }
+    }
+  }
+}
