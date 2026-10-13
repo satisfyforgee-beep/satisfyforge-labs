@@ -1,0 +1,41 @@
+{
+  "updated_at": "2026-10-13",
+  "safe_request_url": "https://satisfyforgee.wixforms.com/f/7515509200923919388",
+  "checkouts": [
+    {
+      "product_id": "KLjBb",
+      "status": "quarantined",
+      "reason": "Payhip showed $0.00 while Wix advertised $49; reverify price and terms before use."
+    },
+    {
+      "product_id": "RrdbG",
+      "status": "unverified",
+      "reason": "Earlier service checkout claim had conflicting evidence."
+    },
+    {
+      "product_id": "hxbPR",
+      "status": "unverified",
+      "reason": "Earlier service checkout claim had conflicting evidence."
+    },
+    {
+      "product_id": "zcfL6",
+      "status": "unverified",
+      "reason": "Earlier service checkout claim had conflicting evidence."
+    },
+    {
+      "product_id": "k3vRu",
+      "status": "unverified",
+      "reason": "Earlier service checkout claim had conflicting evidence."
+    },
+    {
+      "product_id": "0AYt4",
+      "status": "unverified",
+      "reason": "Earlier service checkout claim had conflicting evidence."
+    },
+    {
+      "product_id": "HXq9E",
+      "status": "unverified",
+      "reason": "Earlier service checkout claim had conflicting evidence."
+    }
+  ]
+}

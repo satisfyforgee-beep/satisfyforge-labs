@@ -6,6 +6,17 @@ on:
     paths:
       - 'docs/**'
       - 'satisfyforge-site/**'
+      - 'commerce/**'
+      - 'scripts/validate_commerce_safety.py'
+      - 'tests/test_commerce_safety.py'
+      - '.github/workflows/deploy-pages.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'satisfyforge-site/**'
+      - 'commerce/**'
+      - 'scripts/validate_commerce_safety.py'
+      - 'tests/test_commerce_safety.py'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
@@ -23,4 +34,6 @@ jobs:
           test -f satisfyforge-site/index.html
           test -f satisfyforge-site/styles.css
           test -d docs
-          echo "SatisfyForge site source is present. Production hosting is the existing free Wix site; GitHub Pages deployment is intentionally disabled."
+          python scripts/validate_commerce_safety.py
+          python -m unittest discover -s tests -p "test_commerce_safety.py" -v
+          echo "SatisfyForge site source is present and quarantined checkout links are absent. Production hosting is the existing free Wix site; GitHub Pages deployment is intentionally disabled."
