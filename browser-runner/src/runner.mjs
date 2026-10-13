@@ -8,9 +8,16 @@ import { tasks } from "./tasks.mjs";
 const taskName = process.env.SF_TASK || "smoke";
 const allowMutations = String(process.env.SF_ALLOW_MUTATIONS || "false").toLowerCase() === "true";
 const stateGzipB64 = process.env.SF_BROWSER_STATE_GZIP_B64 || "";
+const resultPath = process.env.SF_RESULT_PATH || "result.json";
+
+function emit(result, stream = "log") {
+  const safe = JSON.stringify(result);
+  fs.writeFileSync(resultPath, `${safe}\n`, { mode: 0o600 });
+  console[stream](safe);
+}
 
 if (!tasks[taskName]) {
-  console.error(JSON.stringify({ ok: false, task: taskName, code: "UNKNOWN_TASK" }));
+  emit({ ok: false, task: taskName, code: "UNKNOWN_TASK" }, "error");
   process.exit(2);
 }
 
@@ -25,7 +32,7 @@ if (stateGzipB64) {
     fs.writeFileSync(storageStatePath, decoded, { mode: 0o600 });
     authLoaded = true;
   } catch {
-    console.error(JSON.stringify({ ok: false, task: taskName, code: "INVALID_AUTH_STATE" }));
+    emit({ ok: false, task: taskName, code: "INVALID_AUTH_STATE" }, "error");
     process.exit(3);
   }
 }
@@ -56,15 +63,17 @@ try {
     mutationMode: allowMutations,
     authLoaded
   };
-  console.log(JSON.stringify(safeResult));
+  emit(safeResult);
   process.exitCode = result?.ok === false ? 1 : 0;
 } catch (error) {
-  console.error(JSON.stringify({
+  emit({
     ok: false,
     task: taskName,
     code: error.code || "TASK_FAILED",
-    message: error.code || error.message || "Task failed"
-  }));
+    message: error.code || error.message || "Task failed",
+    mutationMode: allowMutations,
+    authLoaded
+  }, "error");
   process.exitCode = 1;
 } finally {
   if (storageStatePath) {
