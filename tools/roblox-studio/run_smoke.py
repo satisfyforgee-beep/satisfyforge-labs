@@ -39,6 +39,12 @@ GAMES = {
         ROOT / "tests/roblox/tile_panic_runtime_smoke.luau",
         "SF_SMOKE_PASS TilePanic",
     ),
+    "snackquake": GameSpec(
+        "snackquake",
+        ROOT / "src/roblox/snackquake/default.project.json",
+        ROOT / "tests/roblox/snackquake_runtime_smoke.luau",
+        "SF_SMOKE_PASS Snackquake",
+    ),
 }
 
 

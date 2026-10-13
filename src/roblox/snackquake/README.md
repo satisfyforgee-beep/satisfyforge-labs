@@ -8,7 +8,7 @@ This is a **separate alternate Roblox project**. It does not replace Brainrot Ru
 
 Fresh local regression run on 2026-10-13 against the recovered v0.2 archive:
 - 9 Lua-compatible Luau source files parsed
-- 38 mocked persistence assertions passed
+- 20 mocked persistence assertions passed in the recovered executable test pack
 - 9,046 pure-rule assertions passed
 - source archive extracted cleanly
 
@@ -38,10 +38,12 @@ The v0.2.1 patch specifically repaired a departure/save race in which progress e
 
 An earlier v0.2.0 place was opened in Roblox Studio, a solo character spawn was observed, and a private experience save was completed. That is useful continuity, but it does **not** validate the v0.2.1 patch or the complete gameplay loop.
 
+## Verified Roblox Studio runtime milestone
+
+On 2026-10-13 the recovered source was imported into the canonical repository, built with Rojo, and executed through the owned Roblox Studio runtime harness. The engine smoke passed all 15 embedded structural checks plus the external harness: world creation, RescueChute, 15 RescueSpot parts, 6 BlueRefuge parts, Creatures/Disasters folders, config/remotes and initialized round state were present.
+
 ## Still required before any launch claim
 
-- import the current v0.2.1 build into Roblox Studio
-- inspect the included Studio smoke result and Output
 - complete rescue/deposit/evolution/upgrade/disaster tests
 - two-client contention and shared-event test
 - phone portrait/landscape and real-device test
@@ -56,10 +58,10 @@ An earlier v0.2.0 place was opened in Roblox Studio, a solo character spawn was 
 
 Do not call Snackquake live, released, popular or earning revenue until those gates are actually passed.
 
-## Canonical preserved artifacts
+## Canonical source and preserved artifacts
 
-The exact latest source package and playtest place remain preserved in the user's Library:
+The patched v0.2.1 source is now stored under this repository folder (`src/`, `tests/`, `default.project.json`, and `build_place.py`). The original recovered package and playtest place also remain preserved:
 - `Snackquake_Expedition_v0_2_Source.zip` — version 4, recovered size 62,646 bytes
 - `Snackquake_Expedition_v0_2_Playtest.rbxlx` — embedded version `0.2.1-save-fix`
 
-This repository intentionally records the project truth and test evidence without pretending GitHub's generic Lua environment is Roblox Studio.
+The owned Mac test node now supplies genuine Roblox Studio engine smoke evidence; source-only regression tests and engine runtime tests remain separate gates.
