@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 
 export const localTasks = {
   async "forge-frenzy-smoke"({ page }) {
-    const html = await fs.readFile("archive/forge-frenzy-v2.1/games/forge-frenzy-v2.html", "utf8");
+    const html = await fs.readFile("../archive/forge-frenzy-v2.1/games/forge-frenzy-v2.html", "utf8");
     const pageErrors = [];
     page.on("pageerror", error => pageErrors.push(String(error?.message || error)));
 
