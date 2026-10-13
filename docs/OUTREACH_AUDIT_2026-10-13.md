@@ -74,3 +74,17 @@ A read-only query of the canonical Wix Forms namespace returned zero submissions
 - TikTok item 393673161 remained `PENDING` for 18:00 ET and was not touched before its intended time.
 
 Recovery blocker: the finished video needs a Buffer-readable media asset or another confirmed zero-cost automatic upload route. Do not retry the same Metricool URL.
+
+
+## 18:00 ET publishing recovery
+
+Dancing Plague YouTube was recovered without a paid service or manual/notification publishing:
+
+- Metricool item `393673008` remained a definite account-limit error.
+- The finished MP4 was imported into Wix Media Manager and reached `READY` as media ID `72b571_eaa2560f3ec34db18bd6c6f593a0c3b2`.
+- A final duplicate check found no matching Buffer YouTube post and confirmed Wix had no connected YouTube publisher.
+- Buffer automatic post `6acea9df7a29109965b36662` returned `sent`.
+- Public URL: https://www.youtube.com/watch?v=NdFtf7h43z8
+- The post retained Education category, public privacy, not-made-for-kids status, and truthful AI-generated-content disclosure.
+
+Dancing Plague TikTok item `393673161` was still `PENDING` immediately after its 18:00 ET intended time. No retry or duplicate was submitted; check later for a definite terminal result.
