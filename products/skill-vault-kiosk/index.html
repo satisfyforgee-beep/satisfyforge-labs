@@ -21,10 +21,10 @@
       <div>
         <span class="pill">SKILL DETERMINES REWARDS</span>
         <h2>Beat the target. Build tickets. Pick a merchandise prize.</h2>
-        <p>Players pay for a timed reaction challenge. Correct hits create the score, and the score deterministically creates the ticket award. There are no paid random payouts or hidden win settings.</p>
+        <p>Correct hits create the score, and the score deterministically creates the ticket award. No paid random payouts, hidden win settings, or cash-equivalent prizes.</p>
       </div>
       <div class="pricebox">
-        <span>PLAY</span>
+        <span>MODELED PLAY PRICE</span>
         <strong id="playPrice">$2.00</strong>
         <small><span id="ticketsPerHit">2</span> tickets per correct hit</small>
       </div>
@@ -40,21 +40,21 @@
           <div><span>TIME</span><b id="time">20.0</b></div>
           <div><span>SCORE</span><b id="score">0</b></div>
           <div><span>TICKETS</span><b id="tickets">0</b></div>
+          <div><span>BALANCE</span><b id="balance">0</b></div>
         </div>
       </div>
       <div id="grid" class="grid" aria-label="skill reaction grid"></div>
       <div class="actions">
         <button id="startBtn" class="primary">Start demo play</button>
         <button id="resetBtn" class="ghost">Reset</button>
+        <span id="serverStatus" class="fineprint">Checking verification server…</span>
       </div>
-      <p class="fineprint">Demo only — no payment is processed and no real prize is awarded. A production Ohio deployment must use approved hardware/software, licensed operation where required, on-site voucher/prize handling, and clearly displayed rules.</p>
+      <p class="fineprint">Demo only — no payment is processed and no real prize is awarded. Production requires approval/licensing where applicable, secure payment authorization, approved machine/software, on-site prize handling, and clearly displayed rules.</p>
     </section>
 
     <section class="two-col">
       <article class="card">
-        <div class="section-title">
-          <div><p class="eyebrow">MERCHANDISE PRIZE WALL</p><h3>Redeem tickets on-site</h3></div>
-        </div>
+        <div class="section-title"><div><p class="eyebrow">MERCHANDISE PRIZE WALL</p><h3>Redeem tickets on-site</h3></div></div>
         <div id="prizes" class="prize-list"></div>
       </article>
       <article class="card">
@@ -66,23 +66,31 @@
           <div><span>Processing + ops</span><b id="opsCost">$0.20</b></div>
           <div class="highlight"><span>Modeled gross margin</span><b id="grossMargin">$1.63</b></div>
         </div>
-        <p class="fineprint">Illustrative economics only. Actual score distribution, redemption, payment fees, taxes, licensing, machine approval, and local rules control the real economics.</p>
+        <p class="fineprint">Illustrative economics only. Real results depend on score distribution, prize redemption, payment fees, venue split, taxes, licensing and machine approval.</p>
       </article>
     </section>
 
     <section id="ownerPanel" class="card owner-panel hidden">
       <div class="section-title">
-        <div><p class="eyebrow">OWNER MODE</p><h3>Configure the kiosk</h3></div>
+        <div><p class="eyebrow">OWNER MODE</p><h3>Prototype controls + verified ledger</h3></div>
         <button id="closeOwner" class="ghost">Close</button>
       </div>
       <div class="form-grid">
-        <label>Price per play ($)<input id="cfgPrice" type="number" min="0" step="0.25" /></label>
+        <label>Modeled price per play ($)<input id="cfgPrice" type="number" min="0" step="0.25" /></label>
         <label>Tickets per correct hit<input id="cfgTicketsPerHit" type="number" min="1" max="10" step="1" /></label>
         <label>Cost per 100 tickets ($)<input id="cfgTicketCost" type="number" min="0" step="0.1" /></label>
         <label>Processing + ops / play ($)<input id="cfgOps" type="number" min="0" step="0.01" /></label>
       </div>
-      <div class="actions"><button id="saveOwner" class="primary">Save locally</button></div>
-      <p class="fineprint">Settings are stored only in this browser. Production must put payment authorization, score verification, ticket balances, prize inventory, redemption, and owner controls server-side and comply with the jurisdiction where each machine is deployed.</p>
+      <div class="actions"><button id="saveOwner" class="primary">Save display model locally</button></div>
+      <div class="profit-grid">
+        <div><span>Real payments</span><b id="dashPayments">OFF</b></div>
+        <div><span>Demo plays verified</span><b id="dashPlays">0</b></div>
+        <div><span>Tickets awarded</span><b id="dashTickets">0</b></div>
+        <div><span>Actual collected</span><b id="dashCollected">$0.00</b></div>
+        <div><span>Modeled owner share</span><b id="dashOwnerShare">$0.00</b></div>
+        <div><span>Modeled venue share</span><b id="dashVenueShare">$0.00</b></div>
+      </div>
+      <p class="fineprint">Display-model settings are local only. The verification server is authoritative for sessions, score, ticket balances, inventory and redemption. Real-money entry remains hard-disabled until compliance and payment-provider gates are completed.</p>
     </section>
 
     <footer>

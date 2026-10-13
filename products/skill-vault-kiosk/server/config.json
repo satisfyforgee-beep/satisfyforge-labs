@@ -1,0 +1,17 @@
+{
+  "paymentsEnabled": false,
+  "playPriceCents": 200,
+  "ticketsPerHit": 2,
+  "stepMs": 850,
+  "steps": 24,
+  "gridSize": 16,
+  "hitGraceMs": 140,
+  "ownerSharePct": 70,
+  "venueSharePct": 30,
+  "prizes": [
+    {"id":"sticker-pack","name":"Sticker / collectible pack","tickets":120,"wholesaleCents":70,"inventory":30},
+    {"id":"small-plush","name":"Small plush or desk toy","tickets":450,"wholesaleCents":250,"inventory":16},
+    {"id":"premium-merch","name":"Premium shelf merchandise","tickets":900,"wholesaleCents":525,"inventory":8},
+    {"id":"shelf-choice","name":"Choose-your-prize shelf item","tickets":1800,"wholesaleCents":1000,"inventory":4}
+  ]
+}
