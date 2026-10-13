@@ -34,6 +34,24 @@ Repository review confirms the features exist in source. It does not prove that 
 - Player progress uses DataStore persistence and autosaves every 60 seconds.
 - Rewards, upgrades, rebirths and rarity rolls are calculated on the server. The only RemoteEvent in v0.3 sends announcements from server to client; it does not accept reward commands from clients.
 
+## Current Roblox Studio test tooling
+
+Roblox now documents a beta **Device Simulator** toolbar plus **Network Simulator**. These should be used in the next Studio session to cover more devices and connection conditions without requiring separate physical hardware for every case.
+
+To enable the current simulator tooling:
+1. In Studio open **File > Beta Features**.
+2. Enable **New Device Simulator** and restart Studio.
+3. During playtests, use Device Simulator to switch among phone/tablet/desktop/console-style profiles and verify scaling/touch behavior.
+4. Use the Network control to apply repeatable connection presets such as Home Wi-Fi, Standard Mobile (4G/LTE), and Bad Connection (3G).
+5. Re-run reward/pad/announcement/rejoin-sensitive interactions under at least one mobile-like network preset so delayed server confirmation does not create duplicate rewards or misleading UI.
+
+Roblox also documents Studio-only scripted test services, including multi-client simulation and virtual input. They can reduce repetitive manual testing later, but they still require a real Studio environment and do not make the current cloud GitHub runner a Roblox engine runtime.
+
+Official references:
+- https://create.roblox.com/docs/studio/device-simulator
+- https://create.roblox.com/docs/studio/network-simulator
+- https://create.roblox.com/docs/studio/testing-modes
+
 ## Safe DataStore preparation
 
 1. Publish only a private test copy first.
@@ -64,9 +82,11 @@ Record Pass / Fail / Blocked plus the date, Studio version and device for every 
 | Shutdown save | Close a private server after changing progress | Rejoin restores the latest confirmed state within Roblox shutdown limits. |
 | Respawn | Reset character during normal play and during Snackquake | HUD remains present, values stay synchronized and collection still works. |
 | Two-player HUD | Run **Test > Start** with at least 2 players | Each player sees only their own stats; global announcements reach both. |
-| Phone portrait | Emulate a narrow phone viewport | Top bar and hint remain readable and do not cover movement/jump controls. |
-| Phone landscape | Emulate common landscape sizes | All five stats fit without clipping or overlap. |
-| Touch interaction | Use device emulation to activate both pads | Prompts are reachable and usable without keyboard input. |
+| Phone portrait | Use Device Simulator with a narrow phone viewport | Top bar and hint remain readable and do not cover movement/jump controls. |
+| Phone landscape | Switch the same phone profile to landscape and try another common profile | All five stats fit without clipping or overlap. |
+| Touch interaction | Use touch/device emulation to activate both pads | Prompts are reachable and usable without keyboard input. |
+| Mobile network | Apply Standard Mobile (4G/LTE) in Network Simulator | Collection/pads/announcements stay understandable; delayed confirmation never duplicates rewards. |
+| Poor network | Apply Bad Connection (3G) preset | Gameplay degrades gracefully with no reward duplication, runaway requests or permanent stuck UI. |
 | Performance | Observe server/client performance with 34 active orbs and Snackquake | No runaway orb count, repeated arena parts, severe frame drop or growing error spam. |
 | Reconnect loop | Join/leave repeatedly with two test accounts | No duplicated leaderstats, HUD, remotes, pads or arena objects. |
 
@@ -93,7 +113,8 @@ Keep one compact evidence packet before launch:
 - Before/after values for one upgrade and one rebirth.
 - Snackquake start/end timestamps and one verified payout.
 - Rejoin screenshot showing restored progress.
-- Phone portrait and landscape HUD screenshots.
+- Device Simulator screenshots for phone portrait and landscape.
+- Network Simulator preset used plus any observed delay/error behavior.
 - Studio place version or private-save timestamp.
 - Any error messages copied exactly.
 
@@ -107,13 +128,19 @@ All Boot, Collection, Combo, Upgrade, Rebirth, Reward math, Snackquake, HUD and 
 
 ### Ready for limited external test
 
-Private playtest passes, two-player contention passes, DataStore rejoin passes and at least one real phone test passes.
+Private playtest passes, two-player contention passes, DataStore rejoin passes and Device Simulator/mobile-network checks pass. At least one real phone test remains strongly preferred before public launch.
 
 ### Ready for public launch
 
 Limited external test passes, Creator Dashboard metadata/age guidance is complete, moderation accepts the assets, public permissions are deliberately enabled, and a fresh public-server smoke test passes.
 
 Until the public-launch gate passes, describe Brainrot Rush as **source-complete v0.3** or a **private prototype**—never as live, released, popular or earning revenue.
+
+## DevEx tax note for future monetization
+
+Roblox states that beginning November 1, 2026, DevEx payments will be classified as royalties and tax information moves into Creator Hub. This is not a current launch blocker because the game is not earning DevEx, but any future tax-information step is owner-controlled. Never place an SSN/TIN, W-9 data, bank details or other tax identifiers into GitHub or chat.
+
+Reference: https://create.roblox.com/docs/production/monetization/tax-information
 
 ## Rollback
 
