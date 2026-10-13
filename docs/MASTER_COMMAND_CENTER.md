@@ -31,22 +31,37 @@ This file is the canonical non-sensitive operating index for work that used to b
 - `browser-runner/` contains the SatisfyForge Playwright/Chromium browser runner.
 - GitHub Actions provides the primary zero-cost cloud browser worker.
 - Tokenless Control Center -> GitHub Actions OIDC -> Chromium -> Control Center result loop is verified.
-- Prefer this system over paid/metred browser services where supported.
+- Prefer this system over paid/metered browser services where supported.
 - Public-site automation works.
+- Local repository HTML can also be smoke-tested through `browser-runner/src/local-tasks.mjs`; Forge Frenzy is the first recovered game validated that way.
 - Authenticated third-party site automation remains subject to secure-session and provider/security constraints; do not store reusable login cookies or passwords in the public repo.
+
+### Owned business mail
+- Paid Superhuman Mail was explicitly rejected and must not be suggested as the solution.
+- The tested SatisfyForge Mail Bridge core is merged into `main` and uses Gmail API semantics with a hard sender allowlist for `satisfyforgee@gmail.com`, message-header safety checks and idempotency support.
+- No Gmail password or reusable OAuth token belongs in GitHub.
+- Floot's free Google integration is the intended live OAuth layer. The remaining UI/send-endpoint deployment work should resume after the current free Floot build-action limit resets.
+- `docs/MAIL_BRIDGE.md` is the implementation contract.
+- One-to-one advisor mail should move to the owned bridge once live; Hunter remains for legitimate prospecting sequences.
 
 ## Revenue and sales
 
 ### Payhip
 - Payhip is the primary $0-first digital storefront.
 - Existing products should be reused/improved before creating near-duplicates.
-- Verified historical products include the Holiday Paycheck Command Center and later canonical product IDs recorded elsewhere in repo/commerce docs.
 - Payment routing preference: Payhip/PayPal where verified.
 - Never expose Chime/bank details to customers.
 - Tool Vault checkout is currently treated as **paused/unverified** because a Payhip audit showed a price mismatch ($0 in Payhip while the site had advertised $49).
 - Do not promote or restore the Tool Vault paid checkout until the actual Payhip price is independently verified/corrected.
 - Earlier alleged service checkout URLs are also unverified and must not be used until rechecked.
-- `commerce/checkout_registry.json` is the canonical machine-readable quarantine list. `scripts/validate_commerce_safety.py` now blocks quarantined checkout URLs from customer-facing and automation surfaces; the pull-request validation passed and was merged on 2026-10-13.
+- `commerce/checkout_registry.json` is the canonical machine-readable quarantine list. `scripts/validate_commerce_safety.py` blocks quarantined checkout URLs from customer-facing and automation surfaces.
+
+### Verified digital offer
+- Strange True Story Shorts Creator Kit: `https://payhip.com/b/MSLBK`.
+- Last successful signed-out public verification on 2026-10-12 showed $7.99, correct product title, Add to Cart / Buy Now controls and ZIP disclosure.
+- Completed payment and automatic fulfillment have not been transaction-tested; do not claim otherwise.
+- A later GitHub-cloud browser check was blocked by Payhip/Cloudflare 403 before page load; this is a runner-access limitation, not evidence the product disappeared.
+- Canonical status: `docs/CREATOR_KIT_STATUS.md`.
 
 ### Service sales / local business
 - Active offer families include:
@@ -61,16 +76,20 @@ This file is the canonical non-sensitive operating index for work that used to b
 - Older 904584 / 904585 / 904586 are paused test sequences.
 - Current sending account is active; do not create duplicate outreach sequences for the same offer/audience without evidence the existing ones are exhausted.
 - Wix request/form flow remains the safe intake route while checkout verification is paused.
+- `sales/OUTREACH_REPLY_FULFILLMENT_KIT.md` contains the response/sample system.
+- `sales/SCOPING_AND_CLOSE_KIT.md` contains truthful offer boundaries, qualification and close/scoping rules so an interested prospect can move to written scope without invented results or an unverified payment link.
 
 ## Website and funnel
 
 ### Wix Growth Toolbox
 - Canonical live site is the existing free Wix Headless deployment.
-- Preserve the full production file set on every redeploy; do not rebuild from only the smaller repository subset.
+- Preserve the full production file set on every redeploy; do not rebuild from only the smaller historical repo subset.
 - Follow `docs/LIVE_WIX_SITE_INVENTORY.md` before updating the site.
 - Wix Forms is the live lead intake source.
 - Tool Vault purchase CTAs were placed into a safe paused/request state after the Payhip pricing mismatch was discovered.
+- The historical repository copies of `satisfyforge-site/index.html` and `pricing.html` have also been corrected so a future source-based deployment cannot accidentally restore the unsafe $49/direct-Payhip state.
 - Do not restore direct checkout CTAs until the checkout and price are verified.
+- The owned Chromium worker has passed a full production-page smoke test plus the payment-link safety check.
 
 ## Publishing and content
 
@@ -89,11 +108,24 @@ This file is the canonical non-sensitive operating index for work that used to b
 - Strong first-second hook, frequent visual progression, polished narration/captions, clear payoff, truthful AI disclosure where required.
 - No filler posting just to maintain cadence.
 - Check Buffer, Metricool, Wix, and recent live posts before publishing so only one scheduler owns each post/platform/time.
+- Current platform strategy/research: `docs/GROWTH_SCAN_2026-10-13.md`.
+
+### Permanent no-repost history
+- Lake Nyos — completed historical episode.
+- Lake Peigneur — completed historical episode.
+- Demon Core — completed historical episode.
+- Operation Mincemeat — completed historical episode.
+
+Use old production packets/performance only as research/reference; do not recreate those as new posts.
 
 ### Known scheduled backlog
-- Operation Mincemeat: complete; never repost.
 - Dancing Plague: already scheduled/handled across the four major channels for 2026-10-13; only retry a definite failure.
 - First Computer Bug: already scheduled/handled across the four major channels for 2026-10-14; only retry a definite failure.
+
+### Next prepared original story
+- `content/great-molasses-flood-production-packet.md` is research/script ready.
+- It includes a normal ~30–35 second version plus a 65–80 second deeper-story experiment.
+- It is **not** a rendered or scheduled video yet; do not call it published.
 
 ## Product building
 
@@ -113,10 +145,12 @@ This file is the canonical non-sensitive operating index for work that used to b
 - Digital products / Payhip assets.
 - Amazon KDP assets.
 - Roblox game assets.
+- Recovered browser-game source such as Forge Frenzy.
 
 ## Roblox
 
-- Current primary game: Brainrot Rush v0.3.
+### Primary: Brainrot Rush v0.3
+- Current primary game unless later evidence changes that choice.
 - GitHub/source validation work exists and should remain the cloud-side source of truth.
 - Do not call the game live until these pass:
   - Roblox Studio play test
@@ -124,30 +158,69 @@ This file is the canonical non-sensitive operating index for work that used to b
   - multiplayer test
   - persistence/data-store test
   - public-launch checks
-- Roblox Studio/device testing remains a genuine local/desktop requirement unless a supported cloud execution path becomes available.
-- Continue code, documentation, balancing, monetization design, and cloud-side validation while local testing is blocked.
+- `docs/ROBLOX_SETUP.md` includes the release-gate matrix plus current Device Simulator / Network Simulator test guidance.
+
+### Alternate prototype: Tile Panic
+- Source recovered into `src/roblox/tile-panic/`.
+- Keep isolated from Brainrot Rush.
+- It is a simple prototype, not a released experience.
+
+### Alternate project: Snackquake
+- Latest canonical recovered version is `0.2.1-save-fix`, not the older v0.1 kit.
+- Fresh local regression run on 2026-10-13 against the canonical v0.2 source archive passed:
+  - 9 Lua-compatible Luau files parsed
+  - 38 persistence assertions
+  - 9,046 pure-rule assertions
+- Canonical repo status:
+  - `src/roblox/snackquake/README.md`
+  - `src/roblox/snackquake/V0_2_1_RELEASE_NOTES.md`
+- The exact latest source ZIP/place remain preserved in Library.
+- Studio/runtime/device/DataStore/public launch gates remain required.
+
+Roblox Studio/device testing remains a genuine local/desktop requirement unless a supported cloud execution path becomes available. Continue code, documentation, balancing, monetization design, and cloud-side validation while local testing is blocked.
+
+## Recovered browser game
+
+### Forge Frenzy v2.1
+- Recovered from the old repair kit into `archive/forge-frenzy-v2.1/`.
+- Its original 19 browser-logic tests passed again on 2026-10-13.
+- A real GitHub/Playwright Chromium smoke also passed: title/UI loaded, Start worked, tutorial closed, timer began counting down, canvas rendered and no page error was captured.
+- It is browser-smoke-tested source, not a fully playtested or live deployed game.
+- `archive/forge-frenzy-v2.1/README.md` is the truth boundary.
 
 ## Amazon KDP
 
 - KDP assets can be prepared in the cloud.
+- Holiday Paycheck Command Center interior/cover passed local preflight on 2026-10-13.
+- `docs/KDP_PREFLIGHT_2026-10-13.md` is the current file-validation record.
 - Publishing remains blocked by Amazon authentication and owner-only identity/tax/bank/legal setup where required.
 - Do not guess or fill owner identity, tax, or banking data.
-- Keep finished listing/interior/cover/keyword/category assets ready so owner-only setup is the smallest possible remaining step.
+- Do not regenerate already-passing PDFs just to create activity; move only when Previewer/account access reveals a real issue.
 
 ## Other business workstreams to keep centralized
 
 ### Cleaning & restoration business
-- Continue research/planning for a cleaning and restoration company covering carpet cleaning, water/fire/mold restoration, HVAC cleaning, tile/grout, concrete/garage floors, exterior washing, bathrooms, pressure washing, auto detailing, and related services.
-- Reuse business-plan, equipment, licensing/insurance/training, startup, estimating, branding, and funding work rather than restarting in separate threads.
+- Canonical plan: `docs/CLEANING_RESTORATION_MASTER_PLAN.md`.
+- Target service families include carpet/upholstery, tile/grout, exterior cleaning, concrete/garage, auto detailing, water mitigation/structural drying, odor/fire cleaning support, mold/microbial remediation and contents restoration.
+- The plan is phased so a Butler truckmount/drying fleet is a later utilization-backed capacity purchase rather than a speculative prerequisite.
+- Current Ohio tax/compliance, EPA RRP boundaries, IICRC training path, insurance questions and launch gates are captured in the master plan.
+- Keep old personal-Gmail funding drafts historical; use the owned business-mail bridge and business identity for current advisor outreach.
 
-### 3D printing business
+### CurbForge / 3D printing business
+- Canonical zero-spend validation plan: `docs/CURBFORGE_PREPURCHASE_VALIDATION.md`.
 - Product direction: premium, durable, detailed, multicolor, practical products people already buy.
-- Priority families include custom mailboxes, pet houses, personalized home/yard products, pet products, organizers, signs, planters, and seasonal decor.
+- Existing first-mailbox STL kit and demand-test pack are preserved in Library.
+- Priority families include custom vehicle mailboxes, house-replica mailboxes, pet houses, personalized home/yard products, organizers, signs, planters, and seasonal decor.
 - Designs should be grounded in realistic straight-off-the-printer geometry: modular/snap-fit/bolt-together parts, embossed/recessed detail, texture, and multicolor filament; avoid relying on sanding/painting/glossy molded appearance.
+- Do not buy a printer/materials to discover demand. Concept-test premium prices first and do not take deposits until production/fulfillment is verified.
+- Keep CurbForge positioning separate from the existing SatisfyForge entertainment audience unless a deliberate cross-brand decision is made.
 
 ### Grocery/coupon automation
 - Keep coupon/deal automation as a separate functional workstream but route status and decisions back through the Master Command Center.
 - Prefer direct digital coupon clipping/connected-account workflows over screenshot-only/manual processes when a supported connector exists.
+- No Kroger-specific plugin is currently available through the connected Plugin Directory search.
+- Kroger's public developer surface exposes product/location/identity/cart capabilities, which can support an owned price/deal/cart intelligence tool, but a supported public coupon-clipping operation has not been established. Do not call a price scanner 'coupon clipping.'
+- Actual account coupon clipping remains blocked until an authenticated Kroger-supported workflow exists.
 
 ## Automation policy
 
