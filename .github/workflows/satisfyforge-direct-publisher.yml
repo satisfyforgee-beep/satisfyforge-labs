@@ -5,8 +5,6 @@ on:
     paths:
       - "publisher/**"
       - ".github/workflows/satisfyforge-direct-publisher.yml"
-  schedule:
-    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -65,4 +63,3 @@ jobs:
           git add publisher/state.json
           git commit -m "Update direct publisher state [skip ci]"
           git push
-
