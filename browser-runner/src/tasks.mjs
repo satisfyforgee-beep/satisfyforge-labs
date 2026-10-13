@@ -98,6 +98,29 @@ export const tasks = {
     };
   },
 
+  async "payhip-public-creator-kit"({ page }) {
+    const response = await page.goto("https://payhip.com/b/MSLBK", { waitUntil: "domcontentloaded" });
+    const status = response?.status() ?? null;
+    const title = normalize(await page.title().catch(() => ""));
+    const text = normalize(await page.locator("body").innerText().catch(() => ""));
+    const finalUrl = page.url();
+    const hostname = new URL(finalUrl).hostname.toLowerCase();
+    const prices = [...new Set((text.match(/\$\s*[0-9]+(?:\.[0-9]{1,2})?/g) || []).map(value => value.replace(/\s+/g, "")))].slice(0, 8);
+    const productMatch = /strange true story|shorts creator kit|creator kit/i.test(`${title} ${text.slice(0, 2500)}`);
+    const looksMissing = /\b(404|page not found|product not found|unavailable)\b/i.test(`${title} ${text.slice(0, 1000)}`);
+    return {
+      ok: Boolean(status && status < 400 && hostname.endsWith("payhip.com") && productMatch && prices.length > 0 && !looksMissing),
+      task: "payhip-public-creator-kit",
+      publicId: "MSLBK",
+      status,
+      title: title.slice(0, 140),
+      productMatch,
+      observedPrices: prices,
+      finalPath: new URL(finalUrl).pathname,
+      looksMissing
+    };
+  },
+
   async "payhip-audit-tool-vault"({ page, context }) {
     requireAuth(context);
     await page.goto("https://payhip.com/products", { waitUntil: "domcontentloaded" });
