@@ -1,0 +1,28 @@
+name: SatisfyForge Mail Bridge Tests
+
+on:
+  push:
+    paths:
+      - 'mail-bridge/**'
+      - '.github/workflows/mail-bridge-test.yml'
+  pull_request:
+    paths:
+      - 'mail-bridge/**'
+      - '.github/workflows/mail-bridge-test.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run mail bridge tests
+        working-directory: mail-bridge
+        run: npm test
