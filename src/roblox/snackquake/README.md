@@ -41,6 +41,23 @@ The exact Studio-smoke-tested Rojo build was then uploaded through Roblox's supp
 
 The API key itself is stored only in macOS Keychain on the authorized local Mac and is not committed to this repository.
 
+## Verified real private-player gameplay
+
+After installing the notarized production Roblox Player on the authorized Mac, the owner account joined the uploaded private place successfully through the normal Roblox game-join service.
+
+A real client playtest then verified these runtime behaviors on the deployed private experience:
+- private place join succeeded in the production Roblox Player
+- round HUD/timer, rescue prompts, creature models, rescue chute, shops and high-ground refuges rendered
+- a creature pickup completed through the normal proximity prompt
+- the carried-creature state and return-to-chute guidance appeared
+- a rescue/deposit completed through the normal rescue-chute prompt
+- the deposited creature was recorded as a new discovery
+- the displayed Fizz balance moved from 25 to 35 and Rescues moved from 0 to 1 after the deposit
+- the following clean-round bonus raised the displayed Fizz balance to 55
+- hazard/bounce recovery executed and safely dropped carried cargo with the expected banked-progress message
+
+This is now evidence of the actual deployed client gameplay loop, not only a Studio structural smoke test. It still does **not** establish leave/rejoin persistence, multiplayer contention, real-device/mobile/gamepad UX, purchases, analytics readback, moderation readiness, or public-release readiness.
+
 ## Existing game systems
 
 - eight original snack creatures
@@ -61,9 +78,9 @@ The API key itself is stored only in macOS Keychain on the authorized local Mac 
 
 ## Still required before any public launch claim
 
-- real private-experience client playtest from spawn through rescue/deposit/evolution/upgrade/disaster loops
+- complete private cloud save + leave/rejoin verification
+- complete evolution and speed-upgrade gameplay tests in the deployed client
 - two-client contention/shared-event test
-- private cloud save + leave/rejoin verification
 - unavailable-DataStore fallback check in a production-like path
 - phone portrait/landscape and real-device test
 - gamepad test
