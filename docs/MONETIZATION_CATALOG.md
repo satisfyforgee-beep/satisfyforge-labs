@@ -133,8 +133,12 @@ Do not pay listing fees or developer subscriptions from SatisfyForge cash. Use f
 ### Recurring Tool Vault billing
 Payhip recurring payments require Stripe. Stripe is not connected; PayPal is connected. Owner-only financial setup is intentionally deferred.
 
-### Public GitHub Pages site
-The deploy workflow currently fails in `actions/configure-pages` because the GitHub App integration cannot create/enable the Pages site. The code can remain ready in `docs/`, but Pages must be enabled by an account/admin-capable path before the workflow can deploy. Do not pay for hosting as a workaround; use free hosting or the Payhip storefront until this is resolved.
+### Canonical live site
+The free Wix deployment is the canonical SatisfyForge site. The repeatedly
+failing GitHub Pages deployment was intentionally removed and replaced with
+source validation, so Pages is no longer an active blocker or a dependency.
+Do not re-enable redundant hosting or pay for another host while the Wix site
+remains available.
 
 ## Productization rule
 
@@ -151,3 +155,4 @@ A tool graduates into a paid product only when all four are true:
 3. Turn repeatedly used internal tools into software subscriptions.
 4. Add customer-funded implementation and white-label deals.
 5. Only then add paid infrastructure from revenue.
+
