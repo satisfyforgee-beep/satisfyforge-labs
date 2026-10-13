@@ -46,6 +46,7 @@ This file is the canonical non-sensitive operating index for work that used to b
 - Tool Vault checkout is currently treated as **paused/unverified** because a Payhip audit showed a price mismatch ($0 in Payhip while the site had advertised $49).
 - Do not promote or restore the Tool Vault paid checkout until the actual Payhip price is independently verified/corrected.
 - Earlier alleged service checkout URLs are also unverified and must not be used until rechecked.
+- `commerce/checkout_registry.json` is the canonical machine-readable quarantine list. `scripts/validate_commerce_safety.py` now blocks quarantined checkout URLs from customer-facing and automation surfaces; the pull-request validation passed and was merged on 2026-10-13.
 
 ### Service sales / local business
 - Active offer families include:
