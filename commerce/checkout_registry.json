@@ -5,7 +5,9 @@
     {
       "product_id": "KLjBb",
       "status": "quarantined",
-      "reason": "Payhip showed $0.00 while Wix advertised $49; reverify price and terms before use."
+      "reason": "2026-10-13: owner screenshots verify Payhip seller plan One-Time Purchase $49 USD (Founding Lifetime Access) and public membership pricing page shows $49 Sign Up. Prior $0 price discrepancy resolved. Keep checkout quarantined pending independent sign-up/checkout final-total and fulfillment verification; do not claim transaction tested.",
+      "price_verified_usd": 49,
+      "pricing_evidence": "Owner-provided screenshots of seller pricing plan and customer-facing membership plan"
     },
     {
       "product_id": "RrdbG",
