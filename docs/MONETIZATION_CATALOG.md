@@ -34,25 +34,25 @@ Existing assets include lead tracking, message building, follow-up concepts, aud
 
 The recurring membership should deliver new useful material each month rather than simply rebilling for an unchanged download.
 
-## 3. SatisfyForge Tool Vault — LIVE paid membership
+## 3. SatisfyForge Tool Vault — checkout paused pending verification
 
-**Current live offer**
+**Verified current operating state**
 - Product: SatisfyForge Tool Vault
-- Type: Payhip Membership
-- Public URL: https://payhip.com/b/KLjBb
-- Price: $49 one-time Founding Lifetime Access
-- Payment path: existing PayPal connection; no SatisfyForge upfront spend
-- Status: Published and visible
+- Known Payhip URL: `https://payhip.com/b/KLjBb`
+- A 2026-10-12 Payhip dashboard audit showed the listing at **$0.00** while the Wix site had been advertising **$49**.
+- Direct purchase CTAs on the live Wix site are therefore paused and route to the request form instead.
+- Do **not** advertise, send, or restore KLjBb as a $49 paid checkout until the actual Payhip price and terms are independently rechecked and, if needed, corrected.
+- PayPal remains the preferred payment destination once a checkout is verified.
 
-**Current member content**
+**Known member-content concept from prior setup**
 - START HERE — Founding Tool Vault
 - Lead Rescue Pack — 4-Step Follow-Up
 - Profit & Marketing ROI Worksheet
 - True-Story Short Framework
 
-This one-time founding offer is the zero-cost bridge while recurring billing is unavailable. Payhip recurring billing requires Stripe, and Stripe is not connected. Do not connect Stripe, enter banking/tax data, or create recurring charges on the owner's behalf. Once the owner completes Stripe setup separately, evaluate recurring tiers only if the vault is delivering ongoing new value.
+Recurring Payhip billing requires Stripe. Stripe is not connected. Do not connect Stripe, enter banking/tax data, or create recurring charges on the owner's behalf. Revisit recurring tiers only after the owner separately completes any required financial setup and only if the vault is delivering ongoing new value.
 
-**Future recurring pricing candidate after owner Stripe setup**
+**Future recurring pricing candidate after verified recurring-billing setup**
 - $9/month Founding Monthly
 - $79/year Founding Annual
 
@@ -85,6 +85,13 @@ Never buy views, engagement, followers or fake testimonials.
 Use print-on-demand so production cost is taken from a completed customer order/royalty flow rather than inventory purchased in advance.
 
 Current candidate: Holiday Paycheck Command Center paperback.
+
+Local preflight on 2026-10-13 verified:
+- 96-page 8.5 x 11 interior PDF
+- one-page full-wrap cover with dimensions consistent with the prepared 96-page spine and bleed
+- sampled interior pages and the rendered cover contain expected content
+
+See `docs/KDP_PREFLIGHT_2026-10-13.md`. Amazon/KDP Previewer and owner account prerequisites still gate publication.
 
 ## 7. Roblox / games
 
@@ -130,15 +137,14 @@ Do not pay listing fees or developer subscriptions from SatisfyForge cash. Use f
 
 ## Current infrastructure blockers
 
+### Tool Vault checkout verification
+The Payhip listing cannot be treated as a paid offer until its actual price and terms are rechecked and corrected if needed. Keep the Wix request path active meanwhile.
+
 ### Recurring Tool Vault billing
 Payhip recurring payments require Stripe. Stripe is not connected; PayPal is connected. Owner-only financial setup is intentionally deferred.
 
 ### Canonical live site
-The free Wix deployment is the canonical SatisfyForge site. The repeatedly
-failing GitHub Pages deployment was intentionally removed and replaced with
-source validation, so Pages is no longer an active blocker or a dependency.
-Do not re-enable redundant hosting or pay for another host while the Wix site
-remains available.
+The free Wix deployment is the canonical SatisfyForge site. The repeatedly failing GitHub Pages deployment was intentionally removed and replaced with source validation, so Pages is no longer an active blocker or a dependency. Do not re-enable redundant hosting or pay for another host while the Wix site remains available.
 
 ## Productization rule
 
@@ -150,9 +156,8 @@ A tool graduates into a paid product only when all four are true:
 
 ## Revenue priority
 
-1. Sell what already exists.
+1. Sell what already exists and is verified.
 2. Turn repeatable service work into a reusable digital product.
 3. Turn repeatedly used internal tools into software subscriptions.
 4. Add customer-funded implementation and white-label deals.
 5. Only then add paid infrastructure from revenue.
-
