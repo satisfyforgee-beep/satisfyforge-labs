@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SatisfyForge Creator OS</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="logo">SF</span><div><strong>SatisfyForge</strong><small>Creator OS</small></div></div>
+      <nav id="nav">
+        <button data-tab="dashboard" class="active">Command Center</button>
+        <button data-tab="create">Create</button>
+        <button data-tab="queue">Publishing Queue</button>
+        <button data-tab="analytics">Analytics</button>
+        <button data-tab="experiments">Money Experiments</button>
+        <button data-tab="stack">Owned Tool Stack</button>
+        <button data-tab="settings">Backup / Export</button>
+      </nav>
+      <p class="note">Zero-cost local-first build. No passwords, tokens, bank details or customer secrets are stored here.</p>
+    </aside>
+
+    <main>
+      <section id="dashboard" class="tab active">
+        <header><div><h1>Creator Command Center</h1><p>One place to turn ideas into content, track results and push proven work toward revenue.</p></div><button class="primary" data-go="create">Create package</button></header>
+        <div class="kpis">
+          <article><span>Total views</span><strong id="kViews">0</strong></article>
+          <article><span>Engagements</span><strong id="kEng">0</strong></article>
+          <article><span>Tracked revenue</span><strong id="kRevenue">$0.00</strong></article>
+          <article><span>Ready / scheduled</span><strong id="kReady">0</strong></article>
+        </div>
+        <div class="grid two">
+          <article class="panel"><h2>Best content</h2><div id="bestContent"></div></article>
+          <article class="panel"><h2>Scale signals</h2><div id="scaleSignals"></div></article>
+        </div>
+        <article class="panel"><h2>Next actions</h2><div id="nextActions"></div></article>
+      </section>
+
+      <section id="create" class="tab">
+        <header><div><h1>Content Package Builder</h1><p>Create original hooks, titles, captions and platform variants from one idea.</p></div></header>
+        <div class="grid two">
+          <article class="panel form">
+            <label>Topic / product / story<input id="topic" placeholder="e.g. Great Molasses Flood"></label>
+            <div class="row">
+              <label>Goal<select id="goal"><option>Views</option><option>Shares</option><option>Clicks</option><option>Sales</option><option>Followers</option></select></label>
+              <label>Tone<select id="tone"><option>Curiosity</option><option>Fast payoff</option><option>Story</option><option>Educational</option><option>Challenge</option></select></label>
+            </div>
+            <label>Offer / details<textarea id="details" placeholder="Facts, audience, product benefit, CTA constraints, etc."></textarea></label>
+            <div class="actions"><button class="primary" id="generateBtn">Generate</button><button id="queueGeneratedBtn">Save to queue</button></div>
+          </article>
+          <article class="panel"><h2>Generated package</h2><pre id="generated">Enter a topic and generate a package.</pre></article>
+        </div>
+      </section>
+
+      <section id="queue" class="tab">
+        <header><div><h1>Publishing Queue</h1><p>Track work once, then export safe queue data for the owned Direct Publisher.</p></div><div class="actions"><button id="addQueueBtn">Add item</button><button class="primary" id="exportPublisherBtn">Export Direct Publisher JSON</button></div></header>
+        <article class="panel tablewrap"><table><thead><tr><th>Title</th><th>Platform</th><th>Status</th><th>Publish at</th><th>Video URL</th><th>Revenue</th><th></th></tr></thead><tbody id="queueRows"></tbody></table></article>
+        <p class="warning">Export does not publish anything. The existing publisher still enforces its own queue validation, duplicate protection and platform authorization.</p>
+      </section>
+
+      <section id="analytics" class="tab">
+        <header><div><h1>Analytics</h1><p>Measure attention, engagement, clicks and revenue instead of vanity metrics alone.</p></div><button id="addMetricBtn">Log post</button></header>
+        <article class="panel tablewrap"><table><thead><tr><th>Post</th><th>Views</th><th>Likes</th><th>Shares</th><th>Saves</th><th>Comments</th><th>Clicks</th><th>Revenue</th></tr></thead><tbody id="metricRows"></tbody></table></article>
+        <div class="kpis mini"><article><span>Engagement / view</span><strong id="engRate">0%</strong></article><article><span>Click / view</span><strong id="clickRate">0%</strong></article><article><span>Revenue / 1k views</span><strong id="rpm">$0.00</strong></article></div>
+      </section>
+
+      <section id="experiments" class="tab">
+        <header><div><h1>Money Experiments</h1><p>Test $0-first offers and scale only when evidence appears.</p></div><button id="addExperimentBtn">Add experiment</button></header>
+        <article class="panel tablewrap"><table><thead><tr><th>Experiment</th><th>Model</th><th>Buyer</th><th>Price</th><th>Spend</th><th>Revenue</th><th>Profit</th><th>Signal</th></tr></thead><tbody id="experimentRows"></tbody></table></article>
+      </section>
+
+      <section id="stack" class="tab">
+        <header><div><h1>Owned Tool Stack</h1><p>Replace paid creator subscriptions with owned modules where practical, while using official APIs and legal integrations.</p></div></header>
+        <div id="stackCards" class="grid two"></div>
+      </section>
+
+      <section id="settings" class="tab">
+        <header><div><h1>Backup / Export</h1><p>Data stays in this browser unless you export it.</p></div></header>
+        <div class="grid two">
+          <article class="panel"><h2>Backup</h2><p>Export the full Creator OS state as JSON.</p><button class="primary" id="exportAllBtn">Export all data</button></article>
+          <article class="panel"><h2>Restore</h2><p>Import a prior Creator OS JSON backup.</p><label class="filebtn">Import JSON<input id="importFile" type="file" accept="application/json"></label></article>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
