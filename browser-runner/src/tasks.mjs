@@ -100,9 +100,7 @@ export const tasks = {
     const before = normalize(await priceInput.inputValue());
     await priceInput.fill("49");
 
-    const save = page.locator('button:has-text("Save"), button:has-text("Update"), input[type="submit"]')
-      .filter({ visible: true })
-      .first();
+    const save = page.locator('button:has-text("Save"):visible, button:has-text("Update"):visible, input[type="submit"]:visible').first();
     if (!(await save.count())) {
       return { ok: false, task: "payhip-fix-tool-vault-49", code: "SAVE_CONTROL_NOT_FOUND", before };
     }
