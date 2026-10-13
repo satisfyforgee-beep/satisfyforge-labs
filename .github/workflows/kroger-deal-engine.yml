@@ -1,0 +1,27 @@
+name: Kroger Deal Engine
+
+on:
+  push:
+    paths:
+      - 'tools/kroger-deal-engine/**'
+      - '.github/workflows/kroger-deal-engine.yml'
+  pull_request:
+    paths:
+      - 'tools/kroger-deal-engine/**'
+      - '.github/workflows/kroger-deal-engine.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/kroger-deal-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
