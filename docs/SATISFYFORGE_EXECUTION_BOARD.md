@@ -1,43 +1,45 @@
-# SatisfyForge execution board — 2026-10-12
+# SatisfyForge execution board — 2026-10-13
 
 ## Verified completed / healthy
-- GitHub repository write access works and current operating/payment documentation is synchronized.
-- SatisfyForge runs cloud-first; the active Global Money Loop no longer depends on the owner's physical computer for cloud-capable work.
-- The free Wix Headless site is live at the existing SatisfyForge Growth Toolbox URL.
-- Live Wix updates preserve the complete production file set rather than rebuilding from the historical GitHub site folder.
-- A payment mismatch was caught before further promotion: Payhip showed the Tool Vault at `$0.00` while Wix advertised `$49`. The live homepage and pricing page are now in a safe state: direct Tool Vault checkout links are paused and route to the Wix request form instead. The successful Wix replacement drop preserved all 20 served production files and changed only `index.html` and `pricing.html`.
-- PayPal remains the preferred future customer-payment destination once a checkout is verified. Chime is not exposed to customers.
-- Canonical visible Payhip digital products MSLBK and AGXgm remain the verified $7.99 products; avoid near-duplicates.
-- Buffer has no posts currently in `error` status.
-- Dancing Plague is already scheduled for 2026-10-13 on all four target networks: Facebook via Buffer at 10:00 ET; Instagram via Metricool at 10:00 ET; YouTube via Metricool at 16:00 ET; TikTok via Metricool at 18:00 ET.
-- First Computer Bug is already scheduled for 2026-10-14 on all four target networks: Facebook via Buffer at 10:00 ET; Instagram via Metricool at 10:00 ET; YouTube via Metricool at 16:00 ET; TikTok via Metricool at 18:00 ET.
-- The Daily Publisher automation has been corrected to treat scheduled/pending posts in Buffer, Wix or Metricool as already handled so it does not double-post the backlog.
-- Hunter sender `satisfyforgee@gmail.com` is active. Three real outreach sequences are active and scheduled to start 2026-10-13 during the 14:00–21:00 sending window: 904604 (9 recipients), 904608 (3 recipients), and 904610 (3 recipients). The old 904584/904585/904586 test sequences are paused.
-- Outreach monitoring now watches the three live sequences rather than the paused tests.
-- Roblox Brainrot Rush v0.3 remains committed with the current gameplay/progression source and supporting documentation.
-- Prepared KDP Holiday Paycheck Command Center assets remain available for listing once Amazon account prerequisites are satisfied.
+- Master Command Center is now the canonical cross-thread operating system. `docs/MASTER_COMMAND_CENTER.md` is merged into `main`; old chats are historical context, not separate automation systems.
+- The five active automation slots are consolidated into: Global Money Loop, Daily Publisher, Daily Money Product Builder, Growth Scan, and combined Outreach + Wix Lead Watch.
+- SatisfyForge runs cloud-first. GitHub is the canonical code/docs/tests workspace and Floot Control Center is the persistent owner-facing operations UI.
+- The tokenless Control Center -> GitHub Actions OIDC -> Playwright/Chromium worker loop is verified. The completed smoke-test issue was closed on 2026-10-13.
+- The free Wix Headless Growth Toolbox site is live. Live updates preserve the complete production file set rather than rebuilding from the smaller historical repo folder.
+- Payhip payment mismatch remains safely contained: Tool Vault direct checkout is paused on Wix and routes to the request form. The monetization catalog has been corrected so no canonical doc calls the unverified checkout live or $49.
+- PayPal remains the preferred future customer-payment destination once an exact checkout is verified. Chime/bank details are not exposed to customers.
+- Buffer has no currently known error posts in the 2026-10-13/14 scheduled window.
+- Dancing Plague is correctly scheduled for 2026-10-13 on Facebook (Buffer 10:00 ET), Instagram (Metricool 10:00 ET), YouTube (Metricool 16:00 ET), and TikTok (Metricool 18:00 ET). At 03:34 ET all Metricool entries were still PENDING as expected.
+- First Computer Bug is correctly scheduled for 2026-10-14 on the same four networks and remains pending/scheduled without a known error.
+- Hunter sender `satisfyforgee@gmail.com` is active. Three real outreach sequences are active: 904604 (9 recipients), 904608 (3 recipients), 904610 (3 recipients). At the 2026-10-13 pre-window check all had 0 sends, 0 bounces and 0 replies, which is expected because their 14:00–21:00 window had not started.
+- Hourly Outreach Watch now monitors both Hunter campaign activity and Wix Forms leads instead of consuming a second automation slot.
+- Wix Forms had 0 submissions at the latest pre-campaign check; no lead was being missed.
+- KDP Holiday Paycheck Command Center assets are present in `/SatisfyForge/KDP` and received local preflight validation on 2026-10-13: the interior is exactly 96 pages at 8.5 x 11 inches, the cover is a one-page full wrap with dimensions consistent with the prepared spine/bleed, and sampled pages/rendered cover contain expected content. See `docs/KDP_PREFLIGHT_2026-10-13.md`.
+- Roblox Brainrot Rush v0.3 remains source-complete in the repository with a detailed release-gate matrix.
 
 ## Active blockers that cannot honestly be called finished yet
-- **Payhip Tool Vault pricing:** the actual Payhip checkout must be re-opened and independently verified/corrected before direct purchase links can be restored. TinyFish browser automation is currently unavailable because its wallet balance is negative; the standing rule is not to top it up automatically.
-- **Unverified service checkout links:** prior automation state contained six alleged Payhip coaching/service URLs, but tool evidence conflicted. Do not send or promote any of them until each is independently rechecked.
-- **Roblox launch:** Roblox Studio / device playtesting, multiplayer/persistence validation and final public-launch checks require a Studio-capable/local session. Do not call the game live before those tests pass.
-- **Amazon KDP:** account authentication and any bank, tax, identity, legal agreements or one-time verification remain owner-controlled prerequisites. Never guess or enter those secrets.
-- **Remote Desktop Commander:** no authorized computer is currently connected, so desktop-only tasks cannot be performed through that route.
-- **Replit:** creating a new app currently requires a paid/active Replit subscription; do not spend to enable it under the zero-cash rule.
+- **Payhip Tool Vault pricing:** the exact Payhip listing still needs an authenticated independent recheck/correction before a paid checkout can be restored. Public web access did not expose the listing through the available web tool, and the paid/metered TinyFish path remains disabled under the $0 rule.
+- **Authenticated third-party browser sessions:** the owned GitHub cloud browser works for supported/public tasks, but reusable third-party login sessions cannot be placed in the public repo and the attempted remote-login shortcut was intentionally abandoned at a platform security boundary.
+- **Unverified service checkout links:** prior state contained six alleged Payhip service URLs; do not send or promote them until rechecked.
+- **Roblox launch:** Studio/device runtime, multiplayer contention, DataStore persistence, moderation and public-launch validation still require a real Roblox Studio-capable session. No Remote Desktop Commander device is connected as of this pass.
+- **Amazon KDP publication:** the PDFs/listing package are prepared, but Amazon authentication plus any owner identity/tax/bank/legal requirements and KDP Previewer acceptance remain owner-controlled gates.
+- **Replit:** new-app creation currently requires an active paid subscription; do not spend to enable it.
 
-## Next execution order
-1. Let the already-scheduled Dancing Plague / Computer Bug posts publish through their existing single scheduler per platform; check outcomes and retry only definite failures.
-2. Let the three Hunter sequences begin on 2026-10-13; monitor replies, bounces and unsubscribes and surface only meaningful action.
-3. Keep the Wix lead/request, Lead Rescue, tracker, audit, ROI calculator and free-tool funnel running while paid checkout verification is paused.
-4. Continue $0 GitHub development/productization, prioritizing useful owned tools and the direct Publisher rather than duplicate products.
-5. When a free authenticated Payhip path becomes available, recheck Tool Vault first, correct/confirm its price and terms, then restore the direct checkout on Wix only after verification.
-6. Continue Roblox source improvements in GitHub while waiting for Studio access; final launch remains blocked on real playtesting.
-7. Continue KDP preparation that does not require owner identity/tax/banking actions; do not claim the paperback is live until Amazon confirms publication.
+## Current execution order
+1. Leave healthy scheduled social posts untouched; after each intended publish time, use read-only status checks first and retry only definite failures.
+2. Let the three Hunter sequences enter their 14:00–21:00 window; hourly combined watch handles sends, replies, bounces, unsubscribes, and Wix lead submissions.
+3. Keep the Wix request/Lead Rescue/ROI funnel live while paid checkout verification is paused.
+4. Continue zero-cost productization in GitHub/Floot, prioritizing Lead Rescue, owned publishing tools, white-label calculators, and other already-built assets over unrelated new products.
+5. Restore Tool Vault direct checkout only after the exact Payhip price/terms are verified and corrected if needed.
+6. Continue Roblox cloud-side source/docs/security improvements but do not claim launch readiness without Studio evidence.
+7. KDP is locally preflighted; next legitimate step is owner Amazon/KDP setup and KDP Previewer/upload validation, not more duplicate PDF generation.
+8. Keep duplicate legacy trend/upload/retry automations paused. New recurring needs should be merged into the five canonical loops.
 
 ## Operating rules
 - Spend $0 unless the owner explicitly approves a specific purchase.
 - Do not start paid trials, buy credits, ads, engagement or followers.
 - Do not claim posts are published, checkout prices are correct, products are selling, KDP books are live, or Roblox games are live without verification.
-- Never replace a Wix Headless site from an incomplete local/repo file set; preserve the full live deployment.
+- Never replace a Wix Headless site from an incomplete file set.
 - Coordinate Buffer, Wix and Metricool before scheduling or publishing to prevent duplicates.
 - Keep content original, fact-checked and commercially usable, with truthful AI disclosures where platforms require them.
+- When one path blocks, record it once and continue the highest-value unblocked work.
