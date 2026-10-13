@@ -4,7 +4,9 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { chromium } from "playwright";
 import { tasks } from "./tasks.mjs";
+import { localTasks } from "./local-tasks.mjs";
 
+const allTasks = { ...tasks, ...localTasks };
 const taskName = process.env.SF_TASK || "smoke";
 const allowMutations = String(process.env.SF_ALLOW_MUTATIONS || "false").toLowerCase() === "true";
 const stateGzipB64 = process.env.SF_BROWSER_STATE_GZIP_B64 || "";
@@ -16,7 +18,7 @@ function emit(result, stream = "log") {
   console[stream](safe);
 }
 
-if (!tasks[taskName]) {
+if (!allTasks[taskName]) {
   emit({ ok: false, task: taskName, code: "UNKNOWN_TASK" }, "error");
   process.exit(2);
 }
@@ -50,7 +52,7 @@ try {
   const page = await browserContext.newPage();
   page.setDefaultTimeout(15000);
 
-  const result = await tasks[taskName]({
+  const result = await allTasks[taskName]({
     page,
     browserContext,
     allowMutations,
