@@ -33,3 +33,14 @@ Continue using Hunter account 182135 for the active prospecting sequences. The o
 ## Commerce boundary
 
 No payment link was sent. Tool Vault checkout remains quarantined until independent checkout and fulfillment verification. The Creator Kit public page may be described only as publicly verified at $7.99; payment and delivery remain untested.
+
+
+## 12:17 ET follow-up
+
+- Hunter email account 182135 is now active on `Eastern Time (US & Canada)`, weekdays 09:00–16:59, with a 15-message daily limit.
+- All three sequences remain active and all 15 recipients remain `pending`; sent, delivered, bounced and replied counts remain zero.
+- The sequences themselves still have a 14:00–21:00 window. Because the account timezone is now Eastern, their first eligible local time is 14:00 ET.
+- A safe API attempt to align only the three sequence windows with the sender window was rejected with `sequence_locked`: Hunter does not allow schedule-window edits after a sequence has started.
+- No pause, restart, duplicate campaign or recipient mutation was performed. The next verification point is after 14:00 ET.
+- The connected Gmail connector remains `cougarboy1999@gmail.com`. A focused inbox check found no qualified SatisfyForge inquiry; the only match was an unrelated Temu promotion. No email was sent from the personal account.
+- The Dancing Plague Instagram retry through Buffer is verified `sent` at 10:07 ET: https://www.instagram.com/reel/Deb_AXaAGto/
