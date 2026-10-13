@@ -1,6 +1,10 @@
 name: SatisfyForge Control Worker
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/satisfyforge-control-worker.yml'
   workflow_dispatch:
   schedule:
     - cron: '*/5 * * * *'
