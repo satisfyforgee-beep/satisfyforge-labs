@@ -24,3 +24,18 @@ assert(config.prizes.every(p=>p.wholesaleCents<=1000));
 assert(config.prizes.every(p=>p.tickets>0&&p.inventory>=0));
 assert.equal(config.ownerSharePct+config.venueSharePct,100);
 console.log('SKILL_VAULT_SERVER_TESTS_PASS');
+
+const {signHardwareEvent,verifyHardwareEvent}=require('./hardware-input');
+const {buildReconciliationCsv}=require('./reconciliation');
+const secret='test-secret';
+const event={sessionId:'s1',tile:4,ts:2_000_000,nonce:'nonce-1'};
+event.signature=signHardwareEvent(secret,event);
+let hv=verifyHardwareEvent(secret,event,event.ts);
+assert.equal(hv.ok,true);
+hv=verifyHardwareEvent(secret,event,event.ts);
+assert.equal(hv.ok,false); assert.equal(hv.reason,'hardware_event_replay');
+const csv=buildReconciliationCsv({state:{counters:{demoPlays:2,paidPlays:0,collectedCents:0,awardedTickets:12,redeemedTickets:0}},config});
+assert(csv.includes('actual_collected_cents,0,actual'));
+assert(csv.includes('modeled_gross_cents,400,planning only'));
+assert.equal(config.paymentsEnabled,false);
+console.log('SKILL_VAULT_SECURITY_ACCOUNTING_TESTS_PASS');

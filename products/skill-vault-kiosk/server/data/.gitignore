@@ -1,3 +1,5 @@
 state.json
 state.json.tmp
 audit.jsonl
+
+release-manifest.json

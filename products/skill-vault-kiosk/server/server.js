@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const {authorizePaidSession} = require('./payment-adapter');
+const {verifyHardwareEvent} = require('./hardware-input');
+const {buildReconciliationCsv} = require('./reconciliation');
 
 const ROOT = path.resolve(__dirname, '..');
 const DATA = path.join(__dirname, 'data', 'state.json');
@@ -11,6 +13,8 @@ const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
 const port = Number(process.env.PORT || 8080);
 const AUDIT = path.join(__dirname, 'data', 'audit.jsonl');
 const ownerToken = process.env.SKILL_VAULT_OWNER_TOKEN || crypto.randomBytes(18).toString('hex');
+const hardwareInputSecret = process.env.SKILL_VAULT_INPUT_SECRET || '';
+const startedAt = Date.now();
 
 function emptyState(){
   return {
@@ -78,6 +82,14 @@ function validateHit(s,tile,now=Date.now()){
   if(elapsed<0 || elapsed>config.stepMs+config.hitGraceMs) return {ok:false,reason:'timing_outside_window'};
   return {ok:true,step};
 }
+function ownerAuthorized(req){ return req.headers['x-owner-token']===ownerToken; }
+function applyVerifiedHit(s,tile,source='touch'){
+  const result=validateHit(s,tile);
+  if(!result.ok) return {accepted:false,score:s.score,reason:result.reason,step:result.step};
+  s.hitSteps.push(result.step); s.score+=1; saveState();
+  audit('hit_accepted',{sessionId:s.id,step:result.step,score:s.score,source});
+  return {accepted:true,score:s.score,tickets:s.score*config.ticketsPerHit,step:result.step};
+}
 function dashboard(){
   const modeledRevenueCents=(state.counters.demoPlays+state.counters.paidPlays)*config.playPriceCents;
   const actualRevenueCents=state.counters.collectedCents;
@@ -94,12 +106,34 @@ function dashboard(){
 }
 
 async function api(req,res,url){
+  if(req.method==='GET' && url.pathname==='/api/health'){
+    return json(res,200,{status:'ok',serverTime:new Date().toISOString(),uptimeSeconds:Math.floor((Date.now()-startedAt)/1000),paymentsEnabled:config.paymentsEnabled,hardwareInputEnabled:Boolean(hardwareInputSecret),ledgerWritable:true});
+  }
   if(req.method==='GET' && url.pathname==='/api/config'){
     return json(res,200,{paymentsEnabled:config.paymentsEnabled,playPriceCents:config.playPriceCents,ticketsPerHit:config.ticketsPerHit,stepMs:config.stepMs,steps:config.steps,gridSize:config.gridSize,prizes:config.prizes});
   }
   if(req.method==='GET' && url.pathname==='/api/dashboard'){
-    if(req.headers['x-owner-token']!==ownerToken) return json(res,401,{error:'owner_auth_required'});
+    if(!ownerAuthorized(req)) return json(res,401,{error:'owner_auth_required'});
     return json(res,200,dashboard());
+  }
+  if(req.method==='GET' && url.pathname==='/api/operator/reconciliation.csv'){
+    if(!ownerAuthorized(req)) return json(res,401,{error:'owner_auth_required'});
+    const csv=buildReconciliationCsv({state,config});
+    res.writeHead(200,{'content-type':'text/csv; charset=utf-8','cache-control':'no-store','content-disposition':'attachment; filename=skill-vault-reconciliation.csv'});
+    return res.end(csv);
+  }
+  if(req.method==='GET' && url.pathname==='/api/operator/redemptions'){
+    if(!ownerAuthorized(req)) return json(res,401,{error:'owner_auth_required'});
+    return json(res,200,{redemptions:state.redemptions});
+  }
+  if(req.method==='POST' && url.pathname==='/api/operator/redemptions/complete'){
+    if(!ownerAuthorized(req)) return json(res,401,{error:'owner_auth_required'});
+    const b=await body(req); const r=state.redemptions.find(x=>x.id===String(b.redemptionId||''));
+    if(!r) return json(res,404,{error:'redemption_not_found'});
+    if(r.status==='COMPLETED') return json(res,200,{redemption:r,alreadyCompleted:true});
+    if(r.status!=='PENDING_OPERATOR') return json(res,409,{error:'redemption_not_pending'});
+    r.status='COMPLETED'; r.completedAt=Date.now(); saveState(); audit('redemption_completed',{redemptionId:r.id,playerId:r.playerId,prizeId:r.prizeId});
+    return json(res,200,{redemption:r});
   }
 
   if(req.method==='POST' && url.pathname==='/api/session/start'){
@@ -120,10 +154,14 @@ async function api(req,res,url){
   if(req.method==='POST' && url.pathname==='/api/session/hit'){
     const b=await body(req); const s=state.sessions[String(b.sessionId||'')];
     if(!s) return json(res,404,{error:'session_not_found'});
-    const result=validateHit(s,Number(b.tile));
-    if(!result.ok) return json(res,200,{accepted:false,score:s.score,reason:result.reason,step:result.step});
-    s.hitSteps.push(result.step); s.score+=1; saveState(); audit('hit_accepted',{sessionId:s.id,step:result.step,score:s.score});
-    return json(res,200,{accepted:true,score:s.score,tickets:s.score*config.ticketsPerHit,step:result.step});
+    return json(res,200,applyVerifiedHit(s,Number(b.tile),'touch'));
+  }
+  if(req.method==='POST' && url.pathname==='/api/hardware/hit'){
+    const b=await body(req); const verified=verifyHardwareEvent(hardwareInputSecret,b);
+    if(!verified.ok) return json(res,401,{error:verified.reason});
+    const s=state.sessions[verified.sessionId];
+    if(!s) return json(res,404,{error:'session_not_found'});
+    return json(res,200,applyVerifiedHit(s,verified.tile,'hardware'));
   }
 
   if(req.method==='POST' && url.pathname==='/api/session/finish'){
@@ -177,4 +215,4 @@ const server=http.createServer(async(req,res)=>{
 });
 
 if(require.main===module){server.listen(port,()=>{console.log(`Skill Vault server: http://localhost:${port} paymentsEnabled=${config.paymentsEnabled}`);console.log(`Owner dashboard token: ${ownerToken}`);});}
-module.exports={validateHit,currentStep,makeTargets,emptyState,config};
+module.exports={validateHit,currentStep,makeTargets,emptyState,config,applyVerifiedHit,dashboard};

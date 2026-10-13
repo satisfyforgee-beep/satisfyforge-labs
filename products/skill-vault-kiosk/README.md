@@ -60,9 +60,16 @@ This is a product-engineering checklist, not legal advice.
 - `server/server.js` — local verifier, ledger and static server.
 - `server/config.json` — non-secret prototype configuration; payments default OFF.
 - `server/test.js` — integrity/guardrail tests.
+- `server/integration-smoke.js` — local API/auth/hardware/reconciliation smoke.
+- `server/hardware-input.js` — signed physical-input event verifier; disabled without a local secret.
+- `server/reconciliation.js` — separates actual collected money from planning/model values.
+- `server/watchdog.js` — zero-cost local health probe for kiosk supervision.
+- `server/release-manifest.js` — SHA-256 manifest generator for freezing an approved build.
 - `CABINET_SPEC.md` — hardware and anti-cheat roadmap.
 - `PRODUCTION_GATES.md` — compliance, payment and operating gates.
 - `VENUE_MODEL.md` — hypothetical placement/revenue-share economics and scale checkpoints.
+- `OPERATOR_RUNBOOK.md` — start/operate/reconcile procedure.
+- `PILOT_VENUE_PACK.md` — honest venue-pilot scope and success gates.
 
 ## Non-negotiable production guardrails
 1. No cash or cryptocurrency wagering/payouts.
