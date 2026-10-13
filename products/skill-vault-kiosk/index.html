@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>SatisfyForge Skill Vault</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">SATISFYFORGE</p>
+        <h1>Skill Vault</h1>
+        <p class="sub">A skill-based prize kiosk — every paid play earns base tickets, better play earns more.</p>
+      </div>
+      <button id="ownerBtn" class="ghost">Owner</button>
+    </header>
+
+    <section class="card hero">
+      <div>
+        <span class="pill">NO RANDOM PAYOUTS</span>
+        <h2>Beat the target. Build tickets. Pick your prize.</h2>
+        <p>Players pay for a timed skill challenge. Every play gets base tickets. Higher scores unlock extra tickets. Tickets redeem for merchandise or venue rewards.</p>
+      </div>
+      <div class="pricebox">
+        <span>PLAY</span>
+        <strong id="playPrice">$2.00</strong>
+        <small><span id="baseTickets">20</span> guaranteed tickets</small>
+      </div>
+    </section>
+
+    <section id="gameCard" class="card game-card">
+      <div class="game-head">
+        <div>
+          <p class="eyebrow">REACTION GRID</p>
+          <h3>Tap the lit tiles</h3>
+        </div>
+        <div class="metrics">
+          <div><span>TIME</span><b id="time">20.0</b></div>
+          <div><span>SCORE</span><b id="score">0</b></div>
+          <div><span>TICKETS</span><b id="tickets">0</b></div>
+        </div>
+      </div>
+      <div id="grid" class="grid" aria-label="skill reaction grid"></div>
+      <div class="actions">
+        <button id="startBtn" class="primary">Start demo play</button>
+        <button id="resetBtn" class="ghost">Reset</button>
+      </div>
+      <p class="fineprint">Demo mode only — no payment is processed. Production payment must complete before a paid round starts.</p>
+    </section>
+
+    <section class="two-col">
+      <article class="card">
+        <div class="section-title">
+          <div><p class="eyebrow">PRIZE WALL</p><h3>Redeem tickets</h3></div>
+        </div>
+        <div id="prizes" class="prize-list"></div>
+      </article>
+      <article class="card">
+        <p class="eyebrow">HOW YOU MAKE MONEY</p>
+        <h3>Venue margin model</h3>
+        <div class="profit-grid">
+          <div><span>Play price</span><b id="profitPlayPrice">$2.00</b></div>
+          <div><span>Avg. prize cost / play</span><b id="avgPrizeCost">$0.55</b></div>
+          <div><span>Processing + ops</span><b id="opsCost">$0.20</b></div>
+          <div class="highlight"><span>Target gross margin</span><b id="grossMargin">$1.25</b></div>
+        </div>
+        <p class="fineprint">Illustrative economics only. Actual redemption rate, payment fees, taxes, licensing, local amusement-device rules, and prize limits must be configured for the deployment location.</p>
+      </article>
+    </section>
+
+    <section id="ownerPanel" class="card owner-panel hidden">
+      <div class="section-title">
+        <div><p class="eyebrow">OWNER MODE</p><h3>Configure the kiosk</h3></div>
+        <button id="closeOwner" class="ghost">Close</button>
+      </div>
+      <div class="form-grid">
+        <label>Price per play ($)<input id="cfgPrice" type="number" min="0" step="0.25" /></label>
+        <label>Guaranteed tickets<input id="cfgBase" type="number" min="1" step="1" /></label>
+        <label>Cost per 100 tickets ($)<input id="cfgTicketCost" type="number" min="0" step="0.1" /></label>
+        <label>Processing + ops / play ($)<input id="cfgOps" type="number" min="0" step="0.01" /></label>
+      </div>
+      <div class="actions"><button id="saveOwner" class="primary">Save locally</button></div>
+      <p class="fineprint">Settings are stored only in this browser. Production should put owner controls behind authentication and keep payment/prize accounting server-side.</p>
+    </section>
+
+    <footer>
+      <strong>Skill Vault prototype</strong>
+      <span>Skill determines bonus rewards. No cash wagering, no crypto wagering, no paid random chance.</span>
+    </footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
