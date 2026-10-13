@@ -7,7 +7,7 @@ Wix metaSiteId: `b237555c-446a-4958-a2df-6c7b186e7d80`
 
 ## Important deployment rule
 
-The live Wix Headless deployment currently contains more files than the historical `satisfyforge-site/` GitHub folder. A Wix Headless drop replaces the entire served file set. Therefore, **never build a full Wix replacement upload only from `satisfyforge-site/` unless the complete production file set has first been synchronized.**
+The live Wix Headless deployment contains more files than the historical `satisfyforge-site/` GitHub folder. A Wix Headless drop replaces the entire served file set. Therefore, **never build a full Wix replacement upload only from `satisfyforge-site/` unless the complete production file set has first been synchronized.**
 
 For small live edits, download the existing Wix deployment, modify only the intended files in memory, preserve every other production entry, omit only `wix.config.json` from the replacement drop, and release the full preserved set back to the same metaSiteId.
 
@@ -45,6 +45,10 @@ For small live edits, download the existing Wix deployment, modify only the inte
 - `demo.html` and `roi-calculator.html`
 - Wix Headless site script/client ID already present in production HTML
 
-## Current monetization path
+## Current monetization safe state
 
-The homepage and pricing page now include direct links to the live SatisfyForge Tool Vault at `https://payhip.com/b/KLjBb`, priced at $49 one-time Founding Lifetime Access. Preserve the existing Lead Rescue and Wix Forms funnels alongside that paid digital offer.
+On 2026-10-12 a Payhip audit showed a mismatch: the Tool Vault was shown in Payhip at `$0.00` while the live Wix site advertised `$49 one time`.
+
+To prevent an unintended free checkout, the production deployment was downloaded, all production files were preserved, and only `index.html` and `pricing.html` were changed. The direct Tool Vault Payhip links were replaced with the existing Wix request form and checkout was marked temporarily paused. The replacement drop preserved 20 served files (all production entries except `wix.config.json`) and completed successfully with Wix upload ID `77c3938a-df24-44d9-b869-3b807eb41068`.
+
+Do not restore direct Tool Vault checkout links until the actual Payhip price and configuration are independently verified. Preserve the existing Lead Rescue, free-tool, and Wix Forms funnels while payment verification is pending.
