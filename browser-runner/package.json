@@ -1,0 +1,14 @@
+{
+  "name": "satisfyforge-cloud-browser",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Zero-cost SatisfyForge cloud browser runner using Playwright on GitHub Actions.",
+  "scripts": {
+    "run": "node src/runner.mjs",
+    "smoke": "SF_TASK=smoke node src/runner.mjs"
+  },
+  "dependencies": {
+    "playwright": "latest"
+  }
+}
