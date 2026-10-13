@@ -60,6 +60,44 @@ export const tasks = {
     };
   },
 
+  async "wix-site-smoke"({ page }) {
+    const base = "https://headless-hjorlnsaplw-satisfyforgee-140d.wix-site-host.com";
+    const paths = [
+      ["/", "home"],
+      ["/appointments.html", "appointments"],
+      ["/audit.html", "audit"],
+      ["/auto.html", "auto"],
+      ["/demo.html", "demo"],
+      ["/home-services.html", "home-services"],
+      ["/lead-rescue.html", "lead-rescue"],
+      ["/lead-tracker.html", "lead-tracker"],
+      ["/message-builder.html", "message-builder"],
+      ["/pricing.html", "pricing"],
+      ["/privacy.html", "privacy"],
+      ["/roi-calculator.html", "roi-calculator"],
+      ["/services.html", "services"],
+      ["/tools.html", "tools"]
+    ];
+
+    const pages = [];
+    const paymentSafety = [];
+    for (const [path, label] of paths) {
+      const result = await checkPublicPage(page, `${base}${path}`, label);
+      pages.push(result);
+      if (label === "home" || label === "pricing") {
+        const directPayhipLinks = await page.locator('a[href*="payhip.com/b/"]').count();
+        paymentSafety.push({ label, directPayhipLinks, ok: directPayhipLinks === 0 });
+      }
+    }
+
+    return {
+      ok: pages.every(item => item.ok) && paymentSafety.every(item => item.ok),
+      task: "wix-site-smoke",
+      pages,
+      paymentSafety
+    };
+  },
+
   async "payhip-audit-tool-vault"({ page, context }) {
     requireAuth(context);
     await page.goto("https://payhip.com/products", { waitUntil: "domcontentloaded" });
