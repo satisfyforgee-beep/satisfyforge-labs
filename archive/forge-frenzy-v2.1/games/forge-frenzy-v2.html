@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SatisfyForge — Forge Frenzy v2.1</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#070a13;color:#fff;font-family:Arial,sans-serif}
+canvas{display:block;width:100%;height:100%;touch-action:none}.top{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;padding:8px}
+#ui{position:fixed;inset:0;pointer-events:none}.pill{background:#111a31e8;border:1px solid #ffffff1a;border-radius:999px;padding:7px 10px;font-weight:900;font-size:13px}
+#msg{position:absolute;top:54px;left:50%;transform:translateX(-50%);width:92%;text-align:center;font-weight:900;text-shadow:0 2px 8px #000}
+#goal{position:absolute;top:82px;left:50%;transform:translateX(-50%);font-size:12px;color:#c6cfff}
+#combo{position:absolute;left:12px;top:106px;font-weight:900;color:#68ffb4;font-size:22px}
+#shop{position:absolute;right:8px;top:105px;width:145px;display:grid;gap:6px;pointer-events:auto}
+button{touch-action:none;border:0;border-radius:12px;background:#26315f;color:#fff;font-weight:900;padding:9px;box-shadow:0 4px 14px #0006}button:active{transform:scale(.96)}
+#pad{position:absolute;left:10px;bottom:12px;display:grid;grid-template-columns:58px 58px 58px;grid-template-rows:58px 58px;gap:4px;pointer-events:auto}
+#pad .u{grid-column:2}.l{grid-column:1;grid-row:2}.d{grid-column:2;grid-row:2}.r{grid-column:3;grid-row:2}
+#forgeBtn{position:absolute;right:16px;bottom:24px;width:108px;height:108px;border-radius:50%;background:#ef6c2ddd;pointer-events:auto;font-size:16px}
+#tutorial,#summary{position:absolute;inset:0;background:#04060bda;display:flex;align-items:center;justify-content:center;pointer-events:auto;padding:22px}
+.card{max-height:calc(100vh - 32px);overflow:auto;width:min(430px,92vw);background:#11182e;border:1px solid #ffffff20;border-radius:24px;padding:22px;box-shadow:0 18px 70px #000a}
+.card h1{margin:0 0 10px;font-size:32px}.card p{color:#b8c2df;line-height:1.5}.card button{width:100%;padding:14px;background:#725dff}.small{font-size:12px;color:#8893b7}.hide{display:none!important}
+</style></head>
+<body><canvas id="c" aria-label="Forge Frenzy playfield"></canvas><div id="ui">
+<div class="top"><div class="pill">⏱ <span id="timer">60</span></div><div class="pill">💰 <span id="coins">0</span></div><div class="pill">🧱 <span id="bag">0</span>/<span id="cap">4</span></div><div class="pill">🔥 <span id="heat">1</span></div><div class="pill">🏆 <span title="Largest single cash-out" id="best">0</span></div></div>
+<div id="msg">COLLECT → SURVIVE → FORGE → UPGRADE</div><div id="goal"></div><div id="combo"></div>
+<div id="shop"><button id="capUp">Bag +2</button><button id="spdUp">Speed +1</button><button id="heatUp">Heat +1</button></div>
+<div id="pad"><button class="u" data-k="ArrowUp" aria-label="Move up">▲</button><button class="l" data-k="ArrowLeft" aria-label="Move left">◀</button><button class="d" data-k="ArrowDown" aria-label="Move down">▼</button><button class="r" data-k="ArrowRight" aria-label="Move right">▶</button></div>
+<button id="forgeBtn">FORGE</button>
+<div id="tutorial"><div class="card"><div class="small">SATISFYFORGE • FIRST RUN</div><h1>Forge before time dies.</h1><p>Grab glowing scrap. Rare pieces pay more. Avoid red hazards. Reach the orange forge zone and cash out. Spend coins on upgrades that carry into future runs.</p><p><b>Daily challenge:</b> the layout, rarity order, and jackpot rolls reset the same way each UTC day. Your earned upgrades affect your score; daily bests are personal. The clock keeps running if you switch tabs.</p><p class="small">Move with WASD, arrow keys, or the touch pad. Forge with F, Space, or the orange button.</p><p class="small" id="storageNote">Progress stays in this browser.</p><button id="startBtn">START 60-SECOND RUN</button></div></div>
+<div id="summary" class="hide"><div class="card"><div class="small">RUN COMPLETE</div><h1 id="sumTitle">Nice run.</h1><p id="sumBody"></p><button id="againBtn">PLAY AGAIN</button><button id="copyBtn" style="margin-top:8px;background:#1f8e67">COPY SCORE CARD</button></div></div>
+</div>
+<script>
+const c = document.getElementById('c'), g = c.getContext('2d');
+const $ = id => document.getElementById(id);
+let W = innerWidth, H = innerHeight, D = 1, keys = {}, playing = false;
+let last = performance.now(), deadline = 0, runNo = 0, runId = null, runDay = '';
+const ui = Object.fromEntries(['timer','coins','bag','cap','heat','best','msg','goal','combo'].map(id => [id, $(id)]));
+const memory = Object.create(null);
+let storageAvailable = true;
+function readStored(key, fallback) {
+  let raw = memory[key];
+  if (storageAvailable) {
+    try { raw = localStorage.getItem(key); if (raw !== null) memory[key] = raw; }
+    catch { storageAvailable = false; }
+  }
+  try { return raw == null ? fallback : JSON.parse(raw); } catch { return fallback; }
+}
+function writeStored(key, value) {
+  memory[key] = JSON.stringify(value);
+  try { localStorage.setItem(key, memory[key]); }
+  catch { storageAvailable = false; }
+  $('storageNote').textContent = storageAvailable ? 'Progress stays in this browser.' : 'Storage unavailable: progress lasts for this page session only.';
+}
+const MAX_COINS = 1_000_000_000_000;
+function integer(value, fallback, min, max) {
+  return Number.isSafeInteger(value) && value >= min && value <= max ? value : fallback;
+}
+const saved = readStored('sf_forge_profile', {});
+const store = saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+let coins = integer(store.coins, 0, 0, MAX_COINS);
+let cap = integer(store.cap, 4, 4, 40); cap -= cap % 2;
+let speed = integer(store.speed, 1, 1, 20), heat = integer(store.heat, 1, 1, 20);
+let best = integer(store.best, 0, 0, MAX_COINS);
+let roundEarned = 0, forges = 0, combo = 0, lastPickup = -99;
+let bag = [], scrap = [], hazards = [], parts = [], timeLeft = 60;
+let p = {x: W*.2, y: H*.82, r: 13, hp: 100, inv: 0};
+const sessionId = globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+const TYPES = [['TIN',12,'#b7c0ca',.42],['GLOW',28,'#4fc3ff',.28],['VOID',65,'#a65cff',.18],['STAR',150,'#ffd44a',.09],['SECRET',420,'#ff4db7',.03]];
+function resize() {
+  const oldW = W, oldH = H;
+  D = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
+  c.width = W*D; c.height = H*D; g.setTransform(D,0,0,D,0,0);
+  for (const obj of [p, ...scrap, ...hazards, ...parts]) {
+    obj.x *= W / oldW; obj.y *= H / oldH;
+  }
+}
+addEventListener('resize', resize); resize();
+function logEvent(name, props = {}) {
+  const raw = readStored('sf_analytics', []);
+  const events = Array.isArray(raw) ? raw.filter(x => x && typeof x === 'object' && typeof x.event === 'string') : [];
+  events.push({event:name, ts:new Date().toISOString(), game:'forge-frenzy-v2', build:'2.1', session_id:sessionId,
+    ...(playing && runId ? {run_id:runId, day:runDay} : {}), ...props});
+  writeStored('sf_analytics', events.slice(-400));
+}
+function save() { writeStored('sf_forge_profile', {coins, cap, speed, heat, best}); }
+function dailySeed(day = new Date().toISOString().slice(0,10)) {
+  let n = 0; for (const char of day.replaceAll('-', '')) n = (n*31 + char.charCodeAt(0)) >>> 0;
+  return n || 1;
+}
+let seed = 1, raritySeed = 1, jackpotSeed = 1;
+function rng() { seed = (1664525*seed + 1013904223) >>> 0; return seed / 4294967296; }
+function rarityRng() { raritySeed = (1664525*raritySeed + 1013904223) >>> 0; return raritySeed / 4294967296; }
+function jackpotRng() { jackpotSeed = (1664525*jackpotSeed + 1013904223) >>> 0; return jackpotSeed / 4294967296; }
+function pickType() {
+  const q = rarityRng(); let sum = 0;
+  for (const type of TYPES) { sum += type[3]; if (q < sum) return type; }
+  return TYPES[0];
+}
+function addScrap() {
+  const z = pickType();
+  scrap.push({x:35+rng()*Math.max(1,W-70), y:120+rng()*Math.max(1,H*.55-120), z, ph:rng()*7});
+}
+function burst(x,y,color,n=14) {
+  for (let i=0; i<n; i++) parts.push({x,y,vx:(Math.random()-.5)*5,vy:(Math.random()-.5)*5,a:1,c:color});
+}
+function resetWorld() {
+  scrap = []; hazards = []; seed = dailySeed(runDay);
+  raritySeed = (seed ^ 0x9e3779b9) >>> 0; jackpotSeed = (seed ^ 0x85ebca6b) >>> 0;
+  for (let i=0; i<10; i++) addScrap();
+  for (let i=0; i<5; i++) hazards.push({x:60+rng()*Math.max(1,W-120),y:130+rng()*Math.max(1,H*.56-130),r:16,vx:(rng()-.5)*2.4,vy:(rng()-.5)*2.4});
+}
+function say(message) {
+  ui.msg.textContent = message; clearTimeout(say.z);
+  say.z = setTimeout(() => ui.msg.textContent = 'COLLECT → SURVIVE → FORGE → UPGRADE', 1100);
+}
+function cost(base, level) { return Math.round(base * Math.pow(1.55, Math.max(0,level-1))); }
+function shopOptions() {
+  return [['cap','BAG',cost(90,cap/2-1),cap>=40,'capUp'],['speed','SPEED',cost(75,speed),speed>=20,'spdUp'],['heat','HEAT',cost(115,heat),heat>=20,'heatUp']];
+}
+function renderUI() {
+  ui.timer.textContent = Math.max(0,Math.ceil(timeLeft)); ui.coins.textContent = coins;
+  ui.bag.textContent = bag.length; ui.cap.textContent = cap; ui.heat.textContent = heat;
+  ui.best.textContent = best; ui.combo.textContent = combo > 1 ? '×'+combo+' COMBO' : '';
+  const options = shopOptions();
+  for (const [,label,price,maxed,id] of options) { $(id).textContent = maxed ? label+' MAX' : label+' +'+(id==='capUp'?2:1)+' · '+price; $(id).disabled = maxed; }
+  const next = options.filter(x=>!x[3]).sort((a,b)=>a[2]-b[2])[0];
+  ui.goal.textContent = !next ? 'ALL UPGRADES COMPLETE' : next[2]>coins ? `NEXT ${next[1]} UPGRADE: ${next[2]-coins} MORE COINS` : 'UPGRADE READY';
+}
+function buy(kind) {
+  if (playing) updateClock();
+  const option = shopOptions().find(x => x[0]===kind);
+  if (!option || option[3]) return;
+  const price = option[2]; if (coins < price) return say('NEED '+(price-coins)+' MORE');
+  coins -= price;
+  if (kind === 'cap') cap += 2; else if (kind === 'speed') speed++; else heat++;
+  say(option[1]+' UPGRADED'); logEvent('upgrade_purchase',{kind,cost:price}); save(); renderUI();
+}
+$('capUp').onclick=()=>buy('cap'); $('spdUp').onclick=()=>buy('speed'); $('heatUp').onclick=()=>buy('heat');
+function releaseControls() { keys = {}; }
+document.querySelectorAll('[data-k]').forEach(button => {
+  const key = button.dataset.k;
+  button.onpointerdown = e => { e.preventDefault(); button.setPointerCapture?.(e.pointerId); keys[key] = 1; };
+  button.onpointerup = button.onpointercancel = button.onlostpointercapture = () => { keys[key] = 0; };
+});
+function inputKey(e, down) {
+  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (key === ' ' && e.target?.closest?.('button, input, textarea, select')) return;
+  if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d','f',' '].includes(key)) return;
+  e.preventDefault(); keys[key] = down ? 1 : 0;
+  if (down && !e.repeat && (key === 'f' || key === ' ')) forge();
+}
+addEventListener('keydown', e=>inputKey(e,true)); addEventListener('keyup', e=>inputKey(e,false));
+addEventListener('blur', releaseControls);
+document.addEventListener('visibilitychange', () => { releaseControls(); if (!document.hidden) updateClock(); });
+function updateClock(now = performance.now()) {
+  if (!playing) return false;
+  timeLeft = Math.max(0, (deadline-now)/1000);
+  ui.timer.textContent = Math.ceil(timeLeft);
+  if (timeLeft === 0) endRound();
+  return playing;
+}
+function forge() {
+  if (!updateClock()) return;
+  if (p.x<W*.64 || p.y<H*.67) return say('GET TO THE FORGE');
+  if (!bag.length) return say('BAG IS EMPTY');
+  const raw = bag.reduce((sum,z)=>sum+z[1],0), mult=1+heat*.18, clutch=timeLeft<5?1.35:1;
+  const jackpot = jackpotRng() < Math.min(.035+.01*heat,.14), total=Math.round(raw*mult*clutch*(jackpot?3:1));
+  coins=Math.min(MAX_COINS,coins+total); roundEarned+=total; forges++; best=Math.max(best,total);
+  bag=[]; combo=0; burst(p.x,p.y,jackpot?'#ff4db7':'#ff8a3d',32);
+  say((jackpot?'JACKPOT! ':'FORGED! ')+'+'+total);
+  logEvent('forge_complete',{value:total,jackpot,time_left:Math.round(timeLeft)}); save(); renderUI();
+}
+$('forgeBtn').onclick=forge;
+function damage() {
+  if (!playing || p.inv>0) return;
+  p.hp-=25; p.inv=35; combo=0; burst(p.x,p.y,'#ff4768',18); logEvent('hazard_hit',{hp:p.hp});
+  if (p.hp<=0) { p.hp=100; bag=[]; p.x=W*.2; p.y=H*.82; say('SCRAP LOST'); logEvent('death',{time_left:Math.round(timeLeft)}); }
+  renderUI();
+}
+function startRound() {
+  if (playing) return;
+  playing=true; runNo++; runId=sessionId+':'+runNo; runDay=new Date().toISOString().slice(0,10);
+  last=performance.now(); deadline=last+60000; timeLeft=60;
+  roundEarned=0; forges=0; combo=0; lastPickup=-99; bag=[]; parts=[]; releaseControls();
+  p.hp=100; p.inv=0; p.x=W*.2; p.y=H*.82;
+  $('tutorial').classList.add('hide'); $('summary').classList.add('hide'); resetWorld();
+  $('copyBtn').textContent='COPY SCORE CARD';
+  writeStored('sf_seen_tutorial','1'); logEvent('run_start',{run:runNo,cap,speed,heat}); renderUI();
+}
+function endRound() {
+  if (!playing) return;
+  playing=false; timeLeft=0; releaseControls();
+  const raw=readStored('sf_daily_best_v2_1',{}), high={};
+  if (raw && typeof raw==='object' && !Array.isArray(raw)) {
+    for (const [day,value] of Object.entries(raw).filter(([day,value])=>/^\d{4}-\d{2}-\d{2}$/.test(day)&&Number.isSafeInteger(value)&&value>=0).sort().slice(-29)) high[day]=value;
+  }
+  high[runDay]=Math.max(high[runDay]||0,roundEarned); writeStored('sf_daily_best_v2_1',high);
+  $('sumTitle').textContent=roundEarned>=800?'MONSTER RUN 🔥':roundEarned>=400?'Strong run.':'Run complete.';
+  $('sumBody').textContent=`You forged ${roundEarned} coins across ${forges} cash-outs. Personal daily best (${runDay} UTC): ${high[runDay]}. Earned upgrades affect scores. Play again to collect, bank and upgrade.`;
+  $('summary').classList.remove('hide');
+  logEvent('run_complete',{run_id:runId,day:runDay,earned:roundEarned,forges,daily_best:high[runDay]}); save(); renderUI();
+}
+$('startBtn').onclick=startRound; $('againBtn').onclick=startRound;
+$('copyBtn').onclick=async()=>{
+  const score=`SatisfyForge Forge Frenzy — ${roundEarned} coins in 60 seconds. ${runDay} UTC. Personal daily challenge; earned upgrades apply.`;
+  try { await navigator.clipboard.writeText(score); $('copyBtn').textContent='SCORE COPIED'; }
+  catch { $('copyBtn').textContent='Clipboard unavailable'; $('sumBody').textContent=score; }
+};
+logEvent('tutorial_view');
+function loop(now) {
+  const dt=Math.min(Math.max((now-last)/16.67,0),2); last=now;
+  if (updateClock(now)) {
+    const dx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0), dy=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);
+    const magnitude=Math.hypot(dx,dy)||1, movement=3.2+speed*.45;
+    p.x=Math.max(14,Math.min(W-14,p.x+dx/magnitude*movement*dt));
+    p.y=Math.max(75,Math.min(H-14,p.y+dy/magnitude*movement*dt));
+    p.inv=Math.max(0,p.inv-dt);
+    for (let i=scrap.length-1; i>=0; i--) {
+      const item=scrap[i];
+      if (Math.hypot(p.x-item.x,p.y-item.y)<27 && bag.length<cap) {
+        combo=now/1000-lastPickup<1.6?Math.min(combo+1,9):1; lastPickup=now/1000;
+        bag.push(item.z); scrap.splice(i,1); burst(item.x,item.y,item.z[2],18); addScrap();
+        say(item.z[0]+' +'+item.z[1]); logEvent('pickup',{rarity:item.z[0],value:item.z[1],combo}); renderUI();
+      }
+    }
+    for (const hazard of hazards) {
+      hazard.x+=hazard.vx*dt; hazard.y+=hazard.vy*dt;
+      if (hazard.x<20 || hazard.x>W-20) hazard.vx*=-1;
+      if (hazard.y<100 || hazard.y>H*.64) hazard.vy*=-1;
+      if (Math.hypot(p.x-hazard.x,p.y-hazard.y)<30) damage();
+    }
+  }
+  for (const particle of parts) { particle.x+=particle.vx*dt; particle.y+=particle.vy*dt; particle.a-=.035*dt; }
+  parts=parts.filter(o=>o.a>0); draw(); requestAnimationFrame(loop);
+}
+
+function draw(){let gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#111a38');gr.addColorStop(1,'#060810');g.fillStyle=gr;g.fillRect(0,0,W,H);g.strokeStyle='#ffffff0d';for(let y=80;y<H;y+=44){g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke()}for(let x=0;x<W;x+=44){g.beginPath();g.moveTo(x,70);g.lineTo(x,H);g.stroke()}let fx=W*.64,fy=H*.67;g.fillStyle='#ff7a2623';g.fillRect(fx,fy,W-fx,H-fy);g.strokeStyle='#ff8b42';g.lineWidth=2;g.strokeRect(fx,fy,W-fx,H-fy);g.fillStyle='#ffd3b0';g.font='bold 15px Arial';g.textAlign='left';g.fillText('FORGE',fx+12,fy+24);scrap.forEach(o=>{o.ph+=.05;g.shadowBlur=12;g.shadowColor=o.z[2];g.fillStyle=o.z[2];g.beginPath();g.moveTo(o.x,o.y-12);g.lineTo(o.x+12,o.y);g.lineTo(o.x,o.y+12);g.lineTo(o.x-12,o.y);g.closePath();g.fill();g.shadowBlur=0;g.fillStyle='#fff';g.font='bold 8px Arial';g.textAlign='center';g.fillText(o.z[0],o.x,o.y-18)});hazards.forEach(h=>{g.fillStyle='#ff465f';g.beginPath();g.arc(h.x,h.y,h.r,0,7);g.fill();g.fillStyle='#18080d';for(let a=0;a<6;a++){let ang=a*Math.PI/3;g.fillRect(h.x+Math.cos(ang)*14-2,h.y+Math.sin(ang)*14-2,5,5)}});g.save();g.globalAlpha=p.inv>0&&Math.floor(p.inv/3)%2?.3:1;g.shadowBlur=14;g.shadowColor='#69ffba';g.fillStyle='#69ffba';g.beginPath();g.arc(p.x,p.y,p.r,0,7);g.fill();g.restore();g.fillStyle='#ffffff22';g.fillRect(12,H-27,145,9);g.fillStyle=p.hp>45?'#64ffae':'#ff536d';g.fillRect(12,H-27,145*p.hp/100,9);parts.forEach(o=>{g.globalAlpha=o.a;g.fillStyle=o.c;g.fillRect(o.x,o.y,4,4)});g.globalAlpha=1}
+
+renderUI();requestAnimationFrame(loop);
+</script></body></html>
