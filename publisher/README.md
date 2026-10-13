@@ -22,6 +22,11 @@ The publisher can run from GitHub Actions on a schedule and call the official pl
 
 The GitHub workflow runs syntax + contract tests before every publisher execution. A platform is contacted only when it is enabled on a due queue item.
 
+Before any platform write, the runner now validates the full queue and fails
+closed on malformed timestamps, missing media, unsupported platforms, duplicate
+item IDs, or exact same-platform/media/time duplicates. A repeated asset at a
+different time remains allowed for deliberate later reuse.
+
 ## One-time connections still required
 
 Owning our publisher removes Buffer/Metricool limits, but it cannot remove the social networks' own authorization rules. The account owner still has to approve OAuth/app permissions once for each platform.
@@ -86,6 +91,7 @@ Never commit tokens, passwords, OTPs, bank information, or tax information to th
 
 - A platform marked `sent` in `state.json` is never posted again automatically.
 - Ambiguous network failures are marked `needs_check`, not blindly retried.
+- Unsafe or duplicated queue data stops the run before any platform API is contacted.
 - The runner does not spend money.
 - No posting happens until the platform's own API authorization is present.
 - AI-content disclosure fields are carried when supported by the direct adapter.
@@ -98,3 +104,4 @@ Buffer and Wix Social Publisher can remain temporary zero-cost bridges for accou
 ## Revenue rule
 
 New SatisfyForge projects should prefer customer-funded models: digital products, preorders, deposits, sponsorships, affiliate/revenue-share deals, print-on-demand, and marketplace fees deducted from completed sales. Avoid models that require us to front cash before a customer or sponsor pays.
+

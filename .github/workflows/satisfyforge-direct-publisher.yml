@@ -35,8 +35,8 @@ jobs:
       - name: Syntax and contract checks
         working-directory: publisher
         run: |
-          python -m py_compile run.py run_v2.py
-          python -m unittest -v test_run_v2.py
+          python -m py_compile run.py run_v2.py test_*.py
+          python -m unittest discover -v
 
       - name: Run direct publisher
         working-directory: publisher
@@ -65,3 +65,4 @@ jobs:
           git add publisher/state.json
           git commit -m "Update direct publisher state [skip ci]"
           git push
+
