@@ -15,6 +15,27 @@ async function looksLoggedOut(page) {
   return passwordCount > 0;
 }
 
+async function checkPublicPage(page, url, label) {
+  const response = await page.goto(url, { waitUntil: "domcontentloaded" });
+  const status = response?.status() ?? null;
+  const title = normalize(await page.title().catch(() => ""));
+  const text = normalize(await page.locator("body").innerText().catch(() => ""));
+  const finalUrl = page.url();
+  const looksMissing = /\b(404|page not found|not found)\b/i.test(`${title} ${text.slice(0, 800)}`);
+  const sameHost = new URL(finalUrl).hostname.endsWith("wix-site-host.com");
+
+  return {
+    label,
+    ok: Boolean(status && status < 400 && title && text.length >= 80 && !looksMissing && sameHost),
+    status,
+    title: title.slice(0, 120),
+    textLength: text.length,
+    finalPath: new URL(finalUrl).pathname,
+    sameHost,
+    looksMissing
+  };
+}
+
 export const tasks = {
   async smoke({ page }) {
     await page.goto("https://example.com", { waitUntil: "domcontentloaded" });
@@ -23,6 +44,19 @@ export const tasks = {
       task: "smoke",
       title: await page.title(),
       origin: new URL(page.url()).origin
+    };
+  },
+
+  async "outreach-funnel-smoke"({ page }) {
+    const base = "https://headless-hjorlnsaplw-satisfyforgee-140d.wix-site-host.com";
+    const pages = [];
+    pages.push(await checkPublicPage(page, `${base}/`, "home"));
+    pages.push(await checkPublicPage(page, `${base}/lead-rescue.html`, "lead-rescue"));
+    pages.push(await checkPublicPage(page, `${base}/demo.html`, "demo"));
+    return {
+      ok: pages.every(item => item.ok),
+      task: "outreach-funnel-smoke",
+      pages
     };
   },
 
