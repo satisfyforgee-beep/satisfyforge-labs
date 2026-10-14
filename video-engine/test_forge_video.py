@@ -1,7 +1,10 @@
+import os
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
-from forge_video import RenderSpec, analyze_probe, build_render_command, build_video_filter
+from forge_video import RenderSpec, analyze_probe, build_render_command, build_video_filter, require_binary
 
 
 class ForgeVideoTests(unittest.TestCase):
@@ -41,6 +44,14 @@ class ForgeVideoTests(unittest.TestCase):
         report = analyze_probe(payload)
         self.assertFalse(report['ok'])
         self.assertTrue(any('frame rate' in err for err in report['errors']))
+
+    def test_owned_runtime_env_override(self):
+        with tempfile.TemporaryDirectory() as td:
+            binary = Path(td) / 'ffmpeg'
+            binary.write_text('#!/bin/sh\nexit 0\n')
+            binary.chmod(0o755)
+            with mock.patch('shutil.which', return_value=None), mock.patch.dict(os.environ, {'SATISFYFORGE_FFMPEG': str(binary)}):
+                self.assertEqual(require_binary('ffmpeg'), str(binary))
 
 
 if __name__ == '__main__':
