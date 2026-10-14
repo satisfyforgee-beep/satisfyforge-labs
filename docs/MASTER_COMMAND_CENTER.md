@@ -109,6 +109,7 @@ This file is the canonical non-sensitive operating index for work that used to b
 
 ### Connected/verified routes
 - Direct Publisher PR #43 is merged. Its 30-minute workflow is fail-closed behind `DIRECT_PUBLISHER_ENABLED == 'true'`; keep it false until official API authorization, secret setup, queue reconciliation and controlled publish tests pass.
+- Metricool identity gate: current scheduled-item metadata identifies `cougarboy1999@gmail.com` as the creator. Do not create, update, delete, reschedule, or otherwise operate Metricool items until Metricool is explicitly reconnected under `satisfyforgee@gmail.com`. Preserve already-submitted First Computer Bug YouTube/TikTok items and let the Daily Publisher verify their terminal outcomes after the intended times; recover a definite failure only through an approved business-identity route.
 - Buffer organization: `6accef267d527c51692f8cf9`.
 - Instagram: `satisfyforgetv`.
 - Facebook: `satisfyforgetv`.
