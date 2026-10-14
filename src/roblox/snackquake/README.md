@@ -8,7 +8,7 @@ This is a **separate alternate Roblox project**. It does not replace Brainrot Ru
 
 Fresh local regression run on 2026-10-13 against the recovered v0.2 archive:
 - 9 Lua-compatible Luau source files parsed
-- 38 mocked persistence assertions passed
+- 20 mocked persistence assertions passed in the recovered executable test pack
 - 9,046 pure-rule assertions passed
 - source archive extracted cleanly
 
@@ -92,10 +92,10 @@ This is now evidence of the actual deployed client gameplay loop, not only a Stu
 
 Do not call Snackquake public, released to players, popular, or earning revenue until those gates are actually passed.
 
-## Canonical preserved artifacts
+## Canonical source and preserved artifacts
 
-The exact latest source package and historical playtest place remain preserved in the user's Library:
+The patched v0.2.1 source is now stored under this repository folder (`src/`, `tests/`, `default.project.json`, and `build_place.py`). The exact latest source package and historical playtest place remain preserved in the user's Library:
 - `Snackquake_Expedition_v0_2_Source.zip` — version 4, recovered size 62,646 bytes
 - `Snackquake_Expedition_v0_2_Playtest.rbxlx` — embedded version `0.2.1-save-fix`
 
-The authorized Mac also holds the current recovered source, Rojo project, local tests and the exact deployment artifact used for private place version 4. The remaining task is to finish remote-source canonicalization and the release gates above without weakening the private/testing boundary.
+The authorized Mac also holds the current recovered source, Rojo project, local tests and the exact deployment artifact used for private place version 4. Source-only regression tests, Studio runtime smoke, deployed-client tests, persistence, multiplayer/device, and public-launch checks remain separate gates.

@@ -1,0 +1,19 @@
+{
+  "title": "Brainrot Rescue: Snackquake",
+  "version": "0.2.1-save-fix",
+  "engine_tested": false,
+  "published": false,
+  "source_files": {
+    "Analytics.lua": "f8c707707c4d6f7ed19641e1e48e93e8c2b90b1940b61dd8957ae712711a0d56",
+    "Client.client.lua": "82bd31c979d0eecc9b2e396bb60cd505c987b606aa2e2559ac8696104e9c9bfc",
+    "Config.lua": "624cc4919afeaa197e7e976ee2add4b4322e5fe5b91650afafac28de84880b32",
+    "Creatures.lua": "de02bb576bd8eddc681eb2ec3e8e2aa720d0c077684b71d41ed7817463af2d4f",
+    "Main.server.lua": "43737615bce987b13197c793d4b6f5e761da24b4721ccec8bc177ce0a161f4b4",
+    "PlayerData.lua": "76cb799342dc7de210e8c852ee341288a02b60946e68d9f80fb2399859f83e82",
+    "Rules.lua": "2b00d6a63ef9568353c3da1592ca8fc5c89b090e5ca8b3096c07356f72674780",
+    "StudioSmoke.server.lua": "74ddc7852288ef080b429192a8b8153c1c09e396cb09ea0868504a1c69e41d7a",
+    "World.lua": "f42e55dd5a431aea3c494b2937782872bf995ac5ca59b8934a7adf25c2ef1907"
+  },
+  "validation": "Lua-compatible syntax, pure-rule and persistence tests, XML/source integrity only; Roblox Studio runtime evidence is tracked separately",
+  "place_sha256": "1fd6527520b6ed2db1c176d63d15084bd9f18e8da8c7919f753953aea35ccaa6"
+}

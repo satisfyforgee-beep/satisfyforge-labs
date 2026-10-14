@@ -8,8 +8,9 @@ It uses Roblox Studio's documented command-line `RunScript` task plus Rojo-built
 
 - Brainrot Rush
 - Tile Panic
+- Snackquake v0.2.1
 
-Snackquake currently lives in the preserved source archive / playtest place outside the repository and is tested separately until its recovered source is canonically imported.
+All three now have canonical repository source/build mappings and Roblox Studio runtime smoke coverage. Snackquake's original recovered archive/playtest place remain preserved separately as provenance artifacts.
 
 ## Run
 
