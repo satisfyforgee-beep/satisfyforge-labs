@@ -20,6 +20,9 @@ def main():
     for key in ('source','company'): l.add_argument('--'+key,required=True)
     l.add_argument('--contact',default='')
     l.add_argument('--notes',default='')
+    approval=sub.add_parser('set-asset-status')
+    approval.add_argument('--id',type=int,required=True)
+    approval.add_argument('--status',choices=['draft','approved','archived'],required=True)
     q=sub.add_parser('list')
     q.add_argument('--type',choices=['assets','leads'],required=True)
     q.add_argument('--status')
@@ -32,6 +35,10 @@ def main():
         db.execute('INSERT INTO assets(kind,title,body,created_utc) VALUES(?,?,?,?)',(args.kind,args.title,args.body,now))
         db.commit()
         print('Asset saved')
+    elif args.cmd=='set-asset-status':
+        cur=db.execute('UPDATE assets SET status=? WHERE id=?',(args.status,args.id))
+        db.commit()
+        print('Asset status updated' if cur.rowcount else 'Asset not found')
     elif args.cmd=='add-lead':
         db.execute('INSERT INTO leads(source,company,contact,notes,created_utc) VALUES(?,?,?,?,?)',(args.source,args.company,args.contact,args.notes,now))
         db.commit()
