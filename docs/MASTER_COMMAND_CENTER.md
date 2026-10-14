@@ -38,11 +38,12 @@ This file is the canonical non-sensitive operating index for work that used to b
 
 ### Owned business mail
 - Paid Superhuman Mail was explicitly rejected and must not be suggested as the solution.
-- The tested SatisfyForge Mail Bridge core is merged into `main` and uses Gmail API semantics with a hard sender allowlist for `satisfyforgee@gmail.com`, message-header safety checks and idempotency support.
-- No Gmail password or reusable OAuth token belongs in GitHub.
-- Floot's free Google integration is the intended live OAuth layer. The remaining UI/send-endpoint deployment work should resume after the current free Floot build-action limit resets.
-- `docs/MAIL_BRIDGE.md` is the implementation contract.
-- One-to-one advisor mail should move to the owned bridge once live; Hunter remains for legitimate prospecting sequences.
+- The owned SatisfyForge Mail Bridge is implemented and live in the Control Center at `https://satisfyforge-control.floot.app`.
+- It uses Floot-brokered Google OAuth, an exact `satisfyforgee@gmail.com` sender allowlist, admin-only controls, atomic queue claims, sanitized failures and non-resendable `sent` rows.
+- No Gmail password, reusable OAuth token or refresh token belongs in GitHub or the app's own tables.
+- Two approved advisor messages remain queued and unsent until the owner connects exactly `satisfyforgee@gmail.com` through the Control Center.
+- `docs/MAIL_BRIDGE.md` is the implementation contract and verified-state record.
+- One-to-one advisor mail should use the owned bridge after the approved account connects; Hunter remains for legitimate prospecting sequences.
 
 ## Revenue and sales
 
