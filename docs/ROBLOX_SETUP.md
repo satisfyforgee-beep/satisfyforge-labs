@@ -7,12 +7,13 @@ This is an original playable prototype, not a published Roblox experience yet.
 - Server source: `src/roblox/BrainrotRush.server.lua`
 - Client HUD: `src/roblox/BrainrotRush.client.lua`
 - Version: v0.3
-- Server blob reviewed: `f60920eaaab70cff3baa10b80f35095d1754b73c`
+- Server blob reviewed: `ea1337ad73745ea74821d9325f976e64b5b239a5`
 - Client blob reviewed: `27f04fbd0af7d5a30e9fb1bee3372a2abbd3e9fc`
 - Gameplay commit: `6fa4caa98e896a4744c9822a036009b521247f08`
 - Mobile HUD commit: `2d01c867e0752cb49f3346a399277d99392b8a20`
+- Engine-smoke/DataStore fallback commit: `689a0c33a4ddaf851063931d0370e519108d8fd0`
 
-Repository review confirms the features exist in source. It does not prove that Roblox Studio, mobile devices, multiplayer servers, DataStore persistence, moderation or public launch work.
+Repository review confirms the features exist in source. On 2026-10-13, the owned Roblox Studio runner also built the current source, started simulation, created the arena/spawn/upgrade/rebirth pads, spawned Brainrot orbs, and reported `SF_SMOKE_PASS BrainrotRush`. That smoke does not prove real character controls, mobile devices, multiplayer contention, published DataStore persistence, moderation or public launch.
 
 ## Install v0.3
 
@@ -35,6 +36,8 @@ Repository review confirms the features exist in source. It does not prove that 
 - Rewards, upgrades, rebirths and rarity rolls are calculated on the server. The only RemoteEvent in v0.3 sends announcements from server to client; it does not accept reward commands from clients.
 
 ## Current Roblox Studio test tooling
+
+The repeatable owned runner is `tools/roblox-studio/run_smoke.py`; its assertions live in `tests/roblox/brainrot_runtime_smoke.luau`. The verified 2026-10-13 run is recorded in `docs/ROBLOX_RUNTIME_STATUS_2026-10-13.md`. This covers engine boot and structural gameplay smoke only.
 
 Roblox now documents a beta **Device Simulator** toolbar plus **Network Simulator**. These should be used in the next Studio session to cover more devices and connection conditions without requiring separate physical hardware for every case.
 
@@ -102,7 +105,7 @@ Before public launch, confirm all of the following:
 - DataStore failures never reset a known-good record during a retry.
 - Public-server Output does not expose secrets or personal data.
 
-The current v0.3 source uses server-side rewards and server-side prompt handlers. The runtime behavior still must be verified in Studio.
+The current v0.3 source uses server-side rewards and server-side prompt handlers. Engine boot and structural spawning passed in Studio; reward contention, prompt economy behavior, multiplayer and persistence still require the release-gate tests above.
 
 ## Test evidence to capture
 
@@ -156,7 +159,7 @@ Do not delete player data or rename the DataStore as a first-line fix.
 
 ## Still intentionally unverified
 
-- Roblox Studio runtime for the current GitHub sources.
+- Full character/control gameplay for the current GitHub sources (engine boot and structural spawning already passed).
 - Real-device mobile performance.
 - Multiplayer load beyond a small test server.
 - Public-server DataStore behavior.
