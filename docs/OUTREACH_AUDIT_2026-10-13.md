@@ -170,3 +170,29 @@ No sequence restart, extra recipient, new send, or schedule mutation was made. E
 ### Direct Publisher handoff
 
 PR #43 is merged as commit `84e2c664afa342cace375470a59083c99e4dfe58`. The workflow has a 30-minute schedule but the publish job is fail-closed behind `DIRECT_PUBLISHER_ENABLED == 'true'`. Keep that variable false until official platform authorization, secret setup, queue reconciliation and real controlled publish tests all pass.
+
+
+## 2026-10-14 15:02 ET identity verification
+
+Hunter email account `182135` was re-read after the owner corrected the sender display identity.
+
+- Email: `satisfyforgee@gmail.com`
+- Sender display: `SatisfyForge Team`
+- Status: active and default
+- Daily limit: 15
+- Schedule: 09:00–16:59 Eastern, Monday–Friday
+- Signature stored in Hunter: none
+- Warmup: disabled
+
+No personal Gmail account was used.
+
+Fresh sequence totals at verification:
+
+| Sequence | Sent | Delivered | Opened | Replied | Bounced | Unsubscribed |
+|---|---:|---:|---:|---:|---:|---:|
+| 904604 — Home Service Lead Rescue | 9 | 8 | 0 | 0 | 1 | 0 |
+| 904608 — Lead Follow-Up Automation | 3 | 3 | 2 | 0 | 0 | 0 |
+| 904610 — Gym Membership Growth | 3 | 3 | 0 | 0 | 0 | 0 |
+| **Total** | **15** | **14** | **2** | **0** | **1** | **0** |
+
+All first follow-up steps remain unsent. No recipient, sequence, restart, or extra send was added.
