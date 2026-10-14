@@ -97,6 +97,12 @@ This file is the canonical non-sensitive operating index for work that used to b
 - Do not restore direct checkout CTAs until the checkout and price are verified.
 - The owned Chromium worker has passed a full production-page smoke test plus the payment-link safety check.
 
+
+### Search visibility
+- Business Search Console is connected under the approved identity `satisfyforgee@gmail.com` for the canonical Wix host.
+- 2026-10-14 audit: the sitemap was accepted without warnings/errors (15 submitted URLs), but Search Console reported 0 indexed URLs and 0 impressions/clicks. The homepage was fetched successfully with indexing allowed and a self-canonical, then classified `Crawled - currently not indexed`; Lead Rescue, Revenue Audit, and ROI Calculator were still unknown to Google.
+- This is an acquisition blocker, not evidence of a robots or fetch failure. Do not repeatedly resubmit the same clean sitemap or buy SEO tools. Preserve the full live Wix file set and use `docs/SEARCH_VISIBILITY_AUDIT_2026-10-14.md` as the verification record before any coordinated metadata/content deployment.
+
 ## Publishing and content
 
 ### Connected/verified routes
