@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -33,11 +35,39 @@ class RenderSpec:
     preset: str = "medium"
 
 
+def _owned_runtime_candidates(name: str) -> list[Path]:
+    """Return zero-cost local runtime candidates without committing binaries to Git."""
+    env_name = f"SATISFYFORGE_{name.upper()}"
+    candidates: list[Path] = []
+    if os.environ.get(env_name):
+        candidates.append(Path(os.environ[env_name]).expanduser())
+
+    base = Path.home() / "SatisfyForge/tools/media-runtime/node_modules"
+    if name == "ffmpeg":
+        candidates.append(base / "ffmpeg-static/ffmpeg")
+    elif name == "ffprobe":
+        arch = platform.machine().lower()
+        preferred = "arm64" if arch in {"arm64", "aarch64"} else "x64"
+        candidates.extend([
+            base / f"ffprobe-static/bin/darwin/{preferred}/ffprobe",
+            base / "ffprobe-static/bin/darwin/arm64/ffprobe",
+            base / "ffprobe-static/bin/darwin/x64/ffprobe",
+        ])
+    return candidates
+
+
 def require_binary(name: str) -> str:
     path = shutil.which(name)
-    if not path:
-        raise RuntimeError(f"{name} was not found on PATH. Install FFmpeg first.")
-    return path
+    if path:
+        return path
+    for candidate in _owned_runtime_candidates(name):
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    env_name = f"SATISFYFORGE_{name.upper()}"
+    raise RuntimeError(
+        f"{name} was not found. Put it on PATH, set {env_name}, "
+        "or install the owned SatisfyForge media runtime under ~/SatisfyForge/tools/media-runtime."
+    )
 
 
 def _filter_escape(path: Path) -> str:

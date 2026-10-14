@@ -16,7 +16,14 @@ Owned, zero-cost-first vertical video normalization and QA built on FFmpeg. The 
 ## Requirements
 
 - Python 3.10+
-- `ffmpeg` and `ffprobe` available on PATH
+- `ffmpeg` and `ffprobe` available on PATH **or** in the owned local runtime at `~/SatisfyForge/tools/media-runtime`
+- Optional explicit overrides: `SATISFYFORGE_FFMPEG` and `SATISFYFORGE_FFPROBE`
+
+## Owned local runtime
+
+On the authorized Mac, SatisfyForge can use its private user-local media runtime without committing large binaries to Git. The resolver checks PATH first, then the explicit environment overrides, then the owned runtime. This keeps video rendering zero-cost and avoids requiring Homebrew or a paid editor.
+
+The current local runtime is intentionally an **environment dependency**, not a repository artifact. Never commit FFmpeg binaries to this repo.
 
 ## Render
 
