@@ -196,3 +196,18 @@ Fresh sequence totals at verification:
 | **Total** | **15** | **14** | **2** | **0** | **1** | **0** |
 
 All first follow-up steps remain unsent. No recipient, sequence, restart, or extra send was added.
+
+
+## 2026-10-14 16:05 ET YouTube recovery
+
+First Computer Bug was recovered through the approved business-identity route after its intended time:
+
+- Metricool item `393957189` changed from `PENDING` to terminal `ERROR`: `You have reached your Metricool account limit.`
+- Metricool remained read-only because its item metadata identifies `cougarboy1999@gmail.com` as creator.
+- Just-in-time duplicate checks found no matching Buffer YouTube post and no Wix Social Publisher YouTube item.
+- The existing approved MP4 was imported into Wix Media Manager and reached `READY` as media ID `72b571_34f868e071884ce5a11b5b63295f46ac`.
+- One automatic Buffer recovery was created as post `6acfe06d78837c11176c4096`.
+- Buffer confirmed `sent` at 16:05 ET.
+- Public URL: https://www.youtube.com/watch?v=3wSwuYGtdRI
+- The recovery preserved public privacy, Education category, not-made-for-kids status, and AI-generated-content disclosure.
+- No second post or duplicate was created. TikTok remains reserved for its 18:00 ET check.
