@@ -69,6 +69,23 @@ Still open:
 - any purchase/pass path;
 - public launch.
 
+## Repeat verification — 2026-10-14
+
+A consolidated zero-cost pass was run from the preserved Mac workspace with:
+
+```text
+python3 tools/roblox-studio/run_smoke.py --game all --keep-artifacts
+```
+
+Actual results:
+- Brainrot Rush: `PASS`; runtime reported `arena_parts=7 orbs=4`.
+- Tile Panic: `PASS`; runtime reported `tiles=64 arenaChildren=66`.
+- Snackquake: `PASS`; runtime reported `version=0.2.1-save-fix rescueSpots=15 refuges=6 embeddedPassed=15`.
+- The consolidated runner exited with code 0.
+- Brainrot Rush again emitted the expected unpublished-place warning that DataStore access requires a web-published place. This confirms graceful session-only fallback; it does **not** verify persistence.
+
+No publish command was run. The remaining human-control, multiplayer, device, private-persistence, purchase, moderation and public-release gates are unchanged.
+
 ## Other local gates re-run on the same Mac
 
 - Video Engine unit tests: 4 passed.
