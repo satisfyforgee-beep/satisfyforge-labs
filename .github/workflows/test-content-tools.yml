@@ -1,0 +1,20 @@
+name: Test content tools
+on:
+  push:
+    paths:
+      - 'tools/**'
+      - 'tests/**'
+      - '.github/workflows/test-content-tools.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run content workflow tests
+        run: python -m unittest discover -s tests -v
