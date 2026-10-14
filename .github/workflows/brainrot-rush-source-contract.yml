@@ -25,3 +25,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Validate Brainrot Rush contracts
         run: python3 tests/roblox/validate_brainrot_rush.py
+      - name: Validate Snackquake gameplay and persistence contracts
+        run: python3 src/roblox/snackquake/tests/run_tests.py
+      - name: Check Roblox tooling Python syntax
+        run: python3 -m py_compile tools/roblox-studio/run_smoke.py tools/roblox-studio/publish_place.py
