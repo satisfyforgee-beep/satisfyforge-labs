@@ -1,0 +1,33 @@
+{
+  "name": "Brainrot Rescue Snackquake v0.2.1",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "SnackquakeShared": {
+        "$className": "Folder",
+        "Config": { "$path": "src/Config.lua" },
+        "Rules": { "$path": "src/Rules.lua" },
+        "Creatures": { "$path": "src/Creatures.lua" }
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "SnackquakeServer": {
+        "$className": "Folder",
+        "World": { "$path": "src/World.lua" },
+        "PlayerData": { "$path": "src/PlayerData.lua" },
+        "Analytics": { "$path": "src/Analytics.lua" },
+        "SnackquakeMain": { "$path": "src/Main.server.lua" },
+        "SnackquakeStudioSmoke": { "$path": "src/StudioSmoke.server.lua" }
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "SnackquakeClient": { "$path": "src/Client.client.lua" }
+      }
+    }
+  }
+}

@@ -44,8 +44,26 @@ def run_smoke(game: str) -> None:
 
 def resolve_key(env_name: str) -> str:
     key = os.environ.get(env_name, "").strip()
-    if not key:
-        key = getpass.getpass("Roblox Open Cloud API key (hidden; not saved): ").strip()
+    if key:
+        return key
+
+    # Preferred local path on macOS: keep the key in Keychain so recurring publishes
+    # do not require the secret to appear in shell history, chat, repo files, or env files.
+    if sys.platform == "darwin":
+        result = subprocess.run(
+            [
+                "security", "find-generic-password",
+                "-a", "satisfyforge",
+                "-s", "SatisfyForgeRobloxOpenCloud",
+                "-w",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+
+    key = getpass.getpass("Roblox Open Cloud API key (hidden; not saved): ").strip()
     if not key:
         raise ValueError("No Roblox Open Cloud API key supplied")
     return key
@@ -79,7 +97,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--file", required=True, type=Path, help="Local .rbxl or .rbxlx file")
     parser.add_argument("--universe-id", required=True, type=int)
     parser.add_argument("--place-id", required=True, type=int)
-    parser.add_argument("--smoke-game", choices=["brainrot-rush", "tile-panic"], help="Run owned Studio runtime gate first")
+    parser.add_argument("--smoke-game", choices=["brainrot-rush", "tile-panic", "snackquake"], help="Run owned Studio runtime gate first")
     parser.add_argument("--api-key-env", default="ROBLOX_OPEN_CLOUD_KEY", help="Environment variable to read before hidden prompt")
     parser.add_argument("--confirm-publish", action="store_true", help="Required to perform the external Roblox write")
     args = parser.parse_args(argv)
