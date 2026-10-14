@@ -31,6 +31,15 @@ different time remains allowed for deliberate later reuse.
 
 Owning our publisher removes Buffer/Metricool limits, but it cannot remove the social networks' own authorization rules. The account owner still has to approve OAuth/app permissions once for each platform.
 
+### Meta authorization state — 2026-10-14
+
+- Read-only Graph API tests succeeded for the authorized Facebook Page and its linked Instagram business account, including the Instagram username field.
+- The Page and Instagram IDs were visually confirmed but are not stored in this public repository.
+- The temporary user access token appeared in screenshots and must be treated as exposed. It must be revoked/replaced; do not install or use it.
+- No token value was added to GitHub, and direct publishing remains disabled.
+- Before the first controlled Meta publish: generate a fresh credential, place only its value in GitHub Actions Secrets, verify the Page/Instagram IDs, run an empty-queue validation, reconcile Buffer/Metricool, then test one unique asset on one platform.
+
+
 Required repository secrets when those direct connections are ready:
 
 - `META_IG_USER_ID`
