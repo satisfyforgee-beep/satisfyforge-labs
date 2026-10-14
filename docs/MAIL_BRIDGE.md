@@ -15,46 +15,35 @@ Hard rules:
 - Do not silently fall back to `cougarboy1999@gmail.com`.
 - Duplicate protection: queue rows already marked `sent` must never be resent by a connection callback or repeated request.
 
-## Current state — 2026-10-13
+## Current state — 2026-10-14
 
-The existing SatisfyForge Control Center Floot project (`5bbe7cf5-3bb1-4a38-9af4-baf977118763`) has the free `google-integration` resource provisioned. Floot supplies the Google OAuth broker, so no Google Cloud client ID/secret and no paid mail app are required.
+The owned Gmail Mail Bridge is implemented and published in the SatisfyForge Control Center Floot project (`5bbe7cf5-3bb1-4a38-9af4-baf977118763`) at `https://satisfyforge-control.floot.app`.
 
-Seeded Floot integration files now exist:
-- `components/ConnectGoogleButton.tsx`
-- `endpoints/auth/google_integrations_authorize_GET.ts`
-- `endpoints/auth/google_integrations_callback_GET.ts`
+Verified implementation:
+- Floot's brokered Google OAuth is admin-only.
+- The callback records only connection metadata in `mail_connections`; credentials and refresh tokens are not stored in project source or tables.
+- Only the normalized address `satisfyforgee@gmail.com` receives `is_approved_sender=true`.
+- Wrong-account connections return an explicit refusal and cannot send.
+- The admin-only `mail-send-pending` endpoint selects only `queued` rows, claims them atomically as `sending`, and never selects `sent` rows.
+- Before every Gmail API request the endpoint calls `getGoogleAccessToken(db, 'satisfyforgee@gmail.com')`.
+- Messages are sent through the Gmail API as RFC822/base64url payloads.
+- Successful rows record the Gmail message ID and sent timestamp; failures store only a sanitized error.
+- The Control Center now shows business-Gmail connection state, queue counts, the connect control, and a guarded send-queued action.
+- Floot typecheck is clean, the existing test suite passes, and unauthenticated production requests to Control Center status, Google authorization, and send-pending endpoints all return `401`.
+- The Control Center remains on the free Floot plan; no paid build actions or mail service were purchased.
 
-A fresh connector check on 2026-10-13 at 08:26 UTC confirmed the free Floot build cap is still active and resets at `2026-10-14T06:00:00Z` (02:00 America/New_York). The Control Center remains published at `https://satisfyforge-control.floot.app` on the free plan. No paid upgrade or extra action was purchased.
+Current database state after deployment:
+- No Google account is connected in `mail_connections`.
+- `sbdc-cleaning-startup` remains `queued` with no Gmail message ID or sent timestamp.
+- `ecdi-cleaning-startup` remains `queued` with no Gmail message ID or sent timestamp.
+- No advisor email was sent during deployment or verification.
 
-The currently connected ChatGPT Gmail connector identifies as `cougarboy1999@gmail.com`, not the approved business sender. Do not use that connector to send the two queued business advisor messages. The owned bridge must keep the sender lock and refuse any account other than `satisfyforgee@gmail.com`.
+Remaining owner-only step:
+1. Sign in to the Control Center as the owner/admin.
+2. Use the Business Gmail card to connect exactly `satisfyforgee@gmail.com` through Google's OAuth screen.
+3. After the card shows the approved sender, review the queue count and use **Send queued** once.
 
-The Control Center database now also contains:
-- `mail_connections`
-- `mail_queue`
-- enum `mail_queue_state` (`queued`, `sending`, `sent`, `failed`)
-
-Two clean advisor emails are already queued in that database:
-- `sbdc-cleaning-startup` → `SBDC@miamioh.edu`
-- `ecdi-cleaning-startup` → `clentz@ecdi.org`
-
-The rewritten messages intentionally remove the old personal Gmail signature and the old Cash App/Chime payment usernames.
-
-## Floot build-cap boundary
-
-The final code patch could not be applied on 2026-10-13 because the free Floot workspace reached its 100 build-actions/day limit. The limit resets at `2026-10-14T06:00:00Z` (02:00 America/New_York on that date). Do not upgrade or buy extra build actions.
-
-After the reset, finish these exact zero-cost steps:
-
-1. Update `ConnectGoogleButton` to support `onConnected` / `onError` callbacks.
-2. In `google_integrations_callback_GET`, after `finalizeGoogleConnection`, upsert the connected address into `mail_connections` and set `is_approved_sender=true` only when the normalized address equals `satisfyforgee@gmail.com`.
-3. Add an admin-only `mail-send-pending` endpoint.
-4. In that endpoint call `getGoogleAccessToken(db, 'satisfyforgee@gmail.com')` before every Gmail API request.
-5. Send with Gmail API `POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send` using an RFC822 message encoded as base64url.
-6. Select only `mail_queue.state='queued'`; mark each row `sending`, then `sent` with Gmail message ID and timestamp, or `failed` with a sanitized error.
-7. Never resend `sent` rows.
-8. Extend Control Center status/UI with a Business Gmail card, connection status, queue status, and a `Connect business Gmail` button using Floot `feature='gmail'`.
-9. When the correct business Google account connects, send only the pre-approved queued advisor messages; if another Google account is connected, refuse to send and display the wrong-account warning.
-10. Typecheck, publish `satisfyforge-control.floot.app`, and verify the app still requires owner authentication.
+Do not connect or use `cougarboy1999@gmail.com`. Do not send through the ChatGPT Gmail connector while it resolves to that personal account.
 
 ## Temporary zero-cost outbound path
 
