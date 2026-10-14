@@ -5,6 +5,9 @@ on:
     paths:
       - "publisher/**"
       - ".github/workflows/satisfyforge-direct-publisher.yml"
+  schedule:
+    # Ready for a free 30-minute poll; publishing remains disabled until approved.
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -16,6 +19,8 @@ concurrency:
 
 jobs:
   publish:
+    # Explicit cutover switch; existing Buffer queues remain the only active route until enabled.
+    if: ${{ vars.DIRECT_PUBLISHER_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
