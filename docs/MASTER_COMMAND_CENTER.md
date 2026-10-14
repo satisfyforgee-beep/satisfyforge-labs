@@ -167,16 +167,18 @@ Use old production packets/performance only as research/reference; do not recrea
 - It is a simple prototype, not a released experience.
 
 ### Alternate project: Snackquake
-- Latest canonical recovered version is `0.2.1-save-fix`, not the older v0.1 kit.
-- Fresh local regression run on 2026-10-13 against the canonical v0.2 source archive passed:
+- Latest canonical version is `0.2.1-save-fix`; the full tested source is now in `src/roblox/snackquake/` on `main`.
+- Fresh canonical validation on 2026-10-13/14 passed:
   - 9 Lua-compatible Luau files parsed
-  - 38 persistence assertions
+  - 20 persistence assertions
   - 9,046 pure-rule assertions
-- Canonical repo status:
-  - `src/roblox/snackquake/README.md`
-  - `src/roblox/snackquake/V0_2_1_RELEASE_NOTES.md`
-- The exact latest source ZIP/place remain preserved in Library.
-- Studio/runtime/device/DataStore/public launch gates remain required.
+  - real Roblox Studio runtime smoke: `SF_SMOKE_PASS Snackquake` with 15 rescue spots, 6 refuges and 15 embedded checks
+- Private existing-place deployment is verified at Roblox place version 4; public visibility was not enabled.
+- Real private-player gameplay verified pickup -> carry -> rescue/deposit, Fizz/Rescues changes, clean-round bonus and hazard recovery.
+- Open Cloud publishing uses the supported existing-place API; the macOS helper can read the scoped key from local Keychain without exposing it.
+- `FounderGlowPassId` remains `0`, so no live paid pass path is enabled.
+- Still required before public-launch claims: clean leave/rejoin persistence proof, evolution/upgrade deployed-client tests, multiplayer, phone/gamepad UX, long-session performance, analytics readback, optional purchase-path testing, moderation/metadata and real-player retention evidence.
+- Canonical truth boundary: `src/roblox/snackquake/README.md`.
 
 Roblox Studio/device testing remains a genuine local/desktop requirement unless a supported cloud execution path becomes available. Continue code, documentation, balancing, monetization design, and cloud-side validation while local testing is blocked.
 
