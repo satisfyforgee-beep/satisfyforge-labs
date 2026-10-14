@@ -5,6 +5,9 @@ on:
     paths:
       - "publisher/**"
       - ".github/workflows/satisfyforge-direct-publisher.yml"
+  schedule:
+    # Poll due posts every 30 minutes; no-op while queue is empty.
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:
