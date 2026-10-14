@@ -185,3 +185,72 @@ When a prospect responds:
 - 904610 — SatisfyForge Gym Membership Growth - Eastern Window
 
 The older test sequences 904584, 904585 and 904586 are paused and are not the active campaigns.
+
+
+---
+
+# Reply-to-paid scope ladder
+
+Use this only after a prospect replies or requests the free sample. These are scoped service options, not guarantees and not links to an unverified checkout.
+
+## Option 1 — Follow-Up Message Pack — $29 fixed price
+
+**Buyer:** a small business that wants usable messages but will implement them itself.
+
+**Includes:**
+- One intake review covering the company's real offer, lead source and preferred tone.
+- One four-message follow-up sequence for a single service or campaign.
+- Email and short-message versions where appropriate.
+- One revision round delivered within 2 business days after complete intake.
+
+**Acceptance criteria:** four original, editable messages; placeholders clearly marked; opt-out/close-the-loop language included; no invented offer or guarantee.
+
+**Not included:** software setup, inbox access, sending, CRM work, phone service or ongoing management.
+
+## Option 2 — Lead Rescue Starter System — $99 fixed price
+
+**Buyer:** a local service business that needs a simple process, not a complicated software build.
+
+**Includes:**
+- Map of up to two existing lead sources.
+- One four-message sequence for one primary service.
+- A lightweight tracker template with status, next-action date and lost-reason fields.
+- A one-page operating guide showing who responds, when follow-up stops and what gets reviewed weekly.
+- One revision round delivered within 3 business days after complete intake.
+
+**Acceptance criteria:** editable tracker and messages; stop conditions for replies, bookings, opt-outs and closed leads; no fabricated revenue projection.
+
+**Not included:** paid software, historical data cleanup, API integrations, bulk sending, guaranteed appointments or guaranteed revenue.
+
+## Option 3 — Existing-Tool Implementation — starting at $249 after written scope
+
+**Buyer:** a business that wants SatisfyForge to configure the approved workflow inside tools it already owns.
+
+Before quoting, confirm the exact lead sources, software, permissions, message volume and responsible staff member. The customer must own and authorize every connected account. Quote a fixed price and delivery date in writing before requesting payment.
+
+**Possible deliverables:**
+- Configure approved templates and stages in one existing system.
+- Build or import the agreed tracker.
+- Test the workflow with clearly labeled internal test records.
+- Provide a handoff checklist and one correction pass.
+
+**Not included unless separately scoped:** new paid subscriptions, custom API development, regulated-data workflows, advertising spend, ongoing inbox staffing, or performance guarantees.
+
+## Gym content starter — $79 fixed price
+
+For an interested gym from sequence 904610:
+
+- Three original 20–30 second video scripts tailored to the gym's verified offer.
+- Three captions and calls to action.
+- The four-message membership inquiry follow-up sequence.
+- One revision round within 3 business days after complete intake.
+
+The gym supplies its real offer, facility details, brand preferences and any footage it wants referenced. SatisfyForge does not invent testimonials, transformations, free trials or membership terms.
+
+## Safe close after the free sample
+
+Use a plain transition:
+
+> If you'd like, I can tailor and deliver the complete editable pack for your business. The message-only pack is $29, or the tracker-and-workflow starter is $99. I can send a written scope first so you can see exactly what is included before paying.
+
+Until an exact checkout is independently verified, collect scope through the canonical Wix request form, confirm the deliverables and price in writing, and do not claim that a payment link is ready.
