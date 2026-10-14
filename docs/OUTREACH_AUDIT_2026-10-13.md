@@ -140,3 +140,33 @@ Wix TikTok connection status was `VALID`; the account displayed as SatisfyForge.
 - Wix Forms returned zero submissions.
 - Quo returned zero phone inboxes. No SMS or call action is possible or authorized until a usable business inbox/number exists.
 - The HubSpot portal connected under the personal Google identity remains prohibited from business use, including read-only work. Reconnect or recreate it under `satisfyforgee@gmail.com` before any HubSpot action.
+
+
+## 2026-10-14 11:00 ET verification
+
+### Hunter outreach
+
+The original three sequences remain unchanged. Fresh recipient-level totals:
+
+| Sequence | Sent | Delivered | Bounced | Opened | Replied | Unsubscribed |
+|---|---:|---:|---:|---:|---:|---:|
+| 904604 — Home Service Lead Rescue | 9 | 8 | 1 | 0 | 0 | 0 |
+| 904608 — Lead Follow-Up Automation | 3 | 3 | 0 | 2 | 0 | 0 |
+| 904610 — Gym Membership Growth | 3 | 3 | 0 | 0 | 0 | 0 |
+| **Total** | **15** | **14** | **1** | **2** | **0** | **0** |
+
+No sequence restart, extra recipient, new send, or schedule mutation was made. Existing follow-ups remain the approved next touch.
+
+### First Computer Bug publishing
+
+- Facebook Buffer post `6accf604a9fd76c926c7dc30` is confirmed sent. Public URL: https://www.facebook.com/reel/1129238186292682/
+- Metricool Instagram item `393956930` reached a terminal account-limit error.
+- A clean duplicate check found no matching Buffer Instagram post.
+- Exactly one automatic Buffer recovery was submitted as post `6acf8c977ca5e5eb1a5f847b`.
+- The recovery is confirmed sent at 2026-10-14 10:10 ET. Public URL: https://www.instagram.com/reel/Deej9dhCS_F/
+- No second retry or duplicate was submitted.
+- YouTube and TikTok remain assigned to their 16:00 ET and 18:00 ET publishing checks; do not act before the intended times.
+
+### Direct Publisher handoff
+
+PR #43 is merged as commit `84e2c664afa342cace375470a59083c99e4dfe58`. The workflow has a 30-minute schedule but the publish job is fail-closed behind `DIRECT_PUBLISHER_ENABLED == 'true'`. Keep that variable false until official platform authorization, secret setup, queue reconciliation and real controlled publish tests all pass.
