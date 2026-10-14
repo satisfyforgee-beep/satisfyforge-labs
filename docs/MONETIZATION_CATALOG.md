@@ -34,15 +34,15 @@ Existing assets include lead tracking, message building, follow-up concepts, aud
 
 The recurring membership should deliver new useful material each month rather than simply rebilling for an unchanged download.
 
-## 3. SatisfyForge Tool Vault — checkout paused pending verification
+## 3. SatisfyForge Tool Vault — price verified; checkout still quarantined
 
 **Verified current operating state**
 - Product: SatisfyForge Tool Vault
 - Known Payhip URL: `https://payhip.com/b/KLjBb`
-- A 2026-10-12 Payhip dashboard audit showed the listing at **$0.00** while the Wix site had been advertising **$49**.
-- Direct purchase CTAs on the live Wix site are therefore paused and route to the request form instead.
-- Do **not** advertise, send, or restore KLjBb as a $49 paid checkout until the actual Payhip price and terms are independently rechecked and, if needed, corrected.
-- PayPal remains the preferred payment destination once a checkout is verified.
+- Independent signed-out verification on 2026-10-14 confirmed **Founding Lifetime Access at $49** on the public page.
+- The listing remains **quarantined from promotion** because the public page still contains Payhip placeholder headings/copy/images and the completed checkout plus automatic fulfillment path have not been transaction-tested.
+- Direct purchase CTAs on the live Wix site remain paused and route to the request form until the listing is cleaned and checkout/fulfillment are safely verified.
+- PayPal remains the preferred payment destination once the checkout is cleared.
 
 **Known member-content concept from prior setup**
 - START HERE — Founding Tool Vault
@@ -138,7 +138,7 @@ Do not pay listing fees or developer subscriptions from SatisfyForge cash. Use f
 ## Current infrastructure blockers
 
 ### Tool Vault checkout verification
-The Payhip listing cannot be treated as a paid offer until its actual price and terms are rechecked and corrected if needed. Keep the Wix request path active meanwhile.
+The public $49 price is verified, but the listing still cannot be treated as promotion-ready until placeholder content is removed and checkout/fulfillment are safely verified. Keep the Wix request path active meanwhile.
 
 ### Recurring Tool Vault billing
 Payhip recurring payments require Stripe. Stripe is not connected; PayPal is connected. Owner-only financial setup is intentionally deferred.
