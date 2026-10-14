@@ -43,9 +43,9 @@ Current capabilities:
 - optional burned SRT/ASS captions
 - post-render QA that fails closed on format errors
 
-Local validation before merge: 4 unit tests passed.
+Local validation: 5 unit tests passed after adding owned-runtime resolution. A real 1280x720/24fps source + AAC audio + SRT caption smoke was rendered through the user-local runtime into 1080x1920, H.264, yuv420p, constant 30fps, AAC, fast-start MP4; ffprobe QA returned `ok: true` with no warnings.
 
-This directly addresses the prior class of social-publisher `frame_rate_check_failed` errors without buying another video-normalization subscription.
+This directly addresses the prior class of social-publisher `frame_rate_check_failed` errors without buying another video-normalization subscription. The authorized Mac now has a zero-cost user-local FFmpeg/ffprobe runtime under `~/SatisfyForge/tools/media-runtime`; binaries remain outside Git and are discovered automatically or through explicit environment overrides.
 
 ### Direct Publisher
 
