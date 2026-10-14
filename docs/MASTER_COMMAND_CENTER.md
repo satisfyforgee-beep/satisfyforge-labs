@@ -80,6 +80,11 @@ This file is the canonical non-sensitive operating index for work that used to b
 - `sales/OUTREACH_REPLY_FULFILLMENT_KIT.md` contains the response/sample system.
 - `sales/SCOPING_AND_CLOSE_KIT.md` contains truthful offer boundaries, qualification and close/scoping rules so an interested prospect can move to written scope without invented results or an unverified payment link.
 
+### Business communications identity gate
+- Business identity: `satisfyforgee@gmail.com` only.
+- Do not use the HubSpot portal connected through `cougarboy1999@gmail.com`, even read-only. It is blocked until HubSpot is reconnected or recreated under the business identity.
+- Quo is connected to the business identity but currently has zero phone inboxes/numbers. Do not attempt SMS or calls until `list-inboxes` returns a usable business number.
+
 ## Website and funnel
 
 ### Wix Growth Toolbox
@@ -110,6 +115,7 @@ This file is the canonical non-sensitive operating index for work that used to b
 - No filler posting just to maintain cadence.
 - Check Buffer, Metricool, Wix, and recent live posts before publishing so only one scheduler owns each post/platform/time.
 - Current platform strategy/research: `docs/GROWTH_SCAN_2026-10-13.md`.
+- Dancing Plague is now confirmed complete across all four major channels. TikTok was published automatically through Wix as item `4c739b11-04ff-47c0-befe-4a681cb0780c`; do not recreate or retry it.
 
 ### Permanent no-repost history
 - Lake Nyos — completed historical episode.
