@@ -108,6 +108,7 @@ This file is the canonical non-sensitive operating index for work that used to b
 ## Publishing and content
 
 ### Connected/verified routes
+- Direct Publisher PR #43 is merged. Its 30-minute workflow is fail-closed behind `DIRECT_PUBLISHER_ENABLED == 'true'`; keep it false until official API authorization, secret setup, queue reconciliation and controlled publish tests pass.
 - Buffer organization: `6accef267d527c51692f8cf9`.
 - Instagram: `satisfyforgetv`.
 - Facebook: `satisfyforgetv`.
@@ -134,13 +135,19 @@ This file is the canonical non-sensitive operating index for work that used to b
 Use old production packets/performance only as research/reference; do not recreate those as new posts.
 
 ### Known scheduled backlog
-- Dancing Plague: already scheduled/handled across the four major channels for 2026-10-13; only retry a definite failure.
-- First Computer Bug: already scheduled/handled across the four major channels for 2026-10-14; only retry a definite failure.
+- Dancing Plague: complete across the four major channels; never retry stale Metricool errors.
+- First Computer Bug on 2026-10-14:
+  - Facebook confirmed published through Buffer: https://www.facebook.com/reel/1129238186292682/
+  - Instagram confirmed published through one Buffer recovery after Metricool's terminal account-limit error: https://www.instagram.com/reel/Deej9dhCS_F/
+  - YouTube remains assigned to the 16:00 ET check.
+  - TikTok remains assigned to the 18:00 ET check.
+  - Do not create another Instagram or Facebook copy.
 
 ### Next prepared original story
-- `content/great-molasses-flood-production-packet.md` is research/script ready.
-- It includes a normal ~30–35 second version plus a 65–80 second deeper-story experiment.
-- It is **not** a rendered or scheduled video yet; do not call it published.
+- Great Molasses Flood v5 is rendered and passed technical/motion QA at 1080×1920, 30 fps, 33.248 seconds, with readable captions and no freeze interval of 2 seconds or longer.
+- SHA-256: `e11411f868d4c3d92011c4ffe5d66b0d5a909b822fdb2519068b1ca85aaa7588`.
+- It is **not scheduled or published**. Recheck all live queues and platform timing before using it.
+- The separate 65–80 second deeper-story experiment remains unrendered and should only be produced when it adds genuine platform value.
 
 ## Product building
 
