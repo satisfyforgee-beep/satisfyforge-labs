@@ -88,3 +88,33 @@ Dancing Plague YouTube was recovered without a paid service or manual/notificati
 - The post retained Education category, public privacy, not-made-for-kids status, and truthful AI-generated-content disclosure.
 
 Dancing Plague TikTok item `393673161` was still `PENDING` immediately after its 18:00 ET intended time. No retry or duplicate was submitted; check later for a definite terminal result.
+
+
+## 20:00 ET verification
+
+### Hunter outreach
+
+The three canonical sequences remain active and the original 15-recipient batch has not been restarted or expanded.
+
+| Sequence | Sent | Delivered | Bounced | Opened | Replied | Unsubscribed |
+|---|---:|---:|---:|---:|---:|---:|
+| 904604 — Home Service Lead Rescue | 9 | 8 | 1 | 0 | 0 | 0 |
+| 904608 — Lead Follow-Up Automation | 3 | 3 | 0 | 2 | 0 | 0 |
+| 904610 — Gym Membership Growth | 3 | 3 | 0 | 0 | 0 | 0 |
+| **Total** | **15** | **14** | **1** | **2** | **0** | **0** |
+
+Recipient-state inspection confirmed one bounce in 904604 and no other failure state. Each active sequence already includes one automatic follow-up: three days for 904604, four days for 904608, and three days for 904610. No extra message, recipient, sequence, restart, or schedule mutation was made.
+
+A fresh read-only Wix Forms query returned zero submissions, so there is no qualified site inquiry to advance or payment link to send.
+
+### Publishing coordination
+
+- Buffer post `6acea9df7a29109965b36662` is confirmed `sent` on YouTube with public URL https://www.youtube.com/watch?v=NdFtf7h43z8.
+- Dancing Plague TikTok item `393673161` no longer appears in the Metricool scheduled queue, but TikTok published-post analytics for 17:30–20:15 ET returned no rows. This is not enough evidence to call it published or a definite terminal error. No retry was submitted.
+- First Computer Bug remains protected from duplication:
+  - Metricool Instagram `393956930` — `PENDING` for 2026-10-14 10:00 ET.
+  - Buffer Facebook `6accf604a9fd76c926c7dc30` — `scheduled` for 2026-10-14 10:00 ET.
+  - Metricool YouTube `393957189` — `PENDING` for 2026-10-14 16:00 ET.
+  - Metricool TikTok `393957484` — `PENDING` for 2026-10-14 18:00 ET.
+
+No social post was created, retried, or duplicated in this verification pass.
