@@ -96,6 +96,23 @@ A useful first version does not need expensive software:
 
 If the prospect wants implementation, first map their current lead sources and tools. Do not sell a complicated automation stack before confirming where inquiries actually arrive and who owns follow-up.
 
+## Value-first follow-up for opened/no-reply prospects
+
+Use this replacement in a future paused or draft revision of sequence 904608. It demonstrates one useful message before asking for a reply. Do not pause an active sequence solely to install it.
+
+> Hi {{first_name:"there"}},
+>
+> Here's one follow-up message you can use today:
+>
+> *Hi [Name] — just checking whether you still want help with [service]. I can hold the next step for you, or close this out — either is completely fine.*
+>
+> If you want, I'll turn that into a complete 4-message sequence for {{company:"your business"}} at no charge. Just reply "yes" and I'll send it over.
+>
+> Dylan  
+> SatisfyForge
+
+**Recorded 2026-10-14:** Hunter rejected the body-only update because sequence 904608 was actively sending. The sequence was left active and unchanged; no recipients were added, no send limit was changed, and no pause/restart was performed.
+
 ---
 
 # C. Gym Membership Growth Sample
