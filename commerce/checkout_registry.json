@@ -1,13 +1,13 @@
 {
-  "updated_at": "2026-10-13",
+  "updated_at": "2026-10-14",
   "safe_request_url": "https://satisfyforgee.wixforms.com/f/7515509200923919388",
   "checkouts": [
     {
       "product_id": "KLjBb",
       "status": "quarantined",
-      "reason": "2026-10-13: owner screenshots verify Payhip seller plan One-Time Purchase $49 USD (Founding Lifetime Access) and public membership pricing page shows $49 Sign Up. Prior $0 price discrepancy resolved. Keep checkout quarantined pending independent sign-up/checkout final-total and fulfillment verification; do not claim transaction tested.",
+      "reason": "2026-10-14 independent signed-out browser verification: the public Tool Vault membership page shows Founding Lifetime Access at $49 and exposes the sign-up route, resolving the earlier public-price uncertainty. Promotion remains blocked because the public page still contains Payhip placeholder headings/copy (Membership Title, Example Text, Example Image with Text), the seller editor requires a fresh owner login, and final checkout total plus automatic fulfillment remain transaction-untested.",
       "price_verified_usd": 49,
-      "pricing_evidence": "Owner-provided screenshots of seller pricing plan and customer-facing membership plan"
+      "pricing_evidence": "Independent signed-out public page verification at https://payhip.com/b/KLjBb on 2026-10-14; Founding Lifetime Access displayed at $49."
     },
     {
       "product_id": "RrdbG",
