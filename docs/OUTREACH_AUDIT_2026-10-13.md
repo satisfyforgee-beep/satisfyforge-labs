@@ -118,3 +118,25 @@ A fresh read-only Wix Forms query returned zero submissions, so there is no qual
   - Metricool TikTok `393957484` — `PENDING` for 2026-10-14 18:00 ET.
 
 No social post was created, retried, or duplicated in this verification pass.
+
+
+## 21:02 ET verification
+
+### Dancing Plague TikTok — confirmed published, no retry
+
+Metricool item `393673161` reached a definite `ERROR` with `You have reached your Metricool account limit.` A just-in-time Wix duplicate check then found that the same approved Dancing Plague video had already been automatically published through the connected Wix TikTok route:
+
+- Wix item: `4c739b11-04ff-47c0-befe-4a681cb0780c`
+- Reference ID: `satisfyforge-dancing-plague-tiktok-2026-10-13`
+- Status: `PUBLISHED`
+- Published: 2026-10-13 19:10 ET
+- Public URL: https://www.tiktok.com/@satisfyforge14/video/7696293380422257934
+
+Wix TikTok connection status was `VALID`; the account displayed as SatisfyForge. The free publish-now quota showed 8 of 10 monthly uses remaining. No post was created or retried.
+
+### Revenue signals and communications safety
+
+- Hunter totals remain 15 sent, 14 delivered, one bounce, two opens, zero replies, zero clicks and zero unsubscribes. Existing follow-ups remain responsible for the next touch; no extra outreach was sent.
+- Wix Forms returned zero submissions.
+- Quo returned zero phone inboxes. No SMS or call action is possible or authorized until a usable business inbox/number exists.
+- The HubSpot portal connected under the personal Google identity remains prohibited from business use, including read-only work. Reconnect or recreate it under `satisfyforgee@gmail.com` before any HubSpot action.
