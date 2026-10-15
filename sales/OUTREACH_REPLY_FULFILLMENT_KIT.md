@@ -319,3 +319,26 @@ Hi [Name] — final follow-up on your consultation request. Reply **OPEN** if yo
 **Implementation note:** Replies, bookings, opt-outs, and closed statuses stop the automation. Do not include treatment claims, guaranteed outcomes, diagnoses, or prescription advice.
 
 **Official sources:** [Your Wellness Center home](https://yourwellnesscenter.com/), [consultation form](https://yourwellnesscenter.com/consultation-form/), and [services](https://yourwellnesscenter.com/departments/).
+
+---
+
+## Qualification and paid-conversion handoff (2026-10-15)
+
+Only use this section after a genuine inbound reply. No unsolicited extra sends and no duplicate sequences.
+
+**Triage:**
+- Requested free example: deliver the customized four-message sample first, free, without requiring a meeting or payment.
+- Interested but unclear: ask one concrete question about their current lead source (website form, phone, email, social) and who currently responds.
+- Asked for implementation: confirm current tools, lead volume *as reported by them*, permitted communication channel, and whether they need templates only or setup help.
+- Not interested / opt-out: stop outreach, log suppression, and do not re-contact.
+- Bounce: suppress the address, do not retry alternate addresses without fresh lawful basis.
+
+**Scope-first pricing (not a payment request):**
+- $29 Follow-Up Message Pack: customized copy and usage notes; no integration or sending.
+- $99 Lead Rescue Starter System: customized tracker and follow-up workflow template; no account access or guaranteed outcomes.
+- Implementation from $249: written scope and agreed acceptance criteria required before quoting a final amount; no account credential sharing in email.
+- $79 Gym Content Starter: content calendar and editable copy assets, not fabricated results or ad spend.
+
+**Conversion checklist:** verify recipient and consent; match requested sample to their actual service; deliver usable material; ask whether they want help implementing it; provide only a checkout URL independently verified as working; otherwise quote and agree a safe manual next step. Log company, sequence, date, requested deliverable, response status, opt-out, and next action in the existing tracker. Never claim revenue, a booking, or a sale until confirmed.
+
+**Quality gate:** no claims of 24/7 service, appointment availability, ROI, prior experience, or client results without supporting evidence. Avoid automated follow-ups after a real response. No banking or identity changes.
