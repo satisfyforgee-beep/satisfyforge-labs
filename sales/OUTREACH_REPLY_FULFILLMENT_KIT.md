@@ -254,3 +254,68 @@ Use a plain transition:
 > If you'd like, I can tailor and deliver the complete editable pack for your business. The message-only pack is $29, or the tracker-and-workflow starter is $99. I can send a written scope first so you can see exactly what is included before paying.
 
 Until an exact checkout is independently verified, collect scope through the canonical Wix request form, confirm the deliverables and price in writing, and do not claim that a payment link is ready.
+
+
+---
+
+# Personalized opened-prospect samples — 2026-10-14
+
+Prepared from verified public website facts for use only if the prospect replies or asks for the promised sample. Do not send these outside the existing Hunter follow-up cadence.
+
+## Halpin Plumbing — Lead Follow-Up Automation
+
+**Verified public context (2026-10-14):**
+- Cincinnati-area residential and commercial plumbing with a published 24/7 emergency-service path.
+- The website presents consultation, up-front pricing, and Schedule a Service/contact flows.
+- Public service categories include drain and sewer cleaning, water heaters, pipe repairs, filtration, backflow, gas and water lines, jetting, and inspections.
+
+### Ready-to-use four-message sample
+
+**Immediate acknowledgment**
+
+Hi [Name] — thanks for contacting Halpin Plumbing about [service/issue]. If this is an active leak, loss of water, gas concern, or another urgent situation, call the published emergency line now. Otherwise, reply with the service address/ZIP, a short description, and the best time to reach you so the right next step can be arranged.
+
+**Next business day**
+
+Hi [Name] — following up on your Halpin Plumbing request about [service]. Do you still need help? Reply with the best callback window and any photo or details that would help the team prepare.
+
+**Estimate/consultation follow-up**
+
+Hi [Name] — checking whether you still want to move forward with the [service] consultation or estimate. If timing is the issue, send the day and time that work best. If the problem is already handled, tell us and we'll close the request.
+
+**Close the loop**
+
+Hi [Name] — last follow-up from Halpin Plumbing on your [service] request. Reply **OPEN** if you want the request kept active, or **CLOSED** if it's handled. We'll stop follow-up either way.
+
+**Implementation note:** Separate emergency leads from ordinary service or estimate leads before automation. Never let an email sequence substitute for emergency instructions.
+
+**Official sources:** [Halpin Plumbing home](https://www.halpinplumbing.com/), [contact](https://halpinplumbing.com/contact-us/), and [service plumbing](https://halpinplumbing.com/service-plumbing/).
+
+## Your Wellness Center — Consultation Follow-Up
+
+**Verified public context (2026-10-14):**
+- Cincinnati center offering hormone therapy, weight loss, sexual medicine, IV therapy, and related services.
+- Its public consultation form says staff will contact the submitter within one business day.
+- Because the form concerns health services, ordinary follow-up should not ask a lead to email or text sensitive clinical details.
+
+### Ready-to-use four-message sample
+
+**Immediate acknowledgment**
+
+Hi [Name] — thanks for requesting a consultation with Your Wellness Center. Your request was received. A team member will contact you within one business day. For privacy, please don't send medical history or sensitive health details by reply; we'll use the appropriate intake process when we connect.
+
+**Next business day**
+
+Hi [Name] — following up on your consultation request. Were you able to connect with the team? If not, reply with the best callback window and we'll route the request. Please keep medical details for the appropriate intake conversation.
+
+**Scheduling follow-up**
+
+Hi [Name] — one quick check on your Your Wellness Center consultation request. If you still want to schedule, reply with a preferred weekday and time range. If your plans changed, let us know and we'll close the request.
+
+**Close the loop**
+
+Hi [Name] — final follow-up on your consultation request. Reply **OPEN** if you still want help scheduling, or **CLOSED** if you no longer need it. We won't continue following up after closure.
+
+**Implementation note:** Replies, bookings, opt-outs, and closed statuses stop the automation. Do not include treatment claims, guaranteed outcomes, diagnoses, or prescription advice.
+
+**Official sources:** [Your Wellness Center home](https://yourwellnesscenter.com/), [consultation form](https://yourwellnesscenter.com/consultation-form/), and [services](https://yourwellnesscenter.com/departments/).
