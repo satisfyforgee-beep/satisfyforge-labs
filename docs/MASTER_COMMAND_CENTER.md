@@ -94,6 +94,7 @@ This file is the canonical non-sensitive operating index for work that used to b
 - Preserve the full production file set on every redeploy; do not rebuild from only the smaller historical repo subset.
 - Follow `docs/LIVE_WIX_SITE_INVENTORY.md` before updating the site.
 - Wix Forms is the live lead intake source.
+- 2026-10-14 live verification: one enabled form, `SatisfyForge Growth Request` (ID `7632c6db-2dec-4fdc-ace7-3dd72ad81478`), is present with advanced spam protection and required email, business/project name, price-range interest and problem-description fields. The submission query returned **0 submissions**. The intake mechanism is configured; traffic and qualified response generation are the current bottlenecks.
 - Tool Vault purchase CTAs were placed into a safe paused/request state after the Payhip pricing mismatch was discovered.
 - The historical repository copies of `satisfyforge-site/index.html` and `pricing.html` have also been corrected so a future source-based deployment cannot accidentally restore the unsafe $49/direct-Payhip state.
 - Do not restore direct checkout CTAs until the checkout and price are verified.
@@ -137,12 +138,12 @@ Use old production packets/performance only as research/reference; do not recrea
 
 ### Known scheduled backlog
 - Dancing Plague: complete across the four major channels; never retry stale Metricool errors.
-- First Computer Bug on 2026-10-14:
-  - Facebook confirmed published through Buffer: https://www.facebook.com/reel/1129238186292682/
-  - Instagram confirmed published through one Buffer recovery after Metricool's terminal account-limit error: https://www.instagram.com/reel/Deej9dhCS_F/
-  - YouTube remains assigned to the 16:00 ET check.
-  - TikTok remains assigned to the 18:00 ET check.
-  - Do not create another Instagram or Facebook copy.
+- First Computer Bug is confirmed complete across all four major channels:
+  - Facebook: https://www.facebook.com/reel/1129238186292682/
+  - Instagram: https://www.instagram.com/reel/Deej9dhCS_F/
+  - YouTube: https://www.youtube.com/watch?v=3wSwuYGtdRI
+  - TikTok: https://www.tiktok.com/@satisfyforge14/video/7696648328284507406
+  - YouTube used one Buffer recovery after Metricool's terminal account-limit failure; TikTok used one Wix recovery after the same failure. Do not create or retry another copy on any of the four platforms.
 
 ### Next prepared original story
 - Great Molasses Flood v5 is rendered and passed technical/motion QA at 1080×1920, 30 fps, 33.248 seconds, with readable captions and no freeze interval of 2 seconds or longer.
