@@ -47,10 +47,8 @@ def main() -> int:
     blockers=[]
     if not target_saved: blockers.append("No verified Roblox universe/place IDs are stored in the repository.")
     if not creator_auth: blockers.append("Creator Dashboard session is not authenticated in the persistent browser profile.")
-    if multiplayer["returncode"] == 0:
-        blockers.append("Automated two-client initialization passes, but gameplay-specific multiplayer checks (pickup ownership, simultaneous touches, player-specific prompts, and player-leave isolation) are not yet fully verified.")
-    else:
-        blockers.append("Automated two-client multiplayer initialization is not passing reliably.")
+    if multiplayer["returncode"] != 0:
+        blockers.append("Automated two-client multiplayer behavior gate is not passing reliably.")
     blockers.append("Live DataStore persistence checks are not yet verified.")
     if mobile["returncode"] == 0:
         blockers.append("Automated iPhone/Galaxy portrait+landscape HUD bounds pass, but real-device touch-control comfort and physical Android/iPhone UX are not yet verified.")
@@ -61,7 +59,7 @@ def main() -> int:
         "generated_at": now,
         "static_brainrot": {"passed": static["returncode"] == 0, **static},
         "studio_smoke_all": {"passed": smoke["returncode"] == 0, **smoke},
-        "brainrot_multiplayer_init": {"passed": multiplayer["returncode"] == 0, **multiplayer},
+        "brainrot_multiplayer_behavior": {"passed": multiplayer["returncode"] == 0, **multiplayer},
         "brainrot_mobile_viewport": {"passed": mobile["returncode"] == 0, **mobile},
         "roblox_open_cloud_key_in_keychain": keychain_present(),
         "creator_dashboard_authenticated": creator_auth,
@@ -74,13 +72,13 @@ def main() -> int:
     print(f"REPORT={out}")
     print(f"STATIC_BRAINROT={'PASS' if report['static_brainrot']['passed'] else 'FAIL'}")
     print(f"STUDIO_SMOKE_ALL={'PASS' if report['studio_smoke_all']['passed'] else 'FAIL'}")
-    print(f"BRAINROT_MULTIPLAYER_INIT={'PASS' if report['brainrot_multiplayer_init']['passed'] else 'FAIL'}")
+    print(f"BRAINROT_MULTIPLAYER_BEHAVIOR={'PASS' if report['brainrot_multiplayer_behavior']['passed'] else 'FAIL'}")
     print(f"BRAINROT_MOBILE_VIEWPORT={'PASS' if report['brainrot_mobile_viewport']['passed'] else 'FAIL'}")
     print(f"ROBLOX_KEYCHAIN={'PRESENT' if report['roblox_open_cloud_key_in_keychain'] else 'MISSING'}")
     print(f"CREATOR_DASHBOARD={'AUTHENTICATED' if creator_auth else 'NOT_AUTHENTICATED'}")
     print(f"PUBLISH_TARGET_IDS={'PRESENT' if target_saved else 'MISSING'}")
     print(f"BLOCKERS={len(blockers)}")
-    return 0 if report['static_brainrot']['passed'] and report['studio_smoke_all']['passed'] and report['brainrot_multiplayer_init']['passed'] and report['brainrot_mobile_viewport']['passed'] else 1
+    return 0 if report['static_brainrot']['passed'] and report['studio_smoke_all']['passed'] and report['brainrot_multiplayer_behavior']['passed'] and report['brainrot_mobile_viewport']['passed'] else 1
 
 if __name__ == "__main__":
     raise SystemExit(main())
