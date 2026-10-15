@@ -39,14 +39,18 @@ def main() -> int:
     now = datetime.now(timezone.utc).isoformat()
     static = run([sys.executable, "tests/roblox/validate_brainrot_rush.py"])
     smoke = run([sys.executable, "tools/roblox-studio/run_smoke.py", "--game", "all", "--keep-artifacts"])
+    multiplayer = run([sys.executable, "tools/roblox-studio/run_multiplayer.py"])
     targets = load_targets()
     target_saved = bool(targets.get("snackquake", {}).get("universe_id") and targets.get("snackquake", {}).get("place_id"))
     creator_auth = creator_dashboard_authenticated()
     blockers=[]
     if not target_saved: blockers.append("No verified Roblox universe/place IDs are stored in the repository.")
     if not creator_auth: blockers.append("Creator Dashboard session is not authenticated in the persistent browser profile.")
+    if multiplayer["returncode"] == 0:
+        blockers.append("Automated two-client initialization passes, but gameplay-specific multiplayer checks (pickup ownership, simultaneous touches, player-specific prompts, and player-leave isolation) are not yet fully verified.")
+    else:
+        blockers.append("Automated two-client multiplayer initialization is not passing reliably.")
     blockers.extend([
-        "2+ player multiplayer checks are not yet verified.",
         "Live DataStore persistence checks are not yet verified.",
         "Android/iPhone/mobile UX checks are not yet verified.",
         "Owner review of public metadata/content questionnaire is still required before public launch."
@@ -55,6 +59,7 @@ def main() -> int:
         "generated_at": now,
         "static_brainrot": {"passed": static["returncode"] == 0, **static},
         "studio_smoke_all": {"passed": smoke["returncode"] == 0, **smoke},
+        "brainrot_multiplayer_init": {"passed": multiplayer["returncode"] == 0, **multiplayer},
         "roblox_open_cloud_key_in_keychain": keychain_present(),
         "creator_dashboard_authenticated": creator_auth,
         "publish_target_ids_saved": target_saved,
@@ -66,11 +71,12 @@ def main() -> int:
     print(f"REPORT={out}")
     print(f"STATIC_BRAINROT={'PASS' if report['static_brainrot']['passed'] else 'FAIL'}")
     print(f"STUDIO_SMOKE_ALL={'PASS' if report['studio_smoke_all']['passed'] else 'FAIL'}")
+    print(f"BRAINROT_MULTIPLAYER_INIT={'PASS' if report['brainrot_multiplayer_init']['passed'] else 'FAIL'}")
     print(f"ROBLOX_KEYCHAIN={'PRESENT' if report['roblox_open_cloud_key_in_keychain'] else 'MISSING'}")
     print(f"CREATOR_DASHBOARD={'AUTHENTICATED' if creator_auth else 'NOT_AUTHENTICATED'}")
     print(f"PUBLISH_TARGET_IDS={'PRESENT' if target_saved else 'MISSING'}")
     print(f"BLOCKERS={len(blockers)}")
-    return 0 if report['static_brainrot']['passed'] and report['studio_smoke_all']['passed'] else 1
+    return 0 if report['static_brainrot']['passed'] and report['studio_smoke_all']['passed'] and report['brainrot_multiplayer_init']['passed'] else 1
 
 if __name__ == "__main__":
     raise SystemExit(main())
