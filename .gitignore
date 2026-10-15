@@ -7,3 +7,6 @@ __pycache__/
 work/
 dist/
 *.studio.log
+
+# Generated Roblox release reports
+artifacts/roblox-release/
