@@ -1,0 +1,649 @@
+{
+  "name": "SatisfyForge Operations \u2014 Safe Research Review [DRAFT]",
+  "nodes": [
+    {
+      "id": "780e5ce4-c8ae-4b7a-9557-77b252a5917b",
+      "name": "Manual Safe Test",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "ac5cc2cd-86af-44a0-be09-9bad2afc4c3b",
+      "name": "Prepare Safe Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -980,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [{json:{\n  topic: 'SatisfyForge safe research test',\n  query: 'Validate a public source and route it to human review',\n  sourceUrl: 'https://example.com/',\n  sourceTitle: 'Example Domain',\n  proposedAction: 'Review research finding only',\n  workflowClass: 'Research',\n  accountIdentity: 'UNVERIFIED_TEST_ONLY',\n  identityVerified: false,\n  liveActionAllowed: false,\n  freeResourceVerified: true\n}}];"
+      }
+    },
+    {
+      "id": "eaa698b8-3f0c-4203-afec-82eb35f8f385",
+      "name": "Build Safe Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -760,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const x = $input.first().json;\nfunction norm(s=''){return String(s).trim().toLowerCase().replace(/\\s+/g,' ')}\nlet canonical=x.sourceUrl||'';\ntry {\n  const u=new URL(canonical);\n  u.hash='';\n  for (const k of [...u.searchParams.keys()]) if (/^(utm_|fbclid|gclid)/i.test(k)) u.searchParams.delete(k);\n  canonical=u.toString().replace(/\\/$/,'');\n} catch(e) {}\nconst dedupKey=['sf','research',norm(x.accountIdentity),norm(x.topic),norm(canonical)].join('|');\nreturn [{json:{...x,canonicalUrl:canonical,dedupKey,researchKey:dedupKey,queueId:'TEST-QUEUE-SAFE-001',researchId:'TEST-RESEARCH-SAFE-001',verificationStatus:'Needs Review',reviewStatus:'Needs Review',lastChecked:new Date().toISOString(),gateStatus:'BLOCKED_UNTIL_IDENTITY_AND_REVIEW'}}];"
+      }
+    },
+    {
+      "id": "da24b6cc-a588-4d87-b120-01024a35710b",
+      "name": "Find Existing Review Item",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -520,
+        0
+      ],
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appCOTV6T99fj1s2z",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblwaK5xkOjIbaeN8",
+          "mode": "id"
+        },
+        "filterByFormula": "={Dedup Key}='{{ $(\"Build Safe Payload\").first().json.dedupKey.replace(/'/g,\"\\'\") }}' ",
+        "options": {}
+      },
+      "alwaysOutputData": true,
+      "notes": "Credential intentionally not embedded. Attach the existing SatisfyForge Airtable credential after account verification."
+    },
+    {
+      "id": "d2456573-987a-4640-9d04-4053081b4dd2",
+      "name": "Duplicate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -280,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ad1cbf40-77dd-4366-af61-0d59d827dfda",
+              "leftValue": "={{ $json.id || \"\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "0b22872a-1b95-4de6-ac71-39896514d4fc",
+      "name": "Duplicate Stop",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -180
+      ],
+      "parameters": {},
+      "notes": "Fail closed. A duplicate key ends the run before any new record or external action."
+    },
+    {
+      "id": "c78434e0-bc72-4e26-9018-a23e8dd3d9b0",
+      "name": "Fetch Public Source",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -40,
+        100
+      ],
+      "parameters": {
+        "url": "={{ $(\"Build Safe Payload\").first().json.canonicalUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "notes": "Free public HTTP fetch only. No paid AI/API service. Keep workflow inactive while testing."
+    },
+    {
+      "id": "fc9933ec-0c4e-42a9-8f35-238a23bca386",
+      "name": "Extract Evidence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        180,
+        100
+      ],
+      "parameters": {
+        "jsCode": "const src=$input.first().json;\nconst p=$(\"Build Safe Payload\").first().json;\nlet text='';\nif (typeof src === 'string') text=src;\nelse if (typeof src.data === 'string') text=src.data;\nelse if (typeof src.body === 'string') text=src.body;\nelse text=JSON.stringify(src);\ntext=text.replace(/<script[\\s\\S]*?<\\/script>/gi,' ').replace(/<style[\\s\\S]*?<\\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/\\s+/g,' ').trim();\nconst evidence=text.slice(0,1200) || 'Public source fetched; no extractable text found.';\nreturn [{json:{...p,evidence}}];"
+      }
+    },
+    {
+      "id": "0a9863ce-1ce1-4afb-a7e9-9d858970de1a",
+      "name": "Write Research Run",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        420,
+        100
+      ],
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appCOTV6T99fj1s2z",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblMEiMbaEHYgTS4B",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Research ID": "={{ $json.researchId }}",
+            "Topic": "={{ $json.topic }}",
+            "Query": "={{ $json.query }}",
+            "Research Key": "={{ $json.researchKey }}",
+            "Source URL": "={{ $json.canonicalUrl }}",
+            "Source Title": "={{ $json.sourceTitle }}",
+            "Evidence": "={{ $json.evidence }}",
+            "Verification Status": "={{ $json.verificationStatus }}",
+            "Account Identity": "={{ $json.accountIdentity }}",
+            "Free Resource Verified": "={{ $json.freeResourceVerified }}",
+            "Review Queue ID": "={{ $json.queueId }}",
+            "n8n Execution ID": "={{ $execution.id }}",
+            "Last Checked": "={{ $json.lastChecked }}"
+          },
+          "schema": [
+            {
+              "id": "Research ID",
+              "displayName": "Research ID",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Topic",
+              "displayName": "Topic",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Query",
+              "displayName": "Query",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Research Key",
+              "displayName": "Research Key",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source URL",
+              "displayName": "Source URL",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source Title",
+              "displayName": "Source Title",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Evidence",
+              "displayName": "Evidence",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Verification Status",
+              "displayName": "Verification Status",
+              "type": "options",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Account Identity",
+              "displayName": "Account Identity",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Free Resource Verified",
+              "displayName": "Free Resource Verified",
+              "type": "boolean",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Review Queue ID",
+              "displayName": "Review Queue ID",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "n8n Execution ID",
+              "displayName": "n8n Execution ID",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Last Checked",
+              "displayName": "Last Checked",
+              "type": "dateTime",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "notes": "Safe internal write only. Credential intentionally omitted from export."
+    },
+    {
+      "id": "531b8954-dd61-4bcc-97e5-d043138fff9c",
+      "name": "Write Review Queue",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        660,
+        100
+      ],
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appCOTV6T99fj1s2z",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblwaK5xkOjIbaeN8",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Queue ID": "={{ $(\"Build Safe Payload\").first().json.queueId }}",
+            "Title": "={{ $(\"Build Safe Payload\").first().json.topic }}",
+            "Workflow": "Research",
+            "Status": "Needs Review",
+            "Account Identity": "={{ $(\"Build Safe Payload\").first().json.accountIdentity }}",
+            "Dedup Key": "={{ $(\"Build Safe Payload\").first().json.dedupKey }}",
+            "Source URL": "={{ $(\"Build Safe Payload\").first().json.canonicalUrl }}",
+            "Summary": "Source-backed research item routed for human review.",
+            "Evidence": "={{ $(\"Extract Evidence\").first().json.evidence }}",
+            "Proposed Action": "={{ $(\"Build Safe Payload\").first().json.proposedAction }}",
+            "Risk Notes": "Identity is intentionally unverified in safe test mode. No live action is authorized.",
+            "Live Action Allowed": false
+          },
+          "schema": [
+            {
+              "id": "Queue ID",
+              "displayName": "Queue ID",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Workflow",
+              "displayName": "Workflow",
+              "type": "options",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "type": "options",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Account Identity",
+              "displayName": "Account Identity",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Dedup Key",
+              "displayName": "Dedup Key",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source URL",
+              "displayName": "Source URL",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Evidence",
+              "displayName": "Evidence",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Proposed Action",
+              "displayName": "Proposed Action",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Risk Notes",
+              "displayName": "Risk Notes",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Live Action Allowed",
+              "displayName": "Live Action Allowed",
+              "type": "boolean",
+              "display": true,
+              "required": false,
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "notes": "Human review gate. Live Action Allowed is hard-coded false in this draft."
+    },
+    {
+      "id": "2f592f7a-df4c-497d-9314-981ccb9c1b2e",
+      "name": "Hard Stop \u2014 No Live Actions",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        900,
+        100
+      ],
+      "parameters": {},
+      "notes": "Terminal node by design. No publish, outreach, purchase, or activation node exists in this workflow."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Safe Test": {
+      "main": [
+        [
+          {
+            "node": "Prepare Safe Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Safe Input": {
+      "main": [
+        [
+          {
+            "node": "Build Safe Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Safe Payload": {
+      "main": [
+        [
+          {
+            "node": "Find Existing Review Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Existing Review Item": {
+      "main": [
+        [
+          {
+            "node": "Duplicate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate?": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Stop",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Public Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Public Source": {
+      "main": [
+        [
+          {
+            "node": "Extract Evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Evidence": {
+      "main": [
+        [
+          {
+            "node": "Write Research Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Research Run": {
+      "main": [
+        [
+          {
+            "node": "Write Review Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Review Queue": {
+      "main": [
+        [
+          {
+            "node": "Hard Stop \u2014 No Live Actions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5c9cec66-29c2-4c9d-bf3f-900dce55e793",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
