@@ -4,8 +4,8 @@ import argparse, os, shutil, signal, subprocess, sys, tempfile, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PASS_RESULT = "SF_MP_PROBE_RESULT ok=true result=PASS:two_players_initialized"
-FAIL_RESULT = "SF_MP_PROBE_RESULT ok=true result=FAIL:expected_two_players"
+PASS_RESULT = "SF_MP_PROBE_RESULT ok=true result=PASS:multiplayer_behavior"
+FAIL_RESULT = "SF_MP_PROBE_RESULT ok=true result=FAIL:"
 
 
 def find_studio(explicit: str | None) -> Path:
@@ -50,7 +50,8 @@ def one_attempt(studio: Path, place: Path, log: Path, timeout: int) -> tuple[boo
     try:
         while time.monotonic()<deadline:
             text=log.read_text(encoding='utf-8',errors='replace') if log.exists() else ''
-            if '[FLog::CreatorError]' in text:
+            creator_errors=[line for line in text.splitlines() if '[FLog::CreatorError]' in line and 'Server Kick Message: SatisfyForge automated leave-isolation test' not in line]
+            if creator_errors:
                 result='creator_error'; break
             if PASS_RESULT in text:
                 result='pass'; break

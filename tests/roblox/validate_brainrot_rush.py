@@ -70,6 +70,7 @@ def validate_server(server: str) -> None:
             'math.min(MAX_COMBO, combo + 1)',
             'local eventMultiplier = snackquakeActive and 2 or 1',
             'announce:FireAllClients("SNACKQUAKE!',
+            'announce:FireAllClients(player.DisplayName .. " found LEGENDARY Brainrot! +" .. payout)',
         ],
         "combo and Snackquake contract",
     )
