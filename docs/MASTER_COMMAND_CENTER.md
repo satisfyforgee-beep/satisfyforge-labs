@@ -63,6 +63,7 @@ This file is the canonical non-sensitive operating index for work that used to b
 - Completed payment and automatic fulfillment have not been transaction-tested; do not claim otherwise.
 - A later GitHub-cloud browser check was blocked by Payhip/Cloudflare 403 before page load; this is a runner-access limitation, not evidence the product disappeared.
 - Canonical status: `docs/CREATOR_KIT_STATUS.md`.
+- Canonical organic campaign asset: `sales/CREATOR_KIT_ORGANIC_LAUNCH_PACK.md`; promotion claims remain constrained by the untested completed-payment/automatic-fulfillment gate.
 
 ### Service sales / local business
 - Active offer families include:
