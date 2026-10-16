@@ -153,7 +153,9 @@ if p2.Parent ~= Players or p2:GetAttribute("Combo") ~= 4 then fail("remaining_pl
 local orb3 = waitFor(findOrb, 10)
 if not orb3 then fail("no_orb_after_leave") return end
 if not touchWith(p2, orb3) then fail("remaining_player_pickup_after_leave") return end
-if p2.leaderstats.Collected.Value ~= p2CollectedBeforeLeave + 1 then fail("remaining_player_reward_after_leave") return end
+if not waitFor(function() return p2.leaderstats.Collected.Value == p2CollectedBeforeLeave + 1 end, 3) then
+    fail("remaining_player_reward_after_leave") return
+end
 print("SF_MP_CHECK player_leave_isolation PASS")
 
 print("SF_MP_SERVER_PASS players_tested=2")

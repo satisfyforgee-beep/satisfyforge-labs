@@ -57,13 +57,17 @@ Goal: move Brainrot Rush from a repository prototype to a Roblox experience that
 Verified 2026-10-16 against private QA universe `10771127276`, place `103299455198893`. The test began with no profile, collected one real server-spawned Common Brainrot orb (`Brainrot=1`, `Collected=1`), stopped the play session, rejoined with the same values restored from `SatisfyForge_BrainrotRush_v1`, then removed the QA record and verified it returned to nil. Evidence is source-hash locked in `tests/roblox/brainrot_persistence_evidence.json`; changing the Brainrot server/client source invalidates the automated live-persistence gate until it is retested.
 
 ### Critical — mobile/device UX
-- [ ] Android phone portrait and landscape checks
-- [ ] iPhone-sized viewport simulation
-- [ ] Top HUD labels remain readable and do not overlap
-- [ ] Bottom hint does not cover Roblox controls
-- [ ] Proximity prompts are comfortable to use on touch
-- [ ] Collecting orbs does not require precision movement that feels bad on mobile
-- [ ] No important information depends only on hover/mouse behavior
+- [x] iPhone 16 portrait and landscape viewport simulation
+- [x] Galaxy A06 portrait and landscape viewport simulation
+- [x] Simulated top HUD bounds remain onscreen, stat labels meet minimum size, and top HUD does not overlap the bottom hint
+- [x] Simulated bottom hint remains onscreen in all four phone-shaped cases
+- [ ] Physical Android phone portrait and landscape checks
+- [ ] Physical iPhone check if an iPhone is available before launch
+- [ ] Proximity prompts are comfortable to use on real touch hardware
+- [ ] Collecting orbs does not require precision movement that feels bad on real mobile hardware
+- [ ] No important interaction depends only on hover/mouse behavior on a physical device
+
+Verified in Studio device simulation on 2026-10-16 by `tests/roblox/brainrot_mobile_harness.luau`: iPhone 16 at 393x852 and 852x393, Galaxy A06 at 360x800 and 800x360. This evidence covers viewport/layout regressions only; it does **not** count as physical touch-control verification.
 
 ## Retention tests for v0.4 candidate
 Do not add all of these blindly. Test one loop at a time and keep only what improves play sessions.
