@@ -37,7 +37,7 @@ Owning our publisher removes Buffer/Metricool limits, but it cannot remove the s
 - The Page and Instagram IDs were visually confirmed but are not stored in this public repository.
 - The temporary user access token appeared in screenshots and must be treated as exposed. It must be revoked/replaced; do not install or use it.
 - No token value was added to GitHub, and direct publishing remains disabled.
-- Before the first controlled Meta publish: generate a fresh credential, place only its value in GitHub Actions Secrets, verify the Page/Instagram IDs, run an empty-queue validation, reconcile Buffer/Metricool, then test one unique asset on one platform.
+- Before the first controlled Meta publish: generate a fresh credential, place only its value in GitHub Actions Secrets, verify the Page/Instagram IDs, run an empty-queue validation, reconcile any legacy Buffer/Wix queue, then test one unique asset on one platform. Metricool is retired and is not part of the cutover gate.
 
 
 Required repository secrets when those direct connections are ready:
@@ -122,12 +122,12 @@ New SatisfyForge projects should prefer customer-funded models: digital products
 
 ## Safe cutover checklist (October 2026)
 
-The GitHub Actions workflow polls every 30 minutes, but publishing requires both `DIRECT_PUBLISHER_ENABLED=true` and `DIRECT_PUBLISHER_IDENTITY_VERIFIED=true`, plus a nonempty `DIRECT_PUBLISHER_ACCOUNT_IDENTITY`. Leave all three unset while configuring connections. The queue is intentionally empty until each candidate post is reconciled against Buffer and Metricool.
+The GitHub Actions workflow polls every 30 minutes, but publishing requires both `DIRECT_PUBLISHER_ENABLED=true` and `DIRECT_PUBLISHER_IDENTITY_VERIFIED=true`, plus a nonempty `DIRECT_PUBLISHER_ACCOUNT_IDENTITY`. Leave all three unset while configuring connections. The queue is intentionally empty until each candidate post is reconciled against the remaining legacy Buffer/Wix queues. Metricool is retired and should not be reconnected or used as a publishing dependency.
 
 1. Account owner: approve official Meta, Google/YouTube and (if eligible) TikTok developer-app OAuth permissions for the **SatisfyForge business accounts only**. No personal email or password is to be placed in repository files. Store only approved platform credentials in GitHub Actions **Secrets**, with the exact names documented above. Platform review, app audit, and verified media domains may be required.
 2. Confirm all requested scopes, token expiry/refresh behavior, and that each API points to the intended business Page/channel. Check the GitHub Actions workflow for a successful test-only run with an empty queue; an empty-queue run does **not** prove API authorization.
-3. Before any live test, inspect Buffer/Metricool pending, sending, and sent posts; reserve a new, original test asset and unique future time on **one** channel, with no overlapping scheduler job. Confirm video URL is accessible to the platform and metadata is accurate.
+3. Before any live test, inspect the remaining legacy Buffer/Wix pending, sending, and sent posts; reserve a new, original test asset and unique future time on **one** channel, with no overlapping scheduler job. Confirm video URL is accessible to the platform and metadata is accurate.
 4. After the target business account identity is verified, set `DIRECT_PUBLISHER_ACCOUNT_IDENTITY`, set `DIRECT_PUBLISHER_IDENTITY_VERIFIED=true`, and only then enable `DIRECT_PUBLISHER_ENABLED=true`. Add only an approved test job whose `account_identity` matches and whose `approved_for_direct_publish` is `true`; verify the actual platform URL, public visibility, state record, and no duplicates. A platform API rejection means return the switch to off and retain Buffer.
-5. Repeat separately for each supported platform. Only after a successful end-to-end test and a reconciled queue should the owner disable corresponding Buffer/Metricool schedules. Do not remove existing queued posts blindly.
+5. Repeat separately for each supported platform. Only after a successful end-to-end test and a reconciled queue should the owner disable the corresponding legacy Buffer/Wix schedules. Do not remove existing queued posts blindly.
 
 **Known fallback queue at last check:** five scheduled Facebook posts in Buffer for October 15–18, 2026. Re-check live statuses at cutover; this count is not a permanent source of truth. No direct publishing, successful API credentials, or public posting is implied by passing unit tests.
