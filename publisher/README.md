@@ -12,6 +12,7 @@ The publisher can run from GitHub Actions on a schedule and call the official pl
 
 - `queue.json` — one source of truth for scheduled content.
 - `state.json` — records per-platform publish state to prevent accidental duplicates.
+- `history.json` — permanent no-repost and completed-concept guard used before any write.
 - `run.py` — proven v1 queue/state engine and Instagram, YouTube, TikTok adapters.
 - `run_v2.py` — current entry point. Adds direct Facebook Page Reels while reusing v1 queue/state/duplicate protection.
 - `test_run_v2.py` — contract tests for the Facebook hosted-Reel flow.
@@ -69,6 +70,8 @@ Never commit tokens, passwords, OTPs, bank information, or tax information to th
       "id": "example-v1",
       "approved_for_direct_publish": true,
       "account_identity": "verified-satisfyforge-business",
+      "concept_key": "unique-story-slug",
+      "media_sha256": "64-character-lowercase-sha256-hex",
       "publish_at": "2026-10-13T14:00:00Z",
       "video_url": "https://example.com/video.mp4",
       "platforms": {
@@ -106,6 +109,7 @@ Never commit tokens, passwords, OTPs, bank information, or tax information to th
 - A platform marked `sent` in `state.json` is never posted again automatically.
 - Ambiguous network failures are marked `needs_check`, not blindly retried.
 - Unsafe or duplicated queue data stops the run before any platform API is contacted.
+- `history.json` blocks permanent no-repost topics, completed concepts, completed media hashes, duplicate queued concepts, and duplicate queued media hashes.
 - The runner does not spend money.
 - No posting happens until the platform's own API authorization is present.
 - AI-content disclosure fields are carried when supported by the direct adapter.

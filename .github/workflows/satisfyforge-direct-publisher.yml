@@ -48,8 +48,9 @@ jobs:
       - name: Syntax and contract checks
         working-directory: publisher
         run: |
-          python -m py_compile run.py run_v2.py test_*.py
+          python -m py_compile run.py run_v2.py preflight.py test_*.py
           python -m unittest discover -v
+          python preflight.py
 
   publish:
     needs: validate

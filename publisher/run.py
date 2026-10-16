@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import mimetypes
 import os
+import re
 import tempfile
 import time
 from datetime import datetime, timezone
@@ -23,6 +24,7 @@ import requests
 ROOT = Path(__file__).resolve().parent
 QUEUE_PATH = ROOT / "queue.json"
 STATE_PATH = ROOT / "state.json"
+HISTORY_PATH = ROOT / "history.json"
 HTTP_TIMEOUT = 60
 SUPPORTED_PLATFORMS = {"instagram", "facebook", "youtube", "tiktok"}
 
@@ -61,18 +63,40 @@ def require_env(name: str) -> str:
     return value
 
 
-def validate_queue(queue: Dict[str, Any], expected_account_identity: str | None = None) -> None:
+def normalize_concept(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-")
+
+
+def validate_media_sha256(value: Any, item_id: str) -> str:
+    digest = str(value or "").strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise ValueError(f"{item_id}: media_sha256 must be a 64-character SHA-256 hex digest")
+    return digest
+
+
+def validate_queue(
+    queue: Dict[str, Any],
+    expected_account_identity: str | None = None,
+    history: Dict[str, Any] | None = None,
+) -> None:
     """Fail closed before any platform write when queue data is unsafe.
 
-    This guards the cloud runner against duplicated jobs, malformed timestamps,
-    unsupported platforms, and exact same-time duplicate submissions. Validation
-    happens before state is changed or a platform API is contacted.
+    In addition to malformed jobs, this blocks concepts/assets already recorded
+    as completed or permanently retired and prevents the same concept or media
+    hash from being queued twice under different IDs/times.
     """
     items = queue.get("items")
     if not isinstance(items, list):
         raise ValueError("queue.items must be a list")
 
+    history = history if history is not None else load_json(HISTORY_PATH, {})
+    blocked_concepts = {normalize_concept(str(x)) for x in history.get("blocked_concepts", [])}
+    completed_concepts = {normalize_concept(str(x)) for x in history.get("completed_concepts", [])}
+    completed_hashes = {str(x).strip().lower() for x in history.get("completed_media_sha256", [])}
+
     ids: set[str] = set()
+    queued_concepts: set[str] = set()
+    queued_hashes: set[str] = set()
     exact_jobs: set[tuple[str, str, str]] = set()
     for index, item in enumerate(items):
         if not isinstance(item, dict):
@@ -92,6 +116,24 @@ def validate_queue(queue: Dict[str, Any], expected_account_identity: str | None 
             raise ValueError(f"{item_id}: account_identity is required")
         if expected_account_identity is not None and account_identity != expected_account_identity:
             raise ValueError(f"{item_id}: account_identity does not match verified publisher identity")
+
+        concept_key = normalize_concept(str(item.get("concept_key", "")))
+        if not concept_key:
+            raise ValueError(f"{item_id}: concept_key is required")
+        if concept_key in blocked_concepts:
+            raise ValueError(f"{item_id}: concept_key is permanently blocked: {concept_key}")
+        if concept_key in completed_concepts:
+            raise ValueError(f"{item_id}: concept_key is already completed: {concept_key}")
+        if concept_key in queued_concepts:
+            raise ValueError(f"duplicate queued concept: {concept_key}")
+        queued_concepts.add(concept_key)
+
+        media_sha256 = validate_media_sha256(item.get("media_sha256"), item_id)
+        if media_sha256 in completed_hashes:
+            raise ValueError(f"{item_id}: media_sha256 is already completed")
+        if media_sha256 in queued_hashes:
+            raise ValueError(f"duplicate queued media_sha256: {media_sha256}")
+        queued_hashes.add(media_sha256)
 
         publish_at = item.get("publish_at")
         if not isinstance(publish_at, str):
