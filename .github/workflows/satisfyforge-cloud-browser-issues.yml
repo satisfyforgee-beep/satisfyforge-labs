@@ -15,6 +15,7 @@ jobs:
     timeout-minutes: 12
     env:
       SF_BROWSER_STATE_GZIP_B64: ${{ secrets.SF_BROWSER_STATE_GZIP_B64 }}
+      SF_MUTATIONS_ARMED: ${{ vars.SF_BROWSER_MUTATIONS_ARMED }}
       ISSUE_BODY: ${{ github.event.issue.body }}
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       GH_TOKEN: ${{ github.token }}
