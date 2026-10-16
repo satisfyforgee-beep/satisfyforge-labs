@@ -3,12 +3,14 @@ import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import { chromium } from "playwright";
-import { tasks } from "./tasks.mjs";
+import { mutationTasks, tasks } from "./tasks.mjs";
 import { localTasks } from "./local-tasks.mjs";
 
 const allTasks = { ...tasks, ...localTasks };
 const taskName = process.env.SF_TASK || "smoke";
 const allowMutations = String(process.env.SF_ALLOW_MUTATIONS || "false").toLowerCase() === "true";
+const mutationsArmed = String(process.env.SF_MUTATIONS_ARMED || "false").toLowerCase() === "true";
+const taskIsMutation = mutationTasks.has(taskName);
 const stateGzipB64 = process.env.SF_BROWSER_STATE_GZIP_B64 || "";
 const resultPath = process.env.SF_RESULT_PATH || "result.json";
 
@@ -21,6 +23,16 @@ function emit(result, stream = "log") {
 if (!allTasks[taskName]) {
   emit({ ok: false, task: taskName, code: "UNKNOWN_TASK" }, "error");
   process.exit(2);
+}
+
+if (taskIsMutation && !allowMutations) {
+  emit({ ok: false, task: taskName, code: "MUTATION_NOT_ALLOWED", mutationMode: false, mutationsArmed }, "error");
+  process.exit(4);
+}
+
+if (taskIsMutation && !mutationsArmed) {
+  emit({ ok: false, task: taskName, code: "MUTATIONS_NOT_ARMED", mutationMode: true, mutationsArmed: false }, "error");
+  process.exit(5);
 }
 
 let storageStatePath;
@@ -63,6 +75,7 @@ try {
     ...result,
     task: taskName,
     mutationMode: allowMutations,
+    mutationsArmed,
     authLoaded
   };
   emit(safeResult);
@@ -74,6 +87,7 @@ try {
     code: error.code || "TASK_FAILED",
     message: error.code || error.message || "Task failed",
     mutationMode: allowMutations,
+    mutationsArmed,
     authLoaded
   }, "error");
   process.exitCode = 1;

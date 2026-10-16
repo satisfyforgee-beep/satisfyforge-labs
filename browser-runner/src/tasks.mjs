@@ -36,6 +36,8 @@ async function checkPublicPage(page, url, label) {
   };
 }
 
+export const mutationTasks = new Set(["payhip-fix-tool-vault-49"]);
+
 export const tasks = {
   async smoke({ page }) {
     await page.goto("https://example.com", { waitUntil: "domcontentloaded" });

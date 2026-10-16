@@ -1,0 +1,33 @@
+name: SatisfyForge browser mutation safety contract
+
+on:
+  push:
+    paths:
+      - "browser-runner/**"
+      - ".github/workflows/satisfyforge-cloud-browser*.yml"
+      - ".github/workflows/satisfyforge-control-worker.yml"
+      - ".github/workflows/satisfyforge-browser-safety-contract.yml"
+  pull_request:
+    paths:
+      - "browser-runner/**"
+      - ".github/workflows/satisfyforge-cloud-browser*.yml"
+      - ".github/workflows/satisfyforge-control-worker.yml"
+      - ".github/workflows/satisfyforge-browser-safety-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Validate browser mutation gates
+        run: python3 browser-runner/validate_safety.py
+      - name: Check JavaScript syntax
+        run: |
+          node --check browser-runner/src/runner.mjs
+          node --check browser-runner/src/tasks.mjs
