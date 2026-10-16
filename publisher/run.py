@@ -61,7 +61,7 @@ def require_env(name: str) -> str:
     return value
 
 
-def validate_queue(queue: Dict[str, Any]) -> None:
+def validate_queue(queue: Dict[str, Any], expected_account_identity: str | None = None) -> None:
     """Fail closed before any platform write when queue data is unsafe.
 
     This guards the cloud runner against duplicated jobs, malformed timestamps,
@@ -84,6 +84,14 @@ def validate_queue(queue: Dict[str, Any]) -> None:
         if item_id in ids:
             raise ValueError(f"duplicate queue item id: {item_id}")
         ids.add(item_id)
+
+        if item.get("approved_for_direct_publish") is not True:
+            raise ValueError(f"{item_id}: approved_for_direct_publish must be true")
+        account_identity = str(item.get("account_identity", "")).strip()
+        if not account_identity:
+            raise ValueError(f"{item_id}: account_identity is required")
+        if expected_account_identity is not None and account_identity != expected_account_identity:
+            raise ValueError(f"{item_id}: account_identity does not match verified publisher identity")
 
         publish_at = item.get("publish_at")
         if not isinstance(publish_at, str):
@@ -382,9 +390,21 @@ def publish_platform(platform: str, video_url: str, cfg: Dict[str, Any]) -> Dict
     raise PublishError(f"Unsupported direct platform: {platform}")
 
 
+def require_runtime_publish_identity() -> str:
+    if os.environ.get("SF_DIRECT_PUBLISHER_ENABLED", "").lower() != "true":
+        raise PublishError("DIRECT_PUBLISHER_DISABLED")
+    if os.environ.get("SF_PUBLISH_ACCOUNT_IDENTITY_VERIFIED", "").lower() != "true":
+        raise PublishError("PUBLISH_ACCOUNT_IDENTITY_NOT_VERIFIED")
+    identity = os.environ.get("SF_PUBLISH_ACCOUNT_IDENTITY", "").strip()
+    if not identity:
+        raise PublishError("PUBLISH_ACCOUNT_IDENTITY_MISSING")
+    return identity
+
+
 def main() -> int:
+    expected_identity = require_runtime_publish_identity()
     queue = load_json(QUEUE_PATH, {"items": []})
-    validate_queue(queue)
+    validate_queue(queue, expected_account_identity=expected_identity)
     state = load_json(STATE_PATH, {"items": {}})
     state_items = state.setdefault("items", {})
     changed = False
