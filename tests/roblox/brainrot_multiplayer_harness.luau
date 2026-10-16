@@ -107,7 +107,39 @@ local afterTotal = p1.leaderstats.Collected.Value + p2.leaderstats.Collected.Val
 if afterTotal ~= beforeTotal + 1 then fail("double_award") return end
 print("SF_MP_CHECK simultaneous_touch_single_award PASS")
 
--- 3) Upgrade prompt changes only the player who triggers it.
+-- 3) Combo caps at MAX_COMBO and resets after the combo window.
+p2:SetAttribute("Combo", 1)
+for i = 1, 6 do
+    local orb = waitFor(findOrb, 10)
+    if not orb then fail("no_orb_for_combo_" .. tostring(i)) return end
+    if not touchWith(p2, orb) then fail("combo_touch_failed_" .. tostring(i)) return end
+    task.wait(0.15)
+end
+if p2:GetAttribute("Combo") ~= 5 then fail("combo_cap") return end
+print("SF_MP_CHECK combo_cap PASS")
+task.wait(8.4)
+local resetOrb = waitFor(findOrb, 10)
+if not resetOrb then fail("no_orb_for_combo_reset") return end
+if not touchWith(p2, resetOrb) then fail("combo_reset_touch_failed") return end
+if not waitFor(function() return p2:GetAttribute("Combo") == 1 end, 3) then fail("combo_reset_window") return end
+print("SF_MP_CHECK combo_reset PASS")
+
+-- 4) Upgrade price progression and player isolation.
+p1.leaderstats.Brainrot.Value = 19
+p1.leaderstats.Level.Value = 0
+p1.Character.HumanoidRootPart.CFrame = arena.UpgradePad.CFrame + Vector3.new(0, 3, 0)
+local tooPoorReply = ask(p1, "trigger_prompt", "upgrade_too_poor", "UpgradePad", 8)
+if not tooPoorReply or not tooPoorReply.ok then fail("upgrade_too_poor_client") return end
+task.wait(0.5)
+if p1.leaderstats.Level.Value ~= 0 or p1.leaderstats.Brainrot.Value ~= 19 then fail("upgrade_allowed_without_cost") return end
+p1.leaderstats.Brainrot.Value = 20
+local exactReply = ask(p1, "trigger_prompt", "upgrade_exact", "UpgradePad", 8)
+if not exactReply or not exactReply.ok then fail("upgrade_exact_client") return end
+if not waitFor(function() return p1.leaderstats.Level.Value == 1 end, 4) then fail("upgrade_exact_no_effect") return end
+if p1.leaderstats.Brainrot.Value ~= 0 or p1:GetAttribute("NextUpgradeCost") ~= 80 then fail("upgrade_price_progression") return end
+print("SF_MP_CHECK upgrade_price_progression PASS")
+
+-- 5) Upgrade prompt changes only the player who triggers it.
 p1.leaderstats.Brainrot.Value = 500
 p1.leaderstats.Level.Value = 0
 p2.leaderstats.Brainrot.Value = 500
@@ -119,7 +151,16 @@ if not waitFor(function() return p1.leaderstats.Level.Value == 1 end, 4) then fa
 if p2.leaderstats.Level.Value ~= 0 or p2.leaderstats.Brainrot.Value ~= 500 then fail("upgrade_prompt_cross_player") return end
 print("SF_MP_CHECK upgrade_prompt_isolation PASS")
 
--- 4) Rebirth prompt changes only the player who triggers it.
+-- 6) Rebirth requires Level 20 + 2500 Brainrot and affects only the triggering player.
+p1.leaderstats.Brainrot.Value = 2499
+p1.leaderstats.Level.Value = 20
+p1.leaderstats.Rebirths.Value = 0
+p1.Character.HumanoidRootPart.CFrame = arena.RebirthPad.CFrame + Vector3.new(0, 3, 0)
+local deniedReply = ask(p1, "trigger_prompt", "rebirth_denied", "RebirthPad", 8)
+if not deniedReply or not deniedReply.ok then fail("rebirth_denied_client") return end
+task.wait(0.5)
+if p1.leaderstats.Rebirths.Value ~= 0 or p1.leaderstats.Level.Value ~= 20 or p1.leaderstats.Brainrot.Value ~= 2499 then fail("rebirth_requirement") return end
+print("SF_MP_CHECK rebirth_requirement PASS")
 p1.leaderstats.Brainrot.Value = 3000
 p1.leaderstats.Level.Value = 20
 p1.leaderstats.Rebirths.Value = 0
@@ -134,7 +175,7 @@ if p2.leaderstats.Brainrot.Value ~= p2Brainrot or p2.leaderstats.Level.Value ~= 
 end
 print("SF_MP_CHECK rebirth_prompt_isolation PASS")
 
--- 5) Player-specific announcements route to only the intended client.
+-- 7) Player-specific announcements route to only the intended client.
 local marker = "SF_TARGETED_ANNOUNCE_" .. tostring(math.floor(os.clock() * 1000))
 announce:FireClient(p2, marker)
 task.wait(0.25)
@@ -144,7 +185,7 @@ if not a1 or not a2 or not a1.ok or not a2.ok then fail("announce_probe_client")
 if a1.detail == true or a2.detail ~= true then fail("targeted_announce_isolation") return end
 print("SF_MP_CHECK targeted_announce_isolation PASS")
 
--- 6) One player leaving does not corrupt the remaining player's state or pickup loop.
+-- 8) One player leaving does not corrupt the remaining player's state or pickup loop.
 p2:SetAttribute("Combo", 4)
 local p2CollectedBeforeLeave = p2.leaderstats.Collected.Value
 p1:Kick("SatisfyForge automated leave-isolation test")

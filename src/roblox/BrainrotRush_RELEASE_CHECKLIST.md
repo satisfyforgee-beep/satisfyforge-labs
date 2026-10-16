@@ -29,13 +29,15 @@ Goal: move Brainrot Rush from a repository prototype to a Roblox experience that
 
 ### Critical — core gameplay
 - [ ] Common/Rare/Epic/Legendary orbs spawn at expected approximate ratios
-- [ ] One orb can be claimed only once
+- [x] One orb can be claimed only once
 - [ ] Orb count does not drift above MAX_ORBS during a 15-minute session
 - [ ] Orb cleanup correctly decrements active count
-- [ ] Combo resets after the combo window and caps at MAX_COMBO
-- [ ] Upgrade price progression matches the displayed NextUpgradeCost
-- [ ] Rebirth requires Level 20 + 2500 Brainrot and resets the intended values only
+- [x] Combo resets after the combo window and caps at MAX_COMBO
+- [x] Upgrade price progression matches the displayed NextUpgradeCost
+- [x] Rebirth requires Level 20 + 2500 Brainrot and resets the intended values only
 - [ ] Snackquake starts and ends cleanly and does not leave the event multiplier stuck on
+
+Verified by the two-client behavior harness on 2026-10-16: single-award pickup ownership, combo cap/reset, exact first-upgrade pricing and next-cost update, rebirth denial below 2500, successful rebirth reset, prompt isolation, targeted announcement isolation, and leave/rejoin-safe remaining-player pickup behavior.
 
 ### Critical — multiplayer
 - [x] Test with at least 2 local Studio players
