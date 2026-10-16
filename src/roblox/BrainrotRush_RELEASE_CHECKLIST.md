@@ -20,12 +20,12 @@ Goal: move Brainrot Rush from a repository prototype to a Roblox experience that
 ## Do not call the game public/live until all Critical checks pass
 
 ### Critical — Roblox Studio
-- [ ] Project opens in current Roblox Studio without syntax/runtime errors
-- [ ] Server script is in ServerScriptService
-- [ ] Client script is in StarterPlayerScripts
-- [ ] Remotes are created once and survive respawns correctly
-- [ ] Arena floor, spawn, upgrade pad and rebirth pad appear correctly
-- [ ] No duplicate arena geometry is created after a test-server restart
+- [x] Project opens in current Roblox Studio without syntax/runtime errors
+- [x] Server script is in ServerScriptService
+- [x] Client script is in StarterPlayerScripts
+- [x] Remotes are created once and survive respawns correctly
+- [x] Arena floor, spawn, upgrade pad and rebirth pad appear correctly
+- [x] No duplicate arena geometry is created after a test-server restart
 
 ### Critical — core gameplay
 - [ ] Common/Rare/Epic/Legendary orbs spawn at expected approximate ratios
@@ -38,12 +38,12 @@ Goal: move Brainrot Rush from a repository prototype to a Roblox experience that
 - [ ] Snackquake starts and ends cleanly and does not leave the event multiplier stuck on
 
 ### Critical — multiplayer
-- [ ] Test with at least 2 local Studio players
-- [ ] Players cannot receive another player's pickup reward
-- [ ] Simultaneous touches do not double-award an orb
+- [x] Test with at least 2 local Studio players
+- [x] Players cannot receive another player's pickup reward
+- [x] Simultaneous touches do not double-award an orb
 - [ ] Legendary announcements show the correct player
-- [ ] Upgrade/rebirth prompts affect only the triggering player
-- [ ] One player leaving does not break combos or state for remaining players
+- [x] Upgrade/rebirth prompts affect only the triggering player
+- [x] One player leaving does not break combos or state for remaining players
 
 ### Critical — persistence
 - [x] Enable Studio API access only in a safe test environment
@@ -125,11 +125,11 @@ Avoid for the initial launch:
 
 ## Public-launch gate
 Only mark Brainrot Rush as live/public when all of these are true:
-- [ ] Studio runtime passes
-- [ ] 2+ player test passes
-- [ ] persistence test passes
+- [x] Studio runtime passes
+- [x] 2+ player test passes
+- [x] persistence test passes
 - [ ] mobile test passes
-- [ ] no critical errors in Output
+- [x] no critical errors in Output
 - [ ] game icon/thumbnail/description exist
 - [ ] age/content questionnaire is reviewed by the account owner
 - [ ] privacy/monetization/platform declarations are truthful
