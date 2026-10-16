@@ -9,7 +9,7 @@ Updated 2026-10-14.
 - Narration task: completed from connected Runway free-workspace credits; no cash purchase was made.
 - Narration task ID: `52993f40-8ad8-4ae7-bbc0-8e40e0bcb3e8`.
 - Finished quality-gated vertical master: `great-molasses-flood-v5.mp4` in the SatisfyForge work folder.
-- Scheduled/social post: **not yet created**.
+- Scheduled/social posts: **created in Buffer on 2026-10-16** — Instagram Reel 18:05 ET (`6ad29b18c34368e4b095422a`), YouTube Short 18:20 ET (`6ad29b31c34368e4b0954d5f`), Facebook Reel 19:00 ET (`6ad29b4452adf2bfae62a3a2`).
 
 ## Verified v5 quality gate
 
@@ -29,7 +29,7 @@ Earlier v2/v3/v4 attempts were rejected during QA for static holds, bad crop, or
 
 ## Publishing boundary
 
-The v5 master has passed technical and motion QA, but it is not published or scheduled. Before scheduling, recheck Buffer, Metricool, Wix, recent live posts, platform timing, and the current approved media location. Do not overlap the First Computer Bug backlog or create duplicate feed versions.
+The v5 master passed technical and motion QA and is now scheduled through Buffer using the public GitHub-hosted master. Duplicate prevention is active: `great-molasses-flood` is blocked in the direct-publisher ledger while the Buffer posts are pending. Do not create any second feed version or Metricool retry. After confirmed sends, move the concept from blocked to completed and record the media SHA-256.
 
 ## Zero-spend boundary
 
