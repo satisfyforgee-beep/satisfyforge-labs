@@ -20,12 +20,12 @@ Goal: move Brainrot Rush from a repository prototype to a Roblox experience that
 ## Do not call the game public/live until all Critical checks pass
 
 ### Critical — Roblox Studio
-- [ ] Project opens in current Roblox Studio without syntax/runtime errors
-- [ ] Server script is in ServerScriptService
-- [ ] Client script is in StarterPlayerScripts
-- [ ] Remotes are created once and survive respawns correctly
-- [ ] Arena floor, spawn, upgrade pad and rebirth pad appear correctly
-- [ ] No duplicate arena geometry is created after a test-server restart
+- [x] Project opens in current Roblox Studio without syntax/runtime errors
+- [x] Server script is in ServerScriptService
+- [x] Client script is in StarterPlayerScripts
+- [x] Remotes are created once and survive respawns correctly
+- [x] Arena floor, spawn, upgrade pad and rebirth pad appear correctly
+- [x] No duplicate arena geometry is created after a test-server restart
 
 ### Critical — core gameplay
 - [ ] Common/Rare/Epic/Legendary orbs spawn at expected approximate ratios
@@ -38,12 +38,12 @@ Goal: move Brainrot Rush from a repository prototype to a Roblox experience that
 - [ ] Snackquake starts and ends cleanly and does not leave the event multiplier stuck on
 
 ### Critical — multiplayer
-- [ ] Test with at least 2 local Studio players
-- [ ] Players cannot receive another player's pickup reward
-- [ ] Simultaneous touches do not double-award an orb
+- [x] Test with at least 2 local Studio players
+- [x] Players cannot receive another player's pickup reward
+- [x] Simultaneous touches do not double-award an orb
 - [ ] Legendary announcements show the correct player
-- [ ] Upgrade/rebirth prompts affect only the triggering player
-- [ ] One player leaving does not break combos or state for remaining players
+- [x] Upgrade/rebirth prompts affect only the triggering player
+- [x] One player leaving does not break combos or state for remaining players
 
 ### Critical — persistence
 - [x] Enable Studio API access only in a safe test environment
@@ -57,13 +57,17 @@ Goal: move Brainrot Rush from a repository prototype to a Roblox experience that
 Verified 2026-10-16 against private QA universe `10771127276`, place `103299455198893`. The test began with no profile, collected one real server-spawned Common Brainrot orb (`Brainrot=1`, `Collected=1`), stopped the play session, rejoined with the same values restored from `SatisfyForge_BrainrotRush_v1`, then removed the QA record and verified it returned to nil. Evidence is source-hash locked in `tests/roblox/brainrot_persistence_evidence.json`; changing the Brainrot server/client source invalidates the automated live-persistence gate until it is retested.
 
 ### Critical — mobile/device UX
-- [ ] Android phone portrait and landscape checks
-- [ ] iPhone-sized viewport simulation
-- [ ] Top HUD labels remain readable and do not overlap
-- [ ] Bottom hint does not cover Roblox controls
-- [ ] Proximity prompts are comfortable to use on touch
-- [ ] Collecting orbs does not require precision movement that feels bad on mobile
-- [ ] No important information depends only on hover/mouse behavior
+- [x] iPhone 16 portrait and landscape viewport simulation
+- [x] Galaxy A06 portrait and landscape viewport simulation
+- [x] Simulated top HUD bounds remain onscreen, stat labels meet minimum size, and top HUD does not overlap the bottom hint
+- [x] Simulated bottom hint remains onscreen in all four phone-shaped cases
+- [ ] Physical Android phone portrait and landscape checks
+- [ ] Physical iPhone check if an iPhone is available before launch
+- [ ] Proximity prompts are comfortable to use on real touch hardware
+- [ ] Collecting orbs does not require precision movement that feels bad on real mobile hardware
+- [ ] No important interaction depends only on hover/mouse behavior on a physical device
+
+Verified in Studio device simulation on 2026-10-16 by `tests/roblox/brainrot_mobile_harness.luau`: iPhone 16 at 393x852 and 852x393, Galaxy A06 at 360x800 and 800x360. This evidence covers viewport/layout regressions only; it does **not** count as physical touch-control verification.
 
 ## Retention tests for v0.4 candidate
 Do not add all of these blindly. Test one loop at a time and keep only what improves play sessions.
@@ -121,11 +125,11 @@ Avoid for the initial launch:
 
 ## Public-launch gate
 Only mark Brainrot Rush as live/public when all of these are true:
-- [ ] Studio runtime passes
-- [ ] 2+ player test passes
-- [ ] persistence test passes
+- [x] Studio runtime passes
+- [x] 2+ player test passes
+- [x] persistence test passes
 - [ ] mobile test passes
-- [ ] no critical errors in Output
+- [x] no critical errors in Output
 - [ ] game icon/thumbnail/description exist
 - [ ] age/content questionnaire is reviewed by the account owner
 - [ ] privacy/monetization/platform declarations are truthful

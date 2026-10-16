@@ -33,14 +33,35 @@ def validate_server(server: str) -> None:
         server,
         [
             'game:GetService("DataStoreService")',
+            'local persistenceAvailable = false',
+            'local storeOk, storeResult = pcall(function()',
             'DataStoreService:GetDataStore(DATASTORE_NAME)',
+            'player:SetAttribute("PersistenceAvailable", persistenceAvailable)',
+            'local ok, data = pcall(function()',
             'store:GetAsync("u_" .. player.UserId)',
+            'local ok, err = pcall(function()',
             'store:SetAsync("u_" .. player.UserId, payload)',
+            'warn("Brainrot Rush load failed for "',
+            'warn("Brainrot Rush save failed for "',
             "Players.PlayerRemoving:Connect",
             "game:BindToClose",
             "task.wait(SAVE_INTERVAL)",
         ],
-        "persistence contract",
+        "persistence fail-closed contract",
+    )
+    require(
+        server,
+        [
+            'Brainrot = stats.Brainrot.Value',
+            'Collected = stats.Collected.Value',
+            'Level = stats.Level.Value',
+            'Rebirths = stats.Rebirths.Value',
+            'stats.Brainrot.Value = math.max(0, tonumber(data.Brainrot) or 0)',
+            'stats.Collected.Value = math.max(0, tonumber(data.Collected) or 0)',
+            'stats.Level.Value = math.clamp(tonumber(data.Level) or 0, 0, 20)',
+            'stats.Rebirths.Value = math.max(0, tonumber(data.Rebirths) or 0)',
+        ],
+        "persistence field contract",
     )
     require(
         server,
