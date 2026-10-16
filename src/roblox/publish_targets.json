@@ -5,5 +5,12 @@
     "place_id": 87195614010796,
     "access_at_capture": "Private",
     "verified_at": "2026-10-15"
+  },
+  "brainrot_rush_qa": {
+    "experience_name": "Brainrot Rush Private QA",
+    "universe_id": 10771127276,
+    "place_id": 103299455198893,
+    "access_at_capture": "Private",
+    "verified_at": "2026-10-15"
   }
 }
