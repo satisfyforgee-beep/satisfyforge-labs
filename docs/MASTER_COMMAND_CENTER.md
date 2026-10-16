@@ -113,13 +113,13 @@ This file is the canonical non-sensitive operating index for work that used to b
 
 ### Connected/verified routes
 - Direct Publisher PR #43 is merged. Its 30-minute workflow is fail-closed behind `DIRECT_PUBLISHER_ENABLED == 'true'`; keep it false until official API authorization, secret setup, queue reconciliation and controlled publish tests pass.
-- Metricool identity gate: current scheduled-item metadata identifies `cougarboy1999@gmail.com` as the creator. Do not create, update, delete, reschedule, or otherwise operate Metricool items until Metricool is explicitly reconnected under `satisfyforgee@gmail.com`. Preserve already-submitted First Computer Bug YouTube/TikTok items and let the Daily Publisher verify their terminal outcomes after the intended times; recover a definite failure only through an approved business-identity route.
+- Metricool is retired. Do not reconnect, query, schedule, retry, update, delete, or depend on it. Historical Metricool identifiers and outcomes may remain in verification records only.
 - Buffer organization: `6accef267d527c51692f8cf9`.
 - Instagram: `satisfyforgetv`.
 - Facebook: `satisfyforgetv`.
 - YouTube: `SatifyForgeVideos`.
 - TikTok: `satisfyforge14` through the verified zero-cost Wix Social Publisher route when available.
-- Metricool brand: `7271927`.
+- Historical Metricool brand ID: `7271927` (retired; reference only).
 
 ### Content strategy
 - Optimize for real revenue and audience growth, not vanity views.
@@ -127,7 +127,7 @@ This file is the canonical non-sensitive operating index for work that used to b
 - Current preferred factual short-form lane: narrated strange true stories, mysteries, creepy history, hidden details, and science/technology curiosities.
 - Strong first-second hook, frequent visual progression, polished narration/captions, clear payoff, truthful AI disclosure where required.
 - No filler posting just to maintain cadence.
-- Check Buffer, Metricool, Wix, and recent live posts before publishing so only one scheduler owns each post/platform/time.
+- Check Buffer, Wix Social Publisher, and recent live posts before any legacy publish or schedule action so only one route owns each post/platform/time. Do not include retired Metricool in the operating dependency chain.
 - Current platform strategy/research: `docs/GROWTH_SCAN_2026-10-13.md`.
 - Dancing Plague is now confirmed complete across all four major channels. TikTok was published automatically through Wix as item `4c739b11-04ff-47c0-befe-4a681cb0780c`; do not recreate or retry it.
 
