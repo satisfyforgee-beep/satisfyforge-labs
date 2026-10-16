@@ -4,14 +4,14 @@ Canonical public offer: `https://payhip.com/b/MSLBK`
 
 ## Last successful public verification
 
-On 2026-10-12, a signed-out public check verified that the page displayed:
+On 2026-10-16, a signed-out Chrome check verified that the page displayed:
 - `Strange True Story Shorts Creator Kit | SatisfyForge`
 - price `$7.99`
 - `Add to Cart` and `Buy Now` controls
 - the full product description
 - a 250 KB ZIP download disclosure
 
-This is enough to treat MSLBK as the canonical public product page for organic promotion as of that verification.
+This is enough to keep MSLBK as the canonical public product page for organic promotion as of that verification.
 
 ## 2026-10-13 owned cloud-browser recheck
 
@@ -32,4 +32,4 @@ Do not spend money just to test those items. Do not claim a sale or successful f
 
 ## Promotion rule
 
-Use MSLBK as the product link only when promoting the Creator Kit specifically. Keep the separate Tool Vault KLjBb checkout paused until its own price mismatch is resolved. Do not confuse the two offers.
+Use MSLBK as the product link only when promoting the Creator Kit specifically. Keep the separate Tool Vault `KLjBb` checkout quarantined: its $49 public price is verified, but default membership-template copy remains public and checkout/automatic fulfillment are still untested. Do not confuse the two offers.
