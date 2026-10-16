@@ -1,0 +1,13 @@
+{
+  "blocked_concepts": [
+    "lake-nyos",
+    "lake-peigneur",
+    "demon-core",
+    "operation-mincemeat"
+  ],
+  "completed_concepts": [
+    "dancing-plague",
+    "first-computer-bug"
+  ],
+  "completed_media_sha256": []
+}
