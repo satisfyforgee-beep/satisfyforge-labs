@@ -1,0 +1,27 @@
+name: SatisfyForge n8n safety contract
+
+on:
+  push:
+    paths:
+      - "n8n/**"
+      - ".github/workflows/satisfyforge-n8n-safety-contract.yml"
+  pull_request:
+    paths:
+      - "n8n/**"
+      - ".github/workflows/satisfyforge-n8n-safety-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Validate inactive fail-closed n8n research workflow
+        run: python3 n8n/validate_safe_research_workflow.py
+      - name: Validate workflow JSON syntax
+        run: python3 -m json.tool n8n/SatisfyForge_Operations_Safe_Research_Review_DRAFT.json >/dev/null
