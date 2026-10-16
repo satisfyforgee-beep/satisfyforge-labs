@@ -52,14 +52,14 @@ This file is the canonical non-sensitive operating index for work that used to b
 - Existing products should be reused/improved before creating near-duplicates.
 - Payment routing preference: Payhip/PayPal where verified.
 - Never expose Chime/bank details to customers.
-- Tool Vault checkout is currently treated as **paused/unverified** because a Payhip audit showed a price mismatch ($0 in Payhip while the site had advertised $49).
-- Do not promote or restore the Tool Vault paid checkout until the actual Payhip price is independently verified/corrected.
-- Earlier alleged service checkout URLs are also unverified and must not be used until rechecked.
+- 2026-10-16 signed-out Chrome verification confirmed the public Tool Vault plan at **$49**, but the offer remains **quarantined** because default Payhip membership-template copy is still publicly visible and completed checkout/automatic fulfillment are not transaction-tested.
+- 2026-10-16 signed-out Chrome verification also confirmed public Payhip pages for Lead Rescue Sprint at **$299** and Custom Platform / Licensing at **$5,000**. Both remain **quarantined** because they still expose default Payhip coaching-template content; do not promote or route customers to those checkout pages yet.
+- Keep quarantined offers on the safe Wix request/form flow until authenticated Payhip seller identity is verified, placeholder copy is replaced with reviewed SatisfyForge-specific copy, and the relevant checkout/fulfillment or service handoff is deliberately tested.
 - `commerce/checkout_registry.json` is the canonical machine-readable quarantine list. `scripts/validate_commerce_safety.py` blocks quarantined checkout URLs from customer-facing and automation surfaces.
 
 ### Verified digital offer
 - Strange True Story Shorts Creator Kit: `https://payhip.com/b/MSLBK`.
-- Last successful signed-out public verification on 2026-10-12 showed $7.99, correct product title, Add to Cart / Buy Now controls and ZIP disclosure.
+- Latest signed-out public verification on 2026-10-16 showed $7.99, correct product title, Add to Cart / Buy Now controls and ZIP disclosure.
 - Completed payment and automatic fulfillment have not been transaction-tested; do not claim otherwise.
 - A later GitHub-cloud browser check was blocked by Payhip/Cloudflare 403 before page load; this is a runner-access limitation, not evidence the product disappeared.
 - Canonical status: `docs/CREATOR_KIT_STATUS.md`.
@@ -96,9 +96,10 @@ This file is the canonical non-sensitive operating index for work that used to b
 - Follow `docs/LIVE_WIX_SITE_INVENTORY.md` before updating the site.
 - Wix Forms is the live lead intake source.
 - 2026-10-14 live verification: one enabled form, `SatisfyForge Growth Request` (ID `7632c6db-2dec-4fdc-ace7-3dd72ad81478`), is present with advanced spam protection and required email, business/project name, price-range interest and problem-description fields. The submission query returned **0 submissions**. The intake mechanism is configured; traffic and qualified response generation are the current bottlenecks.
-- Tool Vault purchase CTAs were placed into a safe paused/request state after the Payhip pricing mismatch was discovered.
-- The historical repository copies of `satisfyforge-site/index.html` and `pricing.html` have also been corrected so a future source-based deployment cannot accidentally restore the unsafe $49/direct-Payhip state.
-- Do not restore direct checkout CTAs until the checkout and price are verified.
+- Tool Vault purchase CTAs remain in a safe paused/request state. The $49 public price is now verified; the remaining blockers are unfinished public page copy, authenticated seller-identity verification, and transaction/fulfillment verification.
+- Lead Rescue Sprint ($299) and Custom Platform / Licensing ($5,000) are also quarantined from direct promotion because their public Payhip pages still show default coaching-template copy.
+- The historical repository copies of `satisfyforge-site/index.html` and `pricing.html` remain configured so a future source-based deployment does not expose quarantined Payhip checkout links.
+- Do not restore direct checkout CTAs until the corresponding `commerce/checkout_registry.json` entry is no longer quarantined after review and verification.
 - The owned Chromium worker has passed a full production-page smoke test plus the payment-link safety check.
 
 
