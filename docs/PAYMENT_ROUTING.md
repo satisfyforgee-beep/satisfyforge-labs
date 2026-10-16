@@ -9,17 +9,19 @@ SatisfyForge prefers PayPal as the customer-payment destination through a verifi
 - Do not ask customers to send money directly to a bank account.
 - Never tell a customer that a checkout is ready unless that exact URL, price, and product configuration have been verified.
 
-## Current payment safety hold — 2026-10-12
+## Current payment safety hold — 2026-10-16
 
-A Payhip audit showed the SatisfyForge Tool Vault dashboard/listing at **$0.00** while the Wix site was advertising it as **$49 one time**. Because of this mismatch, the direct Tool Vault purchase path is temporarily paused.
+Signed-out Chrome verification confirmed the following public Payhip prices and pages:
 
-The live Wix homepage and pricing page now route Tool Vault calls-to-action to the existing Wix request form rather than directly to the Payhip product. The site tells visitors that checkout is temporarily paused while payment setup is corrected.
+- Tool Vault `KLjBb` — **$49** Founding Lifetime Access.
+- Lead Rescue Sprint `hxbPR` — **$299**.
+- Custom Platform / Licensing `HXq9E` — **$5,000**.
 
-Do **not** advertise or send `https://payhip.com/b/KLjBb` as a $49 checkout until Payhip itself has been rechecked and the intended price is confirmed.
+All three remain **quarantined from promotion**. Tool Vault still exposes default Payhip membership-template copy. Lead Rescue Sprint and Custom Platform / Licensing still expose default Payhip coaching-template headings, example sections, and generic FAQ copy. Authenticated seller identity is not yet verified in the current session. Completed checkout/automatic fulfillment is still transaction-untested for the digital offer, and the service handoff/commercial terms must be reviewed before service checkout is promoted.
 
-Earlier automation state also contained six alleged Payhip coaching/service checkout URLs. Tool evidence about these conflicted, so they are **unverified**. Do not send or promote them until each URL, price, product type, terms, and status are independently rechecked in Payhip.
+The live Wix request/scope form remains the safe route for quarantined offers. Do not advertise or send those Payhip checkout URLs until the corresponding entry in `commerce/checkout_registry.json` has been cleared after identity, copy, terms, and required checkout/handoff verification.
 
-TinyFish interactive Payhip editing is currently blocked by a negative wallet balance. Under the standing zero-spend rule, do not top it up automatically. Continue other $0 work instead.
+The Strange True Story Shorts Creator Kit `MSLBK` was rechecked signed-out on 2026-10-16 at **$7.99** with the correct title, Add to Cart / Buy Now controls, full sales copy, and a **250 KB ZIP** disclosure. Successful completed payment and automatic file delivery remain unverified without a real transaction or supported seller-side fulfillment preview.
 
 ## Chime policy
 

@@ -1,13 +1,13 @@
 {
-  "updated_at": "2026-10-14",
+  "updated_at": "2026-10-16",
   "safe_request_url": "https://satisfyforgee.wixforms.com/f/7515509200923919388",
   "checkouts": [
     {
       "product_id": "KLjBb",
       "status": "quarantined",
-      "reason": "2026-10-14 independent signed-out browser verification: the public Tool Vault membership page shows Founding Lifetime Access at $49 and exposes the sign-up route, resolving the earlier public-price uncertainty. Promotion remains blocked because the public page still contains Payhip placeholder headings/copy (Membership Title, Example Text, Example Image with Text), the seller editor requires a fresh owner login, and final checkout total plus automatic fulfillment remain transaction-untested.",
+      "reason": "2026-10-16 independent signed-out Chrome verification: the public Tool Vault page shows Founding Lifetime Access at $49 and exposes a sign-up route. Promotion remains blocked because the public page still contains Payhip membership-template placeholders (including Membership Title and Example Text), authenticated seller identity is not yet verified in the current session, and final checkout total plus automatic fulfillment remain transaction-untested.",
       "price_verified_usd": 49,
-      "pricing_evidence": "Independent signed-out public page verification at https://payhip.com/b/KLjBb on 2026-10-14; Founding Lifetime Access displayed at $49."
+      "pricing_evidence": "Independent signed-out Chrome verification at https://payhip.com/b/KLjBb on 2026-10-16; Founding Lifetime Access displayed at $49."
     },
     {
       "product_id": "RrdbG",
@@ -16,8 +16,10 @@
     },
     {
       "product_id": "hxbPR",
-      "status": "unverified",
-      "reason": "Earlier service checkout claim had conflicting evidence."
+      "status": "quarantined",
+      "reason": "2026-10-16 independent signed-out Chrome verification: SatisfyForge Lead Rescue Sprint is publicly visible at $299 with a Sign Up control, but the sales page still contains default Payhip coaching-template headings, example sections, and generic coaching FAQ copy. Promotion remains blocked until the page is replaced with reviewed SatisfyForge-specific copy and the authenticated seller identity is verified.",
+      "price_verified_usd": 299,
+      "pricing_evidence": "Independent signed-out Chrome verification at https://payhip.com/b/hxbPR on 2026-10-16; pricing plan displayed at $299."
     },
     {
       "product_id": "zcfL6",
@@ -36,8 +38,10 @@
     },
     {
       "product_id": "HXq9E",
-      "status": "unverified",
-      "reason": "Earlier service checkout claim had conflicting evidence."
+      "status": "quarantined",
+      "reason": "2026-10-16 independent signed-out Chrome verification: SatisfyForge Custom Platform / Licensing is publicly visible at $5,000 with a Sign Up control, but the sales page still contains default Payhip coaching-template headings, example sections, and generic coaching FAQ copy. Promotion remains blocked until the page is replaced with reviewed SatisfyForge-specific scope/licensing copy and the authenticated seller identity is verified.",
+      "price_verified_usd": 5000,
+      "pricing_evidence": "Independent signed-out Chrome verification at https://payhip.com/b/HXq9E on 2026-10-16; pricing plan displayed at $5,000."
     }
   ]
 }

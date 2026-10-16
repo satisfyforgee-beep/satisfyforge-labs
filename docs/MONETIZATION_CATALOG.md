@@ -39,7 +39,7 @@ The recurring membership should deliver new useful material each month rather th
 **Verified current operating state**
 - Product: SatisfyForge Tool Vault
 - Known Payhip URL: `https://payhip.com/b/KLjBb`
-- Independent signed-out verification on 2026-10-14 confirmed **Founding Lifetime Access at $49** on the public page.
+- Independent signed-out Chrome verification on 2026-10-16 confirmed **Founding Lifetime Access at $49** on the public page.
 - The listing remains **quarantined from promotion** because the public page still contains Payhip placeholder headings/copy/images and the completed checkout plus automatic fulfillment path have not been transaction-tested.
 - Direct purchase CTAs on the live Wix site remain paused and route to the request form until the listing is cleaned and checkout/fulfillment are safely verified.
 - PayPal remains the preferred payment destination once the checkout is cleared.
@@ -55,6 +55,15 @@ Recurring Payhip billing requires Stripe. Stripe is not connected. Do not connec
 **Future recurring pricing candidate after verified recurring-billing setup**
 - $9/month Founding Monthly
 - $79/year Founding Annual
+
+### Public service checkout quarantine — 2026-10-16
+
+Two previously unverified Payhip service pages were independently rechecked signed-out:
+
+- Lead Rescue Sprint `hxbPR` — public price **$299**; **quarantined** because the page still exposes default Payhip coaching-template copy and generic coaching FAQ text.
+- Custom Platform / Licensing `HXq9E` — public price **$5,000**; **quarantined** because the page still exposes default Payhip coaching-template copy and its deposit/full-price structure, scope, IP/license terms, support, refund language, and post-purchase handoff still require explicit review.
+
+Use the Wix request/scope path instead of those checkout URLs until their registry entries are cleared. Draft replacement copy is in `sales/PAYHIP_STOREFRONT_REPLACEMENT_COPY_2026-10-16.md`.
 
 ## 4. White-label mini-apps and calculators
 
