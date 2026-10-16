@@ -46,12 +46,15 @@ Goal: move Brainrot Rush from a repository prototype to a Roblox experience that
 - [ ] One player leaving does not break combos or state for remaining players
 
 ### Critical — persistence
-- [ ] Enable Studio API access only in a safe test environment
-- [ ] Join, earn Brainrot, upgrade and rebirth; leave; rejoin; values restore correctly
+- [x] Enable Studio API access only in a safe test environment
+- [x] Join private QA, earn Brainrot through a real orb pickup, leave, rejoin; Brainrot and Collected restore correctly
+- [ ] Upgrade and rebirth; leave; rejoin; Level/Rebirths and intended values restore correctly
 - [ ] A failed DataStore request does not crash the session
 - [ ] Autosave does not visibly freeze gameplay
 - [ ] Server shutdown save completes for test players
 - [ ] Decide whether v1 release needs stronger session locking before public scale
+
+Verified 2026-10-16 against private QA universe `10771127276`, place `103299455198893`. The test began with no profile, collected one real server-spawned Common Brainrot orb (`Brainrot=1`, `Collected=1`), stopped the play session, rejoined with the same values restored from `SatisfyForge_BrainrotRush_v1`, then removed the QA record and verified it returned to nil. Evidence is source-hash locked in `tests/roblox/brainrot_persistence_evidence.json`; changing the Brainrot server/client source invalidates the automated live-persistence gate until it is retested.
 
 ### Critical — mobile/device UX
 - [ ] Android phone portrait and landscape checks

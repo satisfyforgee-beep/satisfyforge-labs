@@ -1,0 +1,35 @@
+{
+  "passed": true,
+  "verified_at": "2026-10-16T10:40:26Z",
+  "method": "private QA Studio live DataStore gameplay earn -> leave -> rejoin",
+  "experience_name": "Brainrot Rush Private QA",
+  "universe_id": 10771127276,
+  "place_id": 103299455198893,
+  "datastore": "SatisfyForge_BrainrotRush_v1",
+  "initial_profile": null,
+  "before": {
+    "Brainrot": 0,
+    "Collected": 0,
+    "Level": 0,
+    "Rebirths": 0
+  },
+  "after_gameplay_touch": {
+    "Brainrot": 1,
+    "Collected": 1,
+    "Level": 0,
+    "Rebirths": 0
+  },
+  "after_rejoin": {
+    "Brainrot": 1,
+    "Collected": 1,
+    "Level": 0,
+    "Rebirths": 0
+  },
+  "persistence_available_attribute": true,
+  "cleanup_restored_nil": true,
+  "source_sha256": {
+    "server": "1e14de882e85a83da9ca5b1c1e2c2a877d764520792f1cf64365a2d23fd81005",
+    "client": "19237e46fa80164295458a16a3dcfe57eda4fc77c7373f1a41f8052c8fb27561"
+  },
+  "notes": "A real server-spawned Common Brainrot orb was collected through the gameplay touch path. PlayerRemoving saved the profile, a new Studio play session reloaded Brainrot=1 and Collected=1, then the test record was removed and verified nil. Upgrade/rebirth persistence remains a separate checklist item."
+}

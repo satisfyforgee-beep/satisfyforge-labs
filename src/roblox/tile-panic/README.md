@@ -10,12 +10,21 @@ Separate Roblox survival-game prototype extracted from the verified root archive
 - Simple survivor tracking.
 - Winners receive 1 session-only Win and 50 session-only Coins.
 - Server-created HUD, lobby spawn, arena and round loop.
+- Server-side arena boundary checks every 0.2 seconds: contestants who escape to the safe lobby, fall, or fly outside the arena are eliminated rather than rewarded as survivors.
+- Contestants are assigned distinct starting tiles until all 64 are used, avoiding unnecessary spawn overlaps in ordinary servers.
+
+## Verified October 16, 2026 regression
+
+- Rojo build and real Roblox Studio engine smoke: **PASS** (64 tiles, lobby and arena loaded).
+- Two-client Roblox Studio multiplayer boundary test: **PASS**. One client left the arena for the lobby and was returned as eliminated; the second client's position remained unchanged.
+- Automated runner: `python3 tools/roblox-studio/run_tile_multiplayer.py`.
+- These checks do not establish full 18-wave payout correctness, mobile controls, live DataStore saving, performance on low-end phones, or public-launch readiness.
 
 ## Source
 
 - `ServerScriptService/Game.server.lua`
 
-The extracted source matches the previously audited archive structure: one README plus one 4,315-byte server script. The original ZIP remains at the repo root as the preserved upload.
+The original extracted prototype was a 4,315-byte server script with one README. The current server script has been improved since extraction; the original ZIP remains at the repo root for comparison.
 
 ## Truthful status
 

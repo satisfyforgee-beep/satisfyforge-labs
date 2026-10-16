@@ -17,7 +17,8 @@ end end
 local active={};local inRound=false
 local function teleport(player,pos)
  local root=player.Character and player.Character:FindFirstChild('HumanoidRootPart')
- if root then root.CFrame=CFrame.new(pos) end
+ if root then root.CFrame=CFrame.new(pos);return true end
+ return false
 end
 local function status(message)
  for _,player in ipairs(Players:GetPlayers()) do
@@ -51,6 +52,26 @@ Players.PlayerRemoving:Connect(function(p) active[p]=nil end)
 local function aliveCount()
  local n=0;for p in pairs(active) do if p.Parent==Players then n+=1 end end;return n
 end
+-- Never award survival to a player who escaped onto the safe lobby platform.
+-- Sample between waves so jumping out and returning before the next wave is not exploitable.
+task.spawn(function()
+ while true do
+  if inRound then
+   for player in pairs(active) do
+    local character=player.Character
+    local root=character and character:FindFirstChild('HumanoidRootPart')
+    local humanoid=character and character:FindFirstChildOfClass('Humanoid')
+    if not root or not humanoid or humanoid.Health<=0
+       or root.Position.Y < -4 or root.Position.Y > 60
+       or math.abs(root.Position.X)>34 or math.abs(root.Position.Z)>34 then
+     active[player]=nil
+     teleport(player,Vector3.new(0,12,-55))
+    end
+   end
+  end
+  task.wait(.2)
+ end
+end)
 while true do
  inRound=false;table.clear(active)
  for _,tile in ipairs(tiles) do tile.CanCollide=true;tile.Transparency=0;tile.Color=Color3.fromHSV(rng:NextNumber(),.75,1) end
@@ -58,7 +79,19 @@ while true do
  local contestants=Players:GetPlayers()
  if #contestants>0 then
   inRound=true
-  for _,p in ipairs(contestants) do active[p]=true;teleport(p,Vector3.new(rng:NextInteger(-3,3)*8,12,rng:NextInteger(-3,3)*8)) end
+  local unusedSpawns=table.clone(tiles)
+  for _,p in ipairs(contestants) do
+   local humanoid=p.Character and p.Character:FindFirstChildOfClass('Humanoid')
+   if humanoid and humanoid.Health>0 then
+    local tile
+    if #unusedSpawns>0 then
+     tile=table.remove(unusedSpawns,rng:NextInteger(1,#unusedSpawns))
+    else
+     tile=tiles[rng:NextInteger(1,#tiles)]
+    end
+    if teleport(p,tile.Position+Vector3.new(0,7,0)) then active[p]=true end
+   end
+  end
   for wave=1,18 do
    if aliveCount()==0 then break end
    status('TILE PANIC  |  Wave '..wave..'/18  |  Survivors: '..aliveCount())
@@ -70,11 +103,8 @@ while true do
     task.delay(.5,function() tile.CanCollide=false;tile.Transparency=.85 end)
    end
    task.wait(.8)
-   for p in pairs(active) do
-    local root=p.Character and p.Character:FindFirstChild('HumanoidRootPart')
-    if not root or root.Position.Y < -4 then active[p]=nil;teleport(p,Vector3.new(0,12,-55)) end
-   end
   end
+  inRound=false
   local winners=aliveCount()
   for p in pairs(active) do
    if p.Parent==Players and p:FindFirstChild('leaderstats') then
