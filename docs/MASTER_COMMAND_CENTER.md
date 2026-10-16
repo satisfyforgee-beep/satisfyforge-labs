@@ -64,6 +64,7 @@ This file is the canonical non-sensitive operating index for work that used to b
 - A later GitHub-cloud browser check was blocked by Payhip/Cloudflare 403 before page load; this is a runner-access limitation, not evidence the product disappeared.
 - Canonical status: `docs/CREATOR_KIT_STATUS.md`.
 - Canonical organic campaign asset: `sales/CREATOR_KIT_ORGANIC_LAUNCH_PACK.md`; promotion claims remain constrained by the untested completed-payment/automatic-fulfillment gate.
+- First-sale conversion, buyer FAQ, support replies and controlled checkout evidence checklist: `sales/CREATOR_KIT_FIRST_SALE_CONVERSION_KIT.md`.
 
 ### Service sales / local business
 - Active offer families include:
