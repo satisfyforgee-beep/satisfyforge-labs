@@ -30,10 +30,10 @@ function W.build()
     local self={root=root,slots={},safeZones={}}
     self.tokens=Instance.new("Folder"); self.tokens.Name="Creatures"; self.tokens.Parent=root
     self.effects=Instance.new("Folder"); self.effects.Name="Disasters"; self.effects.Parent=root
-    local dark=Color3.fromRGB(23,29,49); local blue=Color3.fromRGB(76,191,255)
-    local lime=Color3.fromRGB(178,255,96); local pink=Color3.fromRGB(255,102,167)
-    W.part(root,"Arena",Vector3.new(120,2,115),Vector3.new(0,-1,-16),dark)
-    W.part(root,"SafeLobby",Vector3.new(120,2,30),Vector3.new(0,0,55),Color3.fromRGB(48,64,83))
+    local dark=Color3.fromRGB(43,52,91); local blue=Color3.fromRGB(74,229,255)
+    local lime=Color3.fromRGB(188,255,69); local pink=Color3.fromRGB(255,91,172)
+    W.part(root,"Arena",Vector3.new(120,2,115),Vector3.new(0,-1,-16),Color3.fromRGB(58,69,110))
+    W.part(root,"SafeLobby",Vector3.new(120,2,30),Vector3.new(0,0,55),Color3.fromRGB(69,110,134))
     W.part(root,"LobbyStep",Vector3.new(120,1,10),Vector3.new(0,-.3,36),blue)
     for x=-56,56,8 do W.part(root,"FloorGrid",Vector3.new(.12,.025,109),Vector3.new(x,.02,-16),Color3.fromRGB(47,62,89)) end
     for z=-64,32,8 do W.part(root,"FloorGrid",Vector3.new(115,.025,.12),Vector3.new(0,.02,z),Color3.fromRGB(47,62,89)) end
@@ -46,6 +46,14 @@ function W.build()
     self.bank=W.part(root,"RescueChute",Vector3.new(11,5,7),Vector3.new(0,3.5,43),lime)
     W.label(self.bank,"RESCUE HERE\nBring back one creature",lime,260,65)
     self.bankPrompt=W.prompt(self.bank,"RESCUE + FIZZ","Safe-zone rescue chute")
+    -- A glowing rescue runway makes the first objective readable without opening HELP.
+    for z=26,38,4 do
+        local arrow=W.part(root,"RescueRunway",Vector3.new(7,.13,2.5),Vector3.new(0,.12,z),lime,Enum.Material.Neon)
+        arrow.CanCollide=false; arrow.CanTouch=false; arrow.Transparency=.18
+    end
+    local starter=W.part(root,"StarterBeacon",Vector3.new(8,.22,8),Vector3.new(0,.2,22),Color3.fromRGB(255,222,69),Enum.Material.Neon)
+    starter.CanCollide=false; starter.CanTouch=false
+    W.label(starter,"START HERE!\nRESCUE A GOLDEN CREATURE",Color3.fromRGB(255,222,69),265,65)
     local ring=W.part(root,"BankGlow",Vector3.new(18,.1,12),Vector3.new(0,1.1,44),lime,Enum.Material.Neon)
     ring.Transparency=.5; ring.CanCollide=false
     local board=W.part(root,"Scoreboard",Vector3.new(39,15,1),Vector3.new(0,13,70),dark)
@@ -56,6 +64,16 @@ function W.build()
     for i,x in ipairs({-38,38}) do
         local station=W.part(root,"Lab",Vector3.new(15,6,10),Vector3.new(x,4,55),i==1 and pink or blue)
         W.label(station,i==1 and "EVOLUTION LAB\n3 copies = 1 evolution\nOpen COLLECTION" or "SPEED SHOP\nEarn upgrades with Fizz\nOpen UPGRADES",Color3.new(1,1,1),260,90)
+    end
+    -- Colorful landmark towers break up the empty flat arena without obstructing movement.
+    for i,z in ipairs({-52,-18,16}) do
+        local shade=({Color3.fromRGB(255,102,184),Color3.fromRGB(255,205,72),Color3.fromRGB(113,240,255)})[i]
+        for _,x in ipairs({-55,55}) do
+            local tower=W.part(root,"CandyTower",Vector3.new(5,19,5),Vector3.new(x,10,z),shade)
+            tower.CanCollide=false
+            local crown=W.part(root,"CandyGlow",Vector3.new(8,3,8),Vector3.new(x,21,z),shade,Enum.Material.Neon)
+            crown.CanCollide=false
+        end
     end
     for _,x in ipairs({-36,0,36}) do
         for _,z in ipairs({-48,-15}) do
@@ -76,10 +94,10 @@ function W.build()
     end
     self.sauce=W.part(self.effects,"Sauce",Vector3.new(116,.25,106),Vector3.new(0,-5,-18),Color3.fromRGB(255,95,59),Enum.Material.Neon)
     self.sauce.CanCollide=false; self.sauce.CanTouch=false; self.sauce.Transparency=.2
-    Lighting.ClockTime=17.8; Lighting.Brightness=2; Lighting.Ambient=Color3.fromRGB(115,116,143)
-    Lighting.OutdoorAmbient=Color3.fromRGB(127,139,157)
+    Lighting.ClockTime=13.2; Lighting.Brightness=3; Lighting.Ambient=Color3.fromRGB(165,180,209)
+    Lighting.OutdoorAmbient=Color3.fromRGB(182,202,220)
     local bloom=Lighting:FindFirstChild("SnackquakeBloom") or Instance.new("BloomEffect")
-    bloom.Name="SnackquakeBloom"; bloom.Intensity=.12; bloom.Size=20; bloom.Threshold=1.6; bloom.Parent=Lighting
+    bloom.Name="SnackquakeBloom"; bloom.Intensity=.19; bloom.Size=20; bloom.Threshold=1.6; bloom.Parent=Lighting
     return self
 end
 return W

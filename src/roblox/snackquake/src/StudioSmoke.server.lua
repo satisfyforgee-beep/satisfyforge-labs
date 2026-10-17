@@ -56,6 +56,8 @@ check("runtime world replaced editor preview", world ~= nil and workspace:FindFi
 check("rescue chute exists", world and world:FindFirstChild("RescueChute") ~= nil)
 check("15 rescue spots exist", world and countNamed(world, "RescueSpot") == 15,
     world and ("found " .. countNamed(world, "RescueSpot")) or "world missing")
+check("starter golden beacon exists", world and world:FindFirstChild("StarterBeacon") ~= nil)
+check("bright rescue runway exists", world and countNamed(world, "RescueRunway") == 4)
 check("6 high-ground refuges exist", world and countNamed(world, "BlueRefuge") == 6,
     world and ("found " .. countNamed(world, "BlueRefuge")) or "world missing")
 check("creature and disaster folders exist", world and world:FindFirstChild("Creatures") and world:FindFirstChild("Disasters"))
@@ -63,7 +65,9 @@ check("creature and disaster folders exist", world and world:FindFirstChild("Cre
 if config then
     check("8 original creature definitions", #config.Creatures == 8, "found " .. tostring(#config.Creatures))
     check("3 disaster definitions", #config.Events == 3, "found " .. tostring(#config.Events))
-    check("round length is 105 seconds", config.RoundSeconds == 105, "found " .. tostring(config.RoundSeconds))
+    check("72-second action round", config.RoundSeconds == 72, "found " .. tostring(config.RoundSeconds))
+    check("first disaster warning by 22 seconds", config.WarningAt == 22 and config.PanicAt == 29)
+    check("golden reward and combo configured", config.GoldenBonusFizz == 25 and config.ComboWindowSeconds == 24)
     check("upgrade costs are 50/120/240", config.SpeedCosts[1] == 50 and config.SpeedCosts[2] == 120 and config.SpeedCosts[3] == 240)
 end
 
