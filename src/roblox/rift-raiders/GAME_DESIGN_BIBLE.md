@@ -75,3 +75,6 @@ Original reusable service: WorldActivities.lua. Profile DataStore migrated from 
 
 ## v0.9 — Detailed downtown gameplay
 The official Modern City art is no longer presentation-only. The district now contains server-validated employment, shopping, 20 careers, two-step job activities, creator work, business income collection, civic services and police presence. Storefront interaction anchors are kept small or invisible so the imported architecture remains the visual layer instead of being covered by new block-built venues. The catalog expanded to 48 earnable purchases across apparel, tech, home, vehicles, property and business ownership.
+
+## v0.10 — Living population and traffic
+Modern Downtown now contains eight actual R15 Humanoid citizens walking repeated sidewalk routes and four detailed official-sedan traffic vehicles circulating around the city. The population layer is a separate reusable `DowntownPopulation.lua` module so future city maps can replace or expand it without touching the economy, careers or imported art. Movement is server-authoritative.

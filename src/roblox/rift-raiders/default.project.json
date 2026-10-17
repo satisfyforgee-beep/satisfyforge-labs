@@ -30,6 +30,9 @@
       },
       "ModernCityIntegration": {
         "$path": "ModernCityIntegration.lua"
+      },
+      "DowntownPopulation": {
+        "$path": "DowntownPopulation.lua"
       }
     },
     "StarterPlayer": {

@@ -9,6 +9,11 @@ assert(imported and imported:IsA("Model"),"official modern city missing")
 assert(imported:GetAttribute("ImportedScriptsRemoved")==true,"imported script safety missing")
 assert(imported:GetAttribute("LifeSimulationIntegrated")==true,"downtown life integration missing")
 assert(imported:GetAttribute("DowntownCareerCount")==20,"downtown career count mismatch")
+assert(imported:GetAttribute("LivingDowntownIntegrated")==true,"living downtown integration missing")
+local living=world:WaitForChild("Living Modern Downtown",20)
+assert(living:WaitForChild("Downtown Citizen 8",20),"R15 downtown citizens missing")
+assert(living:WaitForChild("Downtown Traffic Sedan 4",20),"detailed downtown traffic missing")
+task.wait(1)
 local meshCount=0
 for _,obj in ipairs(imported:GetDescendants()) do
  if obj:IsA("MeshPart") then meshCount+=1 end
@@ -41,7 +46,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.9.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.10.0","version mismatch")
 local function count(name)
  local n=0
  for _,v in ipairs(world:GetDescendants()) do if v.Name==name then n+=1 end end
@@ -49,6 +54,20 @@ local function count(name)
 end
 assert(count("Life City Simulation")==1,"life city missing")
 assert(count("Modern Downtown Life Services")==1,"downtown life services missing")
+assert(count("Living Modern Downtown")==1,"living downtown folder missing")
+assert(count("Downtown Citizen 1")==1 and count("Downtown Citizen 8")==1,
+ "downtown R15 citizen count missing")
+assert(count("Downtown Traffic Sedan 1")==1 and count("Downtown Traffic Sedan 4")==1,
+ "downtown detailed traffic count missing")
+for i=1,8 do
+ local citizen=world:FindFirstChild("Downtown Citizen "..i,true)
+ local hum=citizen and citizen:FindFirstChildOfClass("Humanoid")
+ assert(hum and hum.RigType==Enum.HumanoidRigType.R15,"downtown citizen is not R15")
+end
+assert((world:GetAttribute("DowntownTrafficDistance") or 0)>0,
+ "downtown traffic did not move")
+assert((world:FindFirstChild("Downtown Traffic Sedan 1",true):GetAttribute("DistanceTravelled") or 0)>0,
+ "detailed traffic distance attribute missing")
 assert(count("Downtown Employment Center")==1,"downtown employment office missing")
 assert(count("Downtown Store TECH")==1,"downtown technology storefront missing")
 assert(count("Downtown Store BUSINESS")==1,"downtown commerce storefront missing")

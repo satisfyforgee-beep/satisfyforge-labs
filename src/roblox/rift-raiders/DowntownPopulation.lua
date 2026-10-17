@@ -1,0 +1,214 @@
+-- v0.10 LIVING DOWNTOWN: R15 citizens and detailed moving traffic.
+-- Uses Roblox's own R15 rig generation and the script-free official sedan visual.
+local Players=game:GetService("Players")
+local RunService=game:GetService("RunService")
+local ServerStorage=game:GetService("ServerStorage")
+
+local Population={}
+local heartbeatConnection=nil
+local citizens={}
+local traffic={}
+
+local skins={
+ Color3.fromRGB(236,196,159),Color3.fromRGB(195,143,107),
+ Color3.fromRGB(128,91,70),Color3.fromRGB(226,174,132),
+ Color3.fromRGB(162,112,84),Color3.fromRGB(96,69,55),
+}
+local shirts={
+ Color3.fromRGB(53,91,129),Color3.fromRGB(126,71,92),
+ Color3.fromRGB(76,111,84),Color3.fromRGB(111,95,67),
+ Color3.fromRGB(64,69,82),Color3.fromRGB(133,98,63),
+}
+local pants={
+ Color3.fromRGB(38,43,52),Color3.fromRGB(54,56,61),
+ Color3.fromRGB(42,53,65),Color3.fromRGB(57,49,45),
+}
+local names={"Alex","Jordan","Morgan","Taylor","Casey","Riley","Avery","Cameron"}
+
+local function safeDescription(index)
+ local d=Instance.new("HumanoidDescription")
+ local skin=skins[(index-1)%#skins+1]
+ local top=shirts[(index-1)%#shirts+1]
+ local bottom=pants[(index-1)%#pants+1]
+ d.HeadColor=skin; d.LeftArmColor=skin; d.RightArmColor=skin
+ d.TorsoColor=top; d.LeftLegColor=bottom; d.RightLegColor=bottom
+ d.HeightScale=.96+(index%4)*.025
+ d.WidthScale=.92+(index%3)*.035
+ d.DepthScale=.94+(index%2)*.04
+ d.HeadScale=.98; d.BodyTypeScale=.28; d.ProportionScale=.18
+ return d
+end
+
+local function walkAnimation(humanoid)
+ local animator=humanoid:FindFirstChildOfClass("Animator")
+ if not animator then animator=Instance.new("Animator"); animator.Parent=humanoid end
+ local animation=Instance.new("Animation")
+ animation.Name="Downtown Walk Animation"
+ animation.AnimationId="rbxassetid://507777826" -- Roblox R15 walk
+ local ok,track=pcall(function() return animator:LoadAnimation(animation) end)
+ if ok and track then
+  track.Name="Downtown Walk"
+  track.Looped=true
+  track.Priority=Enum.AnimationPriority.Movement
+  track:Play(.2,1,1)
+  return track
+ end
+ animation:Destroy()
+ return nil
+end
+
+local function citizen(parent,index,start,route)
+ local description=safeDescription(index)
+ local ok,model=pcall(function()
+  return Players:CreateHumanoidModelFromDescription(description,Enum.HumanoidRigType.R15)
+ end)
+ description:Destroy()
+ if not ok or not model then return nil end
+ model.Name="Downtown Citizen "..index
+ model:SetAttribute("NPCType","R15Citizen")
+ model:SetAttribute("CitizenName",names[(index-1)%#names+1])
+ model:SetAttribute("Behavior","Walking")
+ model.Parent=parent
+ local humanoid=model:FindFirstChildOfClass("Humanoid")
+ local root=model:FindFirstChild("HumanoidRootPart")
+ if not humanoid or not root then model:Destroy(); return nil end
+ humanoid.DisplayDistanceType=Enum.HumanoidDisplayDistanceType.None
+ humanoid.HealthDisplayType=Enum.HumanoidHealthDisplayType.AlwaysOff
+ humanoid.WalkSpeed=7.4+(index%4)*.65
+ humanoid.AutoRotate=true
+ humanoid.BreakJointsOnDeath=false
+ root.CanCollide=false
+ pcall(function() root:SetNetworkOwner(nil) end)
+ model:PivotTo(CFrame.new(start+Vector3.new(0,3.2,0)))
+ local track=walkAnimation(humanoid)
+ local state={model=model,humanoid=humanoid,root=root,route=route,index=2,walkTrack=track}
+ table.insert(citizens,state)
+ task.spawn(function()
+  while model.Parent and humanoid.Health>0 do
+   local target=route[state.index]
+   humanoid:MoveTo(target)
+   local reached=humanoid.MoveToFinished:Wait()
+   if model.Parent and humanoid.Health>0 then
+    if not reached and (root.Position-target).Magnitude>24 then
+     model:PivotTo(CFrame.new(target+Vector3.new(0,3.2,0)))
+    end
+    state.index=state.index%#route+1
+    task.wait(.35+(index%3)*.2)
+   end
+  end
+ end)
+ return model
+end
+
+local function makeTrafficSedan(parent,index,startIndex,route)
+ local template=ServerStorage:FindFirstChild("OfficialSedanVisual")
+ if not template then return nil end
+ local m=template:Clone()
+ m.Name="Downtown Traffic Sedan "..index
+ m:SetAttribute("NPCType","DetailedTraffic")
+ m:SetAttribute("VisualModel","Official Modern City Sedan")
+ m:SetAttribute("DistanceTravelled",0)
+ m.Parent=parent
+ for _,node in ipairs(m:GetDescendants()) do
+  if node:IsA("LuaSourceContainer") then
+   node:Destroy()
+  elseif node:IsA("BasePart") then
+   node.Anchored=true; node.CanCollide=false; node.CanTouch=false
+   node.CanQuery=false
+  end
+ end
+ local pos=route[startIndex]
+ local nextIndex=startIndex%#route+1
+ local direction=(route[nextIndex]-pos).Unit
+ m:PivotTo(CFrame.lookAt(pos,pos+direction)*CFrame.Angles(0,math.pi,0))
+ local state={model=m,position=pos,route=route,index=nextIndex,
+  speed=18+index*1.5,distance=0,lastAttribute=0}
+ table.insert(traffic,state)
+ return m
+end
+
+function Population.Build(world,cityModel)
+ if heartbeatConnection then heartbeatConnection:Disconnect(); heartbeatConnection=nil end
+ citizens={}; traffic={}
+ local old=world:FindFirstChild("Living Modern Downtown")
+ if old then old:Destroy() end
+ local folder=Instance.new("Folder")
+ folder.Name="Living Modern Downtown"
+ folder.Parent=world
+ folder:SetAttribute("CitizenCount",8)
+ folder:SetAttribute("TrafficCount",4)
+ folder:SetAttribute("RigType","R15")
+ folder:SetAttribute("TrafficVisual","Official Modern City Sedan")
+
+ -- Two citizens cross the welcome block immediately so downtown feels alive
+ -- from the first camera view instead of only at the far perimeter.
+ local frontA=Vector3.new(-32,0,2238)
+ local frontB=Vector3.new(32,0,2238)
+ local rightA=Vector3.new(108,0,2260)
+ local rightB=Vector3.new(108,0,2460)
+ local backA=Vector3.new(85,0,2472)
+ local backB=Vector3.new(-85,0,2472)
+ local leftA=Vector3.new(-108,0,2460)
+ local leftB=Vector3.new(-108,0,2260)
+ local pedestrianRoutes={
+  {frontA,frontB,frontA},
+  {frontB,frontA,frontB},
+  {rightA,rightB,rightA},
+  {rightB,rightA,rightB},
+  {backA,backB,backA},
+  {backB,backA,backB},
+  {leftA,leftB,leftA},
+  {leftB,leftA,leftB},
+ }
+ for i,route in ipairs(pedestrianRoutes) do citizen(folder,i,route[1],route) end
+
+ local roadRoute={
+  Vector3.new(-128,4.5,2204),Vector3.new(128,4.5,2204),
+  Vector3.new(128,4.5,2502),Vector3.new(-128,4.5,2502),
+ }
+ for i=1,4 do makeTrafficSedan(folder,i,i,roadRoute) end
+
+ if cityModel then
+  cityModel:SetAttribute("LivingDowntownIntegrated",true)
+  cityModel:SetAttribute("DetailedCitizenCount",#citizens)
+  cityModel:SetAttribute("DetailedTrafficCount",#traffic)
+ end
+ world:SetAttribute("DowntownTrafficDistance",0)
+ local elapsed=0
+ heartbeatConnection=RunService.Heartbeat:Connect(function(dt)
+  if not world.Parent or not folder.Parent then return end
+  elapsed+=dt
+  if elapsed<.09 then return end
+  local step=math.min(elapsed,.14); elapsed=0
+  local totalDistance=0
+  for _,car in ipairs(traffic) do
+   local m=car.model
+   if m and m.Parent then
+    local goal=car.route[car.index]
+    local delta=goal-car.position
+    if delta.Magnitude<2.2 then
+     car.index=car.index%#car.route+1
+     goal=car.route[car.index]
+     delta=goal-car.position
+    end
+    if delta.Magnitude>.01 then
+     local direction=delta.Unit
+     local amount=math.min(delta.Magnitude,car.speed*step)
+     car.position+=direction*amount
+     car.distance+=amount
+     local cf=CFrame.lookAt(car.position,car.position+direction)*CFrame.Angles(0,math.pi,0)
+     m:PivotTo(cf)
+     if car.distance-car.lastAttribute>=6 then
+      car.lastAttribute=car.distance
+      m:SetAttribute("DistanceTravelled",math.floor(car.distance))
+     end
+    end
+    totalDistance+=car.distance
+   end
+  end
+  world:SetAttribute("DowntownTrafficDistance",math.floor(totalDistance))
+ end)
+ return {folder=folder,citizens=#citizens,traffic=#traffic}
+end
+
+return Population

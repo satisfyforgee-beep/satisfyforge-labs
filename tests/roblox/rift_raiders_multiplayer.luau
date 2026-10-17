@@ -364,6 +364,28 @@ if not waitFor(function() return a:GetAttribute("RRLifeShift")=="BARISTA" end,3)
  fail("downtown_shift_start") return
 end
 print("SF_RIFT_MP_CHECK detailed_downtown_career_loop PASS")
+local living=world:FindFirstChild("Living Modern Downtown")
+if not living then fail("living_downtown_missing") return end
+local citizen=living:FindFirstChild("Downtown Citizen 1")
+local traffic=living:FindFirstChild("Downtown Traffic Sedan 1")
+if not citizen or not citizen:FindFirstChildOfClass("Humanoid") then
+ fail("r15_citizen_missing") return
+end
+if citizen:FindFirstChildOfClass("Humanoid").RigType~=Enum.HumanoidRigType.R15 then
+ fail("citizen_not_r15") return
+end
+if not traffic or traffic:GetAttribute("VisualModel")~="Official Modern City Sedan" then
+ fail("detailed_city_traffic_missing") return
+end
+local beforeTraffic=world:GetAttribute("DowntownTrafficDistance") or 0
+local beforeCitizen=citizen:GetPivot().Position
+if not waitFor(function()
+ return (world:GetAttribute("DowntownTrafficDistance") or 0)>beforeTraffic+10
+end,3) then fail("downtown_traffic_not_moving") return end
+if not waitFor(function()
+ return (citizen:GetPivot().Position-beforeCitizen).Magnitude>2
+end,4) then fail("downtown_citizen_not_walking") return end
+print("SF_RIFT_MP_CHECK living_downtown_population PASS")
 
 print("SF_RIFT_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:rift_multiplayer")

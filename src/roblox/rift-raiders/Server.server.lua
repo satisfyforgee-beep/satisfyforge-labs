@@ -15,10 +15,11 @@ local WorldPolish=require(ServerScriptService:WaitForChild("WorldPolish"))
 local Life=require(ServerScriptService:WaitForChild("LifeSimulation"))
 local LifeCityVisuals=require(ServerScriptService:WaitForChild("LifeCityVisuals"))
 local ModernCityIntegration=require(ServerScriptService:WaitForChild("ModernCityIntegration"))
+local DowntownPopulation=require(ServerScriptService:WaitForChild("DowntownPopulation"))
 local Catalog=require(ReplicatedStorage:WaitForChild("PrestigeCatalog"))
 local Vehicles=require(ServerScriptService:WaitForChild("VehicleService"))
 local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
-world:SetAttribute("Version","0.9.0")
+world:SetAttribute("Version","0.10.0")
 world:SetAttribute("Phase","CALM")
 world:SetAttribute("SecondsLeft",75)
 local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
@@ -277,7 +278,10 @@ local lifeDestination=Life.Build(world,{
 LifeCityVisuals.Build(world)
 local modernCityDestination=ModernCityIntegration.Build(world,spawn,tell)
 local importedDowntown=workspace:FindFirstChild("OfficialModernCityDistrict")
-if importedDowntown then Life.AttachDowntown(importedDowntown) end
+if importedDowntown then
+ Life.AttachDowntown(importedDowntown)
+ DowntownPopulation.Build(world,importedDowntown)
+end
 Life.Start()
 local function quest(p,kind,n)
  local s=profiles[p]; if not s then return end
@@ -779,4 +783,4 @@ task.spawn(function()
   Lighting.Ambient=Color3.fromRGB(120,132,179)
  end
 end)
-print("SF_RIFT_RAIDERS_SERVER_READY v0.9.0")
+print("SF_RIFT_RAIDERS_SERVER_READY v0.10.0")
