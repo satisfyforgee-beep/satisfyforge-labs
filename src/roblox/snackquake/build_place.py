@@ -97,7 +97,7 @@ for node in parsed.findall('.//Item'):
         embedded.append(name)
 assert len(embedded)==9
 
-manifest={'title':'Brainrot Rescue: Snackquake','version':'0.2.1-save-fix',
+manifest={'title':'Brainrot Rescue: Snackquake','version':'0.3.0-rescue-rush',
           'engine_tested':False,'published':False,'source_files':{},
           'validation':'Lua-compatible syntax, pure-rule and persistence tests, XML/source integrity only; Roblox Studio runtime evidence is tracked separately'}
 for p in sorted((ROOT/'src').glob('*.lua')):

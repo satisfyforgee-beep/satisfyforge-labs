@@ -32,16 +32,16 @@ end
 local function maxSize(obj,x,y)
     local c=Instance.new("UISizeConstraint"); c.MaxSize=Vector2.new(x,y); c.Parent=obj
 end
-local hud=frame(gui,UDim2.new(.92,0,0,107),UDim2.new(.5,0,0,10)); hud.AnchorPoint=Vector2.new(.5,0); maxSize(hud,780,107)
-local title=label(hud,"SNACKQUAKE EXPEDITION",UDim2.new(.60,-8,0,25),UDim2.fromOffset(12,7),19,palette.lime); title.TextXAlignment=Enum.TextXAlignment.Left
+local hud=frame(gui,UDim2.new(.92,0,0,86),UDim2.new(.5,0,0,9)); hud.AnchorPoint=Vector2.new(.5,0); maxSize(hud,780,86); hud.Name="CompactHUD"
+local title=label(hud,"SNACKQUAKE RUSH",UDim2.new(.60,-8,0,25),UDim2.fromOffset(12,5),19,palette.lime); title.TextXAlignment=Enum.TextXAlignment.Left
 title.TextScaled=true
 local titleLimit=Instance.new("UITextSizeConstraint"); titleLimit.MinTextSize=12; titleLimit.MaxTextSize=19; titleLimit.Parent=title
-local money=label(hud,"0 FIZZ",UDim2.new(.4,-16,0,25),UDim2.new(.6,0,0,7),18,palette.blue); money.TextXAlignment=Enum.TextXAlignment.Right
-local roundLabel=label(hud,"Finding a rescue run...",UDim2.new(1,-22,0,27),UDim2.fromOffset(11,33),16)
-local hint=label(hud,"Grab a creature. Bring it to the green chute.",UDim2.new(1,-22,0,26),UDim2.fromOffset(11,60),13,palette.muted)
-local meter=frame(hud,UDim2.new(1,-24,0,6),UDim2.fromOffset(12,92),palette.card)
+local money=label(hud,"0 FIZZ",UDim2.new(.4,-16,0,25),UDim2.new(.6,0,0,5),18,palette.blue); money.TextXAlignment=Enum.TextXAlignment.Right
+local roundLabel=label(hud,"Get ready to rescue!",UDim2.new(1,-22,0,23),UDim2.fromOffset(11,27),15)
+local hint=label(hud,"Golden creature -> green chute -> survive!",UDim2.new(1,-22,0,22),UDim2.fromOffset(11,51),12,palette.muted)
+local meter=frame(hud,UDim2.new(1,-24,0,5),UDim2.fromOffset(12,78),palette.card)
 local meterFill=frame(meter,UDim2.fromScale(0,1),UDim2.fromScale(0,0),palette.lime)
-local nav=frame(gui,UDim2.fromOffset(310,37),UDim2.new(.5,0,0,125)); nav.AnchorPoint=Vector2.new(.5,0); nav.BackgroundTransparency=1
+local nav=frame(gui,UDim2.new(.92,0,0,34),UDim2.new(.5,0,0,103)); nav.AnchorPoint=Vector2.new(.5,0); nav.BackgroundTransparency=1; nav.Name="Navigation"; maxSize(nav,310,34)
 local panel=frame(gui,UDim2.new(.92,0,.60,0),UDim2.fromScale(.5,.58)); panel.AnchorPoint=Vector2.new(.5,.5); maxSize(panel,740,520); panel.Visible=false
 local panelTitle=label(panel,"COLLECTION",UDim2.new(1,-80,0,40),UDim2.fromOffset(16,8),22,palette.lime); panelTitle.TextXAlignment=Enum.TextXAlignment.Left
 button(panel,"X",UDim2.fromOffset(40,36),UDim2.new(1,-51,0,10),palette.card,function() panel.Visible=false end)
@@ -49,16 +49,16 @@ local content=Instance.new("ScrollingFrame"); content.Name="Content"; content.Po
 content.Size=UDim2.new(1,-24,1,-69); content.BackgroundTransparency=1; content.BorderSizePixel=0
 content.ScrollBarThickness=4; content.AutomaticCanvasSize=Enum.AutomaticSize.Y; content.CanvasSize=UDim2.new(); content.Parent=panel
 local openTab=""; local renderPanel
-local saveLabel=label(gui,"",UDim2.new(.90,0,0,22),UDim2.new(.5,0,0,164),12,palette.muted)
+local saveLabel=label(gui,"",UDim2.new(.90,0,0,20),UDim2.new(.5,0,0,182),11,palette.muted)
 saveLabel.AnchorPoint=Vector2.new(.5,0)
 local function showTab(tab)
     if panel.Visible and openTab==tab then panel.Visible=false; return end
     openTab=tab; panel.Visible=true; content.CanvasPosition=Vector2.zero; renderPanel()
 end
-button(nav,"COLLECTION",UDim2.fromOffset(114,37),UDim2.fromOffset(0,0),palette.card,function() showTab("collection") end)
-button(nav,"UPGRADES",UDim2.fromOffset(102,37),UDim2.fromOffset(121,0),palette.card,function() showTab("upgrades") end)
-button(nav,"HELP",UDim2.fromOffset(80,37),UDim2.fromOffset(230,0),palette.card,function() showTab("help") end)
-local toast=frame(gui,UDim2.new(.86,0,0,66),UDim2.fromScale(.5,.83)); toast.AnchorPoint=Vector2.new(.5,.5); maxSize(toast,650,66); toast.Visible=false
+button(nav,"CREATURES",UDim2.new(.37,0,1,0),UDim2.fromScale(0,0),palette.card,function() showTab("collection") end)
+button(nav,"UPGRADES",UDim2.new(.34,0,1,0),UDim2.fromScale(.39,0),palette.card,function() showTab("upgrades") end)
+button(nav,"HELP",UDim2.new(.25,0,1,0),UDim2.fromScale(.75,0),palette.card,function() showTab("help") end)
+local toast=frame(gui,UDim2.new(.86,0,0,66),UDim2.fromScale(.5,.77)); toast.AnchorPoint=Vector2.new(.5,.5); maxSize(toast,650,66); toast.Visible=false
 local toastText=label(toast,"",UDim2.new(1,-24,1,-12),UDim2.fromOffset(12,6),17)
 local toastVersion=0
 local function notify(text,tone)
@@ -67,13 +67,20 @@ local function notify(text,tone)
     toast.BackgroundTransparency=.05; toast.Visible=true
     task.delay(4.4,function() if toastVersion==mine then toast.Visible=false end end)
 end
-local dash=button(gui,"DASH\nQ / SHIFT",UDim2.fromOffset(76,68),UDim2.fromScale(.97,.71),palette.card,function() Remote:FireServer("dash") end)
-dash.AnchorPoint=Vector2.new(1,1)
-local votes=frame(gui,UDim2.new(.92,0,0,82),UDim2.fromScale(.5,.72)); votes.AnchorPoint=Vector2.new(.5,.5); maxSize(votes,740,82); votes.Visible=false
+local dash=button(gui,"DASH\nQ / SHIFT",UDim2.fromOffset(76,68),UDim2.fromScale(.97,.67),palette.card,function() Remote:FireServer("dash") end)
+dash.AnchorPoint=Vector2.new(1,1); dash.Name="DashButton"
+local votes=frame(gui,UDim2.new(.92,0,0,82),UDim2.fromScale(.5,.69)); votes.AnchorPoint=Vector2.new(.5,.5); maxSize(votes,740,82); votes.Visible=false
 label(votes,"CHOOSE THE NEXT SNACKQUAKE",UDim2.new(1,0,0,23),UDim2.fromOffset(0,5),13,palette.lime)
 for i,e in ipairs(C.Events) do
     button(votes,e.name,UDim2.new(1/3,-10,0,39),UDim2.new((i-1)/3,5,0,34),palette.card,function() Remote:FireServer("vote",e.id) end)
 end
+-- Always-visible objective: a player should know what to do within two seconds.
+local objective=frame(gui,UDim2.new(.70,0,0,38),UDim2.new(.5,0,0,142),palette.card)
+objective.AnchorPoint=Vector2.new(.5,0); maxSize(objective,620,38); objective.Name="RescueObjective"
+local objectiveText=label(objective,"1/2  FIND A GOLDEN CREATURE",UDim2.new(1,-14,1,0),UDim2.fromOffset(7,0),14,palette.lime)
+local dangerBar=frame(gui,UDim2.new(.70,0,0,35),UDim2.new(.5,0,0,208),palette.pink)
+dangerBar.AnchorPoint=Vector2.new(.5,0); maxSize(dangerBar,620,35); dangerBar.Visible=false; dangerBar.Name="DisasterAlert"
+local dangerText=label(dangerBar,"DANGER! GET TO HIGH GROUND!",UDim2.new(1,-14,1,0),UDim2.fromOffset(7,0),13,palette.dark)
 local function preview(parent,spec,evolution,seen)
     local v=Instance.new("ViewportFrame"); v.Size=UDim2.fromOffset(68,80); v.Position=UDim2.fromOffset(4,6)
     v.BackgroundTransparency=1; v.Ambient=Color3.fromRGB(200,200,200); v.LightColor=Color3.new(1,1,1); v.Parent=parent
@@ -87,7 +94,7 @@ renderPanel=function()
     content:ClearAllChildren()
     if openTab=="collection" then
         panelTitle.Text="YOUR CREATURES"
-        local grid=Instance.new("UIGridLayout"); grid.CellSize=UDim2.new(.5,-6,0,142); grid.CellPadding=UDim2.fromOffset(8,8); grid.SortOrder=Enum.SortOrder.LayoutOrder; grid.Parent=content
+        local grid=Instance.new("UIGridLayout"); grid.CellSize=content.AbsoluteSize.X<420 and UDim2.new(1,-8,0,142) or UDim2.new(.5,-6,0,142); grid.CellPadding=UDim2.fromOffset(8,8); grid.SortOrder=Enum.SortOrder.LayoutOrder; grid.Parent=content
         for i,spec in ipairs(C.Creatures) do
             local seen=profile and profile.seen[spec.id]; local level=profile and profile.evolution[spec.id] or 0
             local count=profile and profile.copies[spec.id] or 0
@@ -148,11 +155,30 @@ RunService.RenderStepped:Connect(function(dt)
     local time=workspace:GetServerTimeNow(); local phase=state:GetAttribute("Phase") or "IDLE"
     local left=math.max(0,math.ceil((state:GetAttribute("EndsAt") or 0)-time))
     local danger=state:GetAttribute("EventName") or "SNACKQUAKE"
+    local combo=player:GetAttribute("SFCombo") or 0
     if phase=="BREAK" then roundLabel.Text="NEXT ROUND IN "..left.."s - VOTE BELOW"
     elseif phase=="PANIC" then roundLabel.Text=danger.."  |  "..left.."s"; roundLabel.TextColor3=palette.pink
     elseif phase=="WARNING" then roundLabel.Text=danger.." IN "..math.max(0,left-(C.RoundSeconds-C.PanicAt)).."s"; roundLabel.TextColor3=palette.pink
     else roundLabel.Text="ROUND "..(state:GetAttribute("Round") or 0).."  |  RESCUE RUN  |  "..left.."s"; roundLabel.TextColor3=Color3.new(1,1,1) end
     votes.Visible=phase=="BREAK" and not panel.Visible
+    dash.Visible=phase~="BREAK"
+    objective.Visible=not panel.Visible and phase~="BREAK"
+    if cargo~="" then
+        objectiveText.Text="2/2  BANK YOUR CREATURE AT THE GREEN CHUTE!"
+        objectiveText.TextColor3=palette.lime
+    elseif (profile and profile.rescues or 0)==0 then
+        objectiveText.Text="1/2  GRAB THE GLOWING GOLDEN CREATURE!"
+        objectiveText.TextColor3=palette.lime
+    else
+        objectiveText.Text=combo>1 and ("COMBO x"..combo.."! RESCUE AGAIN FOR BONUS FIZZ") or "RESCUE MORE CREATURES! GOLD = BONUS FIZZ"
+        objectiveText.TextColor3=palette.blue
+    end
+    dangerBar.Visible=(phase=="WARNING" or phase=="PANIC") and not panel.Visible
+    if phase=="PANIC" then
+        dangerText.Text="DISASTER NOW! "..(state:GetAttribute("Hint") or "DODGE!")
+    else
+        dangerText.Text=danger.." IN "..math.max(0,left-(C.RoundSeconds-C.PanicAt)).."s! PREPARE!"
+    end
     local frenzy=time<(state:GetAttribute("FrenzyUntil") or 0)
     local charge=state:GetAttribute("TeamCharge") or 0; local goal=math.max(1,state:GetAttribute("TeamGoal") or 4)
     meterFill.Size=UDim2.fromScale(frenzy and 1 or math.min(1,charge/goal),1)

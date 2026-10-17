@@ -11,7 +11,7 @@ local Remote=Instance.new("RemoteEvent"); Remote.Name="Action"; Remote.Parent=Sh
 local state=Instance.new("Folder"); state.Name="RoundState"; state.Parent=Shared
 local tokens,carried,runtime,votes={},{},{},{}
 local round=0; local phase="IDLE"; local activeEvent="sauce"; local teamCharge=0; local goal=4; local frenzyUntil=0
-local closing=false; local tokenSerial=0
+local closing=false; local tokenSerial=0; local goldenSpawnedRound={}
 local ids={}; for _,e in ipairs(C.Events) do ids[#ids+1]=e.id end
 local function now() return workspace:GetServerTimeNow() end
 local function tell(player,message,tone)
@@ -46,6 +46,7 @@ local function appearance(player)
     local p=rec.profile
     player:SetAttribute("SFEquipped",p.equipped); player:SetAttribute("SFEvolution",p.evolution[p.equipped] or 0)
     player:SetAttribute("SFCarry",carried[player] and carried[player].id or "")
+    player:SetAttribute("SFCombo",runtime[player] and runtime[player].combo or 0)
     player:SetAttribute("SFFounderGlow",runtime[player] and runtime[player].founderGlow == true)
     applyFounderGlow(player)
     local _,hum=character(player)
@@ -79,7 +80,7 @@ local function bounce(player,reason)
     local rt=runtime[player]; local root=character(player)
     if not rt or not root or now()<rt.immuneUntil then return end
     rt.immuneUntil=now()+2; rt.bounces=rt.bounces+1
-    drop(player); player.Character:PivotTo(CFrame.new(math.random(-9,9),5,57))
+    drop(player); rt.combo=0; player:SetAttribute("SFCombo",0); player.Character:PivotTo(CFrame.new(math.random(-9,9),5,57))
     root.AssemblyLinearVelocity=Vector3.zero
     tell(player,reason.." Your banked collection is safe.","danger"); sync(player)
     Analytics.custom(player,"DisasterBounce",1)
@@ -97,21 +98,31 @@ spawnToken=function(slot,expectedRound)
     elseif slot.row==2 then index=math.random(2,5)
     else index=math.random(4,8) end
     local spec=C.Creatures[index]
-    local model=Creatures.make(spec,world.tokens,.85,0); model:PivotTo(CFrame.new(slot.position))
+    local golden=slot.index==3 and goldenSpawnedRound[slot.index]~=expectedRound
+    if golden then goldenSpawnedRound[slot.index]=expectedRound end
+    local model=Creatures.make(spec,world.tokens,golden and 1.1 or .85,0); model:PivotTo(CFrame.new(slot.position))
+    if golden then
+        local glow=Instance.new("Highlight")
+        glow.Name="GoldenRescueGlow"; glow.FillColor=Color3.fromRGB(255,220,67)
+        glow.OutlineColor=Color3.fromRGB(255,255,184); glow.FillTransparency=.52
+        glow.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop; glow.Parent=model
+        local light=Instance.new("PointLight"); light.Color=glow.FillColor; light.Range=13
+        light.Brightness=1.7; light.Parent=model.PrimaryPart
+    end
     local body=model.PrimaryPart
-    local prompt=W.prompt(body,"RESCUE",spec.name.." | "..spec.value.." Fizz")
-    local nameLabel=W.label(body,spec.name.."\n"..spec.rarity.." / "..spec.value.." Fizz",Color3.fromRGB(spec.accent[1],spec.accent[2],spec.accent[3]),190,48)
+    local prompt=W.prompt(body,golden and "GOLDEN RESCUE" or "RESCUE",spec.name.." | "..spec.value.." Fizz")
+    local nameLabel=W.label(body,(golden and "GOLDEN! +25 FIZZ\n" or "")..spec.name.." / "..spec.rarity, golden and Color3.fromRGB(255,231,80) or Color3.fromRGB(spec.accent[1],spec.accent[2],spec.accent[3]),220,48)
     nameLabel.Parent.MaxDistance=55
     local token={id=spec.id,model=model,slot=slot}; tokens[slot.index]=token
     prompt.Triggered:Connect(function(player)
         if not active() or tokens[slot.index]~=token or carried[player] then return end
         if not interactive(player,body,prompt.Enabled) then return end
         tokens[slot.index]=nil; prompt.Enabled=false
-        carried[player]={id=spec.id,pickedAt=now(),distance=(slot.position-world.bank.Position).Magnitude}
+        carried[player]={id=spec.id,pickedAt=now(),distance=(slot.position-world.bank.Position).Magnitude,golden=golden}
         model:Destroy(); appearance(player); sync(player)
         local rt=runtime[player]
         if not rt.firstPickup then rt.firstPickup=true; Analytics.step(player,2,"FirstCreaturePickedUp") end
-        tell(player,"Got "..spec.name.."! Return to the green rescue chute.","good")
+        tell(player,(golden and "GOLDEN RESCUE! " or "GOT IT! ")..spec.name.." - DASH TO THE GREEN CHUTE!","good")
         task.delay(C.RespawnSeconds,function() spawnToken(slot,expectedRound) end)
     end)
 end
@@ -124,6 +135,13 @@ world.bankPrompt.Triggered:Connect(function(player)
     carried[player]=nil
     local reward,discovered=R.rescue(rec.profile,cargo.id,now()<frenzyUntil,C)
     if not reward then return end
+    local stamp=now()
+    rt.combo=(rt.lastDepositAt and stamp-rt.lastDepositAt<=C.ComboWindowSeconds) and math.min(5,(rt.combo or 0)+1) or 1
+    rt.lastDepositAt=stamp
+    local bonus=(cargo.golden and C.GoldenBonusFizz or 0)+(rt.combo-1)*C.ComboStepFizz
+    bonus=math.max(0,math.min(bonus,C.MaxFizz-rec.profile.fizz))
+    rec.profile.fizz=rec.profile.fizz+bonus
+    reward=reward+bonus
     Data.changed(player); rt.deliveries=rt.deliveries+1
     local missionReward=R.dailyMission(rec.profile,math.floor(os.time()/86400),C)
     if missionReward>0 then tell(player,"DAILY RESCUE MISSION! +"..missionReward.." Fizz","good") end
@@ -134,7 +152,7 @@ world.bankPrompt.Triggered:Connect(function(player)
     end
     state:SetAttribute("TeamCharge",teamCharge)
     local spec=C.ById[cargo.id]
-    tell(player,(discovered and "NEW! " or "RESCUED! ")..spec.name.."  +"..reward.." Fizz","good")
+    tell(player,(cargo.golden and "GOLDEN! " or discovered and "NEW! " or "RESCUED! ")..spec.name.."  +"..reward.." Fizz  |  COMBO x"..rt.combo,"good")
     Analytics.economy(player,reward,rec.profile.fizz,"CreatureRescue")
     if not rt.firstDeposit then
         rt.firstDeposit=true; Analytics.step(player,3,"FirstCreatureRescued")
@@ -193,7 +211,7 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player,passId
     end)
 end)
 local function onJoin(player)
-    runtime[player]={lastPrompt=-10,lastAction=-10,dashReady=0,immuneUntil=now()+3,deliveries=0,bounces=0}
+    runtime[player]={lastPrompt=-10,lastAction=-10,dashReady=0,immuneUntil=now()+3,deliveries=0,bounces=0,combo=0}
     local stats=Instance.new("Folder"); stats.Name="leaderstats"; stats.Parent=player
     for _,name in ipairs({"Fizz","Rescues"}) do local value=Instance.new("IntValue"); value.Name=name; value.Parent=stats end
     player.CharacterAdded:Connect(function(char)
@@ -326,12 +344,12 @@ task.spawn(function()
         if closing then break end
         round=round+1; teamCharge=0; frenzyUntil=0; goal=math.max(4,#Players:GetPlayers()*2)
         activeEvent=R.voteWinner(votes,ids,ids[((round-1)%#ids)+1]); votes={}
-        for _,rt in pairs(runtime) do rt.deliveries=0; rt.bounces=0 end
+        for _,rt in pairs(runtime) do rt.deliveries=0; rt.bounces=0; rt.combo=0; rt.lastDepositAt=nil end
         resetHazards(); clearTokens(); moving=nil; drops={}; nextHazard=C.PanicAt
         local started=now(); local endsAt=started+C.RoundSeconds
         setPhase("HUNT",endsAt)
         for _,slot in ipairs(world.slots) do spawnToken(slot,round) end
-        announce("ROUND "..round..": rescue creatures before the snackquake!","good")
+        announce("GOLDEN RESCUE! Grab the glowing creature, bank it, then escape the disaster!","good")
         while now()<endsAt and not closing do
             local elapsed=now()-started
             if elapsed>=C.PanicAt and phase~="PANIC" then setPhase("PANIC",endsAt); announce(state:GetAttribute("Hint"),"danger")

@@ -1,3 +1,9 @@
+# Snackquake Rescue Rush — active private v0.3 redesign
+
+The owner's Android playtest revealed a dull first-minute experience, so this game is now undergoing a faster, brighter private-only gameplay redesign. See [v0.3 Rescue Rush](V0_3_RESCUE_RUSH.md) for actual tests and remaining launch gates. The original v0.2.1 source history below is retained for provenance; the current source is v0.3.0-rescue-rush. **No public release or earnings are claimed.**
+
+---
+
 # Brainrot Rescue: Snackquake — v0.2.1-save-fix
 
 Recovered into the Master Command Center from the canonical Library archive `Snackquake_Expedition_v0_2_Source.zip` (Library version 4) on 2026-10-13.
