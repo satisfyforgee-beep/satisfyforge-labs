@@ -57,6 +57,42 @@ end
 local finish=part("FinishPortal",Vector3.new(32,12,2),Vector3.new(0,6,-380),palette[5],"Finish")
 finish.Transparency=.3; sign("FINISH! +100 COINS",Vector3.new(0,16,-380),palette[5])
 part("FallReset",Vector3.new(150,2,500),Vector3.new(0,-25,-160),palette[1],"Fall").Transparency=1
+-- Expansive shared hub: six original districts, each with an activity to explore.
+-- Keep the race connected to the hub; multiplayer characters share the same world.
+local districts={
+ {"Mutation City",Vector3.new(170,0,55),palette[4],"CITY PLAZA + SOCIAL HUB"},
+ {"Crystal Caves",Vector3.new(340,0,55),palette[2],"FIND THE CRYSTALS"},
+ {"Sky Parkour",Vector3.new(510,0,55),palette[3],"CLIMB THE SKY TOWERS"},
+ {"Battle Dome",Vector3.new(-170,0,55),palette[1],"DODGE THE DOME LASERS"},
+ {"Treasure Island",Vector3.new(-340,0,55),palette[5],"HUNT THE TREASURE"},
+ {"Festival Grounds",Vector3.new(-510,0,55),palette[4],"EXPLORE THE FESTIVAL"},
+}
+for _,info in ipairs(districts) do
+ local name,center,color,headline=info[1],info[2],info[3],info[4]
+ local base=part(name.." Platform",Vector3.new(115,2,115),center+Vector3.new(0,-2,0),color)
+ base.Material=Enum.Material.SmoothPlastic
+ sign(headline,center+Vector3.new(0,15,0),color)
+ for n=1,8 do
+  local a=(n-1)*math.pi/4
+  local pos=center+Vector3.new(math.cos(a)*42,0,math.sin(a)*42)
+  local tower=part(name.." Landmark",Vector3.new(9,10+(n%4)*9,9),pos,palette[(n-1)%5+1])
+  tower.CanCollide=true
+ end
+ local bridgeStart=math.min(math.abs(center.X),170)
+ local direction=center.X>0 and 1 or -1
+ for segment=1,math.floor(math.abs(center.X)/20) do
+  local x=direction*(segment*20)
+  local walkway=part(name.." Skybridge",Vector3.new(20,1,12),Vector3.new(x,-1,55),color)
+  walkway.Material=Enum.Material.SmoothPlastic
+ end
+end
+-- Cooperative collectible scavenger hunt: a shared world, independent player rewards.
+local treasurePositions={Vector3.new(340,3,55),Vector3.new(-340,3,55),Vector3.new(510,3,55),Vector3.new(-510,3,55)}
+for i,pos in ipairs(treasurePositions) do
+ local crystal=part("HiddenTreasure"..i,Vector3.new(5,5,5),pos,palette[(i%5)+1],"Treasure")
+ crystal.Shape=Enum.PartType.Ball
+ sign("+30 COINS SECRET!",pos+Vector3.new(0,5,0),palette[3])
+end
 local remote=Instance.new("RemoteEvent"); remote.Name="MutationRushEvent"; remote.Parent=ReplicatedStorage
 local action=Instance.new("RemoteEvent"); action.Name="MutationRushAction"; action.Parent=ReplicatedStorage
 local sessions={}
@@ -95,6 +131,10 @@ local function touched(obj,hit)
   if s.used[obj] then return end
   s.used[obj]=true; s.speed=math.min(48,s.speed+1)
   s.coins=math.min(100000,s.coins+10); tell(p,"+1 SPEED! +10 COINS!")
+ elseif kind=="Treasure" then
+  if s.used[obj] then return end
+  s.used[obj]=true; s.coins=math.min(100000,s.coins+30)
+  tell(p,"SECRET TREASURE! +30 COINS!")
  elseif kind=="Mutation" then
   if s.used[obj] or s.mutations>=8 then return end
   s.used[obj]=true; s.mutations+=1; s.speed=math.min(48,s.speed+3)
