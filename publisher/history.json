@@ -3,12 +3,14 @@
     "lake-nyos",
     "lake-peigneur",
     "demon-core",
-    "operation-mincemeat",
-    "great-molasses-flood"
+    "operation-mincemeat"
   ],
   "completed_concepts": [
     "dancing-plague",
-    "first-computer-bug"
+    "first-computer-bug",
+    "great-molasses-flood"
   ],
-  "completed_media_sha256": []
+  "completed_media_sha256": [
+    "e11411f868d4c3d92011c4ffe5d66b0d5a909b822fdb2519068b1ca85aaa7588"
+  ]
 }
