@@ -129,6 +129,7 @@ This file is the canonical non-sensitive operating index for work that used to b
 - No filler posting just to maintain cadence.
 - Check Buffer, Wix Social Publisher, and recent live posts before any legacy publish or schedule action so only one route owns each post/platform/time. Do not include retired Metricool in the operating dependency chain.
 - Current platform strategy/research: `docs/GROWTH_SCAN_2026-10-13.md`.
+- Next prepared business-content candidate: **Lead Leak Walkthrough — confusing contact form**. The owned, screen-recordable fictional before/after demo and complete script/storyboard/captions/QA gate live in `content/lead-leak-walkthrough/`. It is preparation-only until a final narrated MP4 is rendered, hashed, and QA-passed; do not schedule it from the source files.
 - Dancing Plague is now confirmed complete across all four major channels. TikTok was published automatically through Wix as item `4c739b11-04ff-47c0-befe-4a681cb0780c`; do not recreate or retry it.
 
 ### Permanent no-repost history
