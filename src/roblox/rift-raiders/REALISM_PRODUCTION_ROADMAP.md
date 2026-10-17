@@ -1,6 +1,12 @@
 # Visual realism, behavior and performance production roadmap
 
-## Current (v0.7): real code, not concept art
+## Current (v0.8): official mesh-based city art, real code
+- **Major visual upgrade:** imported Roblox's own Modern City template art as a separate downtown region, with 13 buildings, 59 street groups, about 1,880 MeshParts, and official MaterialVariants. The spawn is in the new district. The official 45-mesh sedan now visually replaces the player's blocky car.
+- We can now access Studio's GUI using authorized Mac accessibility and Swift Quartz mouse events, and saved the official template to the user's Documents folder. The reusable extraction pipeline and provenance are documented in OFFICIAL_ASSET_PIPELINE.md.
+- Streaming enabled, compact HUD, 16 destinations, textured asphalt street foundation and no fantasy weapon hotbar in realistic zones. The v0.8 release has an edit-mode camera pointing at the detailed city, so the first Studio screen is no longer empty sky. Existing jobs, resources, sports and original world preserved.
+- **Not finished:** downtown storefronts still need real job hooks; realistic car physics, rigged NPCs, AI pathfinding, animations, sound, detailed interiors and Android performance testing remain.
+
+## Previous v0.7 foundation
 - Life City has 20 professions, each of 19 wage jobs with two required workplace tasks; camera-based creator career; 28 virtual products; business income; hunger, energy and hygiene; walkable furnished home ground floors; city pedestrians, moving cars, police patrol and pursuit.
 - New original procedural architecture: painted storefront signs, awnings, window trim, roof cornices, display merchandise, sidewalks, crosswalks, trees, park benches, fountain, street lighting, job-specific work props, home gables, porches and gardens.
 - **Still not photoreal**: visual geometry remains mostly basic Roblox Parts, cylinders, wedges and spheres; high-quality custom imported meshes, PBR texture maps, proper humanoid rigs and motion-captured animations are still needed.

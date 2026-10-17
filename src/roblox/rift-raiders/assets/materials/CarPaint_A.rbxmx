@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<roblox version="4"><External>null</External><External>nil</External><Item class="MaterialVariant" referent="RBXa54a5c5dea254c0ea4ca01ff4ec99c60">
+			<Properties>
+				<token name="AlphaMode">3</token>
+				<token name="BaseMaterial">1088</token>
+				<Content name="ColorMap"><url>rbxassetid://10961354729</url></Content>
+				<PhysicalProperties name="CustomPhysicalProperties">
+					<CustomPhysics>false</CustomPhysics>
+				</PhysicalProperties>
+				<Content name="EmissiveMaskContent">
+					<null />
+				</Content>
+				<float name="EmissiveStrength">1</float>
+				<Color3 name="EmissiveTint">
+					<R>1</R>
+					<G>1</G>
+					<B>1</B>
+				</Color3>
+				<token name="MaterialPattern">0</token>
+				<Content name="MetalnessMap"><url>rbxassetid://12434205681</url></Content>
+				<Content name="NormalMap"><url>rbxassetid://12404989068</url></Content>
+				<Content name="RoughnessMap"><url>rbxassetid://12404995267</url></Content>
+				<float name="StudsPerTile">2</float>
+				<Content name="TexturePack"><url>rbxassetid://12434963172</url></Content>
+				<string name="Name">CarPaint_A</string>
+				</Properties>
+		</Item>
+	</roblox>

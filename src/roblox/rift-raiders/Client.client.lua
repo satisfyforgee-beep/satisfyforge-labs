@@ -4,6 +4,7 @@ local ReplicatedStorage=game:GetService("ReplicatedStorage")
 local TweenService=game:GetService("TweenService")
 local Lighting=game:GetService("Lighting")
 local RunService=game:GetService("RunService")
+local UserInputService=game:GetService("UserInputService")
 local player=Players.LocalPlayer
 local action=ReplicatedStorage:WaitForChild("RiftRaidersAction")
 local event=ReplicatedStorage:WaitForChild("RiftRaidersEvent")
@@ -35,20 +36,36 @@ local function button(name,content,size,position,color,parent)
  return b
 end
 local title=text("Title","RIFT RAIDERS  ⚡  CHAOS ISLANDS",
- UDim2.new(.62,0,0,39),UDim2.new(.02,0,0,8),Color3.fromRGB(255,222,97))
+ UDim2.new(.29,0,0,30),UDim2.new(.40,0,0,8),Color3.fromRGB(255,222,97))
 local stats=text("Stats","LEVEL 1  |  0 COINS  |  0 SHARDS",
- UDim2.new(.62,0,0,33),UDim2.new(.02,0,0,52),Color3.fromRGB(110,250,236))
+ UDim2.new(.29,0,0,27),UDim2.new(.40,0,0,42),Color3.fromRGB(110,250,236))
 local progression=text("Progression","BLASTER 1  |  RIFTS 0  |  XP 0",
- UDim2.new(.62,0,0,29),UDim2.new(.02,0,0,90),Color3.fromRGB(196,168,255))
+ UDim2.new(.47,0,0,28),UDim2.new(.02,0,0,78),Color3.fromRGB(196,168,255))
 local phase=text("Surge","CALM | NEXT SURGE: 75s",
- UDim2.new(.32,0,0,34),UDim2.new(.66,0,0,8),Color3.fromRGB(255,154,210))
+ UDim2.new(.28,0,0,29),UDim2.new(.70,0,0,8),Color3.fromRGB(255,154,210))
 local missions=text("Missions","MISSIONS: SHARDS 0/8 | DRONES 0/3 | RIFTS 0/1",
- UDim2.new(.96,0,0,34),UDim2.new(.02,0,0,130),Color3.fromRGB(255,221,119))
+ UDim2.new(.62,0,0,30),UDim2.new(.02,0,0,111),Color3.fromRGB(255,221,119))
 local hint=text("Hint","EXPLORE PORTALS • DRIVE CARS • HARVEST CROPS • VISIT JAPAN & CASTLES",
- UDim2.new(.96,0,0,32),UDim2.new(.02,0,0,169),Color3.fromRGB(228,239,255))
+ UDim2.new(.65,0,0,30),UDim2.new(.18,0,1,-46),Color3.fromRGB(228,239,255))
 local resourcesHud=text("ResourceHud","WOOD 0 • METAL 0 • FISH 0 • TOOLKITS 0 • HEAT 0",
- UDim2.new(.64,0,0,31),UDim2.new(.02,0,1,-85),Color3.fromRGB(225,237,214))
+ UDim2.new(.48,0,0,27),UDim2.new(.02,0,1,-93),Color3.fromRGB(225,237,214))
 resourcesHud.TextSize=12
+progression.Visible=false
+missions.Visible=false
+hint.Visible=false
+resourcesHud.Visible=false
+local showDetails=false
+local detailsButton=button("HUDDetails","DETAILS",
+ UDim2.fromOffset(103,35),UDim2.new(1,-114,0,44),
+ Color3.fromRGB(55,83,107))
+detailsButton.Activated:Connect(function()
+ showDetails=not showDetails
+ progression.Visible=showDetails
+ missions.Visible=showDetails
+ resourcesHud.Visible=showDetails
+ hint.Visible=showDetails
+ detailsButton.Text=showDetails and "HIDE HUD" or "DETAILS"
+end)
 local toast=text("Toast","",UDim2.new(.82,0,0,55),UDim2.new(.09,0,.68,0),Color3.fromRGB(255,222,99))
 toast.Visible=false
 local blast=button("Blast","⚡ BLAST",UDim2.fromOffset(112,62),
@@ -61,9 +78,9 @@ local shield=button("Shield","⬡ SHIELD",UDim2.fromOffset(108,51),
 local fireButton=button("Fire","FIRE",UDim2.fromOffset(108,56),
  UDim2.new(1,-126,1,-214),Color3.fromRGB(235,169,66))
 local carButton=button("Car","SPAWN CAR",UDim2.fromOffset(110,44),
- UDim2.new(1,-118,0,50),Color3.fromRGB(60,148,177))
+ UDim2.new(1,-118,0,86),Color3.fromRGB(60,148,177))
 local flyingCarButton=button("FlyingCar","FLYING CAR",UDim2.fromOffset(110,44),
- UDim2.new(1,-118,0,210),Color3.fromRGB(140,87,218))
+ UDim2.new(1,-118,0,178),Color3.fromRGB(140,87,218))
 local crosshair=Instance.new("TextLabel"); crosshair.Name="Crosshair"
 crosshair.Size=UDim2.fromOffset(22,22)
 crosshair.Position=UDim2.new(.5,-11,.5,-11)
@@ -75,12 +92,35 @@ local shopButton=button("ShopToggle","SHOP",UDim2.fromOffset(98,47),
 local mapButton=button("MapToggle","WORLD",UDim2.fromOffset(98,47),
  UDim2.new(.02,107,1,-145),Color3.fromRGB(87,149,229))
 local qualityButton=button("GraphicsQuality","GRAPHICS: MED",
- UDim2.fromOffset(110,40),UDim2.new(1,-118,0,269),
+ UDim2.fromOffset(110,36),UDim2.new(1,-118,0,228),
  Color3.fromRGB(82,117,130))
 local lifeButton=button("LifeToggle","LIFE",UDim2.fromOffset(98,47),
  UDim2.new(.02,107,1,-202),Color3.fromRGB(83,149,130))
 local packButton=button("PackToggle","PACK",UDim2.fromOffset(98,47),
  UDim2.new(.02,0,1,-202),Color3.fromRGB(144,117,86))
+local actionsExpanded=false
+local actionsButton=button("ActionsToggle","ACTIONS",
+ UDim2.fromOffset(110,38),UDim2.new(1,-118,0,137),
+ Color3.fromRGB(98,92,131))
+local function showActions()
+ for _,control in ipairs({blast,dash,shield,fireButton,flyingCarButton}) do
+  control.Visible=actionsExpanded
+ end
+ crosshair.Visible=actionsExpanded
+ actionsButton.Text=actionsExpanded and "HIDE ACTIONS" or "ACTIONS"
+end
+actionsButton.Activated:Connect(function()
+ actionsExpanded=not actionsExpanded
+ showActions()
+end)
+showActions()
+-- A 2x2 navigation grid leaves the center hotbar clear on desktop and mobile.
+for i,control in ipairs({shopButton,mapButton,packButton,lifeButton}) do
+ local col=(i-1)%2
+ local row=math.floor((i-1)/2)
+ control.Position=UDim2.new(.02,col*104,1,-57-row*49)
+ control.Size=UDim2.fromOffset(97,43)
+end
 blast.Activated:Connect(function() action:FireServer("Blast") end)
 dash.Activated:Connect(function() action:FireServer("Dash") end)
 shield.Activated:Connect(function() action:FireServer("Shield") end)
@@ -125,7 +165,12 @@ player.CharacterAdded:Connect(bindCharacter)
 if player.Character then bindCharacter(player.Character) end
 local function panel(name,heading)
  local f=Instance.new("Frame"); f.Name=name
- f.Size=UDim2.new(.86,0,.49,0); f.Position=UDim2.new(.07,0,.28,0)
+ f.Size=UDim2.new(UserInputService.TouchEnabled and .94 or .7,0,.72,0)
+ f.AnchorPoint=Vector2.new(.5,.5); f.Position=UDim2.fromScale(.5,.5)
+ local constraint=Instance.new("UISizeConstraint")
+ constraint.MaxSize=Vector2.new(760,650)
+ constraint.MinSize=Vector2.new(280,240)
+ constraint.Parent=f
  f.BackgroundColor3=Color3.fromRGB(19,27,61); f.BorderSizePixel=0
  f.Visible=false; f.Parent=gui; round(f,16)
  local header=Instance.new("TextLabel"); header.Size=UDim2.new(1,-55,0,48)
@@ -146,7 +191,7 @@ local function panel(name,heading)
  return f,scroll
 end
 local shop,shopList=panel("ShopPanel","EARNED COIN SHOP + PRESTIGE")
-local map,mapList=panel("MapPanel","EXPLORE 15 WORLD LOCATIONS")
+local map,mapList=panel("MapPanel","EXPLORE 16 WORLD LOCATIONS")
 local pack,packList=panel("PackPanel","YOUR RESOURCES & PROGRESS")
 local lifePanel,lifeList=panel("LifePanel","LIFE CITY • CAREERS & SHOPPING")
 local function item(parent,name,content,color,fn)
@@ -211,6 +256,7 @@ for _,entry in ipairs(LifeCatalog.Items) do
   end)
 end
 local places={
+ {"MODERN","MODERN DOWNTOWN • REAL 3D CITY"},
  {"HUB","CENTRAL HUB"},{"CYBER","NEON METROPOLIS"},{"CRYSTAL","PRISM WILDS"},
  {"VOLCANO","MAGMA OUTPOST"},{"SKY","CLOUD KINGDOM"},
  {"CASTLE","CASTLE KINGDOM"},{"FARM","HARVEST VALLEY"},
@@ -408,14 +454,20 @@ task.spawn(function()
  while gui.Parent do
   task.wait(2)
   local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-  if root and root.Position.Z>1430 and root.Position.Z<1930 then
-   title.Text="RIFTLIFE  •  CITY & CHAOS"
+  if root and root.Position.Z>2200 and root.Position.Z<2550 then
+   phase.Visible=false
+   title.Text="RIFTLIFE • DOWNTOWN"
+   hint.Text="EXPLORE REAL CITY STREETS • WALK TO LIFE CITY JOBS • DRIVE & EXPLORE"
+  elseif root and root.Position.Z>1430 and root.Position.Z<1930 then
+   phase.Visible=false
+   title.Text="RIFTLIFE • CAREERS"
    local shift=player:GetAttribute("RRLifeShift") or ""
    hint.Text=shift~="" and
     ("ON SHIFT: "..shift.." • "..(player:GetAttribute("RRLifeTaskName") or "")) or
     "LIFE CITY • FIND WORK • EARN WAGES • BUY A HOME • RUN A BUSINESS"
   else
-   title.Text="RIFT RAIDERS  ⚡  CHAOS ISLANDS"
+   phase.Visible=true
+   title.Text="RIFT RAIDERS • ADVENTURE"
   end
  end
 end)

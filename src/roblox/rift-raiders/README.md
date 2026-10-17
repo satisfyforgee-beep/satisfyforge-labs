@@ -8,6 +8,9 @@ Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach 
 
 ## Implemented
 
+- **v0.8 Official Modern Downtown:** imported 13 actual Roblox Modern City template buildings, 59 street/prop groups, 1,880 detailed MeshParts, original PBR materials, and a 45-mesh sedan. Players now **spawn in the imported downtown**, with a new WORLD destination and physical wayfinding signs to Life City jobs and the original hub. Cars use the detailed official sedan as the visual shell, keeping the tested server-owned VehicleSeat controls. Mobile-friendly Workspace streaming is enabled. The file opens with an actual city view in Studio edit mode (not a blank sky), and the HUD starts compact, with DETAILS and ACTIONS drawers. Citizens start without sci-fi weapons in the city; those tools are available in the fantasy worlds. See [OFFICIAL_ASSET_PIPELINE.md](OFFICIAL_ASSET_PIPELINE.md) for source, safe extraction, reuse, limitations and future plans. This is a real improvement to visual quality, but still not a complete photorealistic simulation.
+
+
 - **v0.7 Life City:** new detailed destination with storefronts, 20 careers, two-stage workplace tasks, a 28-item in-game catalog (apparel, phones/cameras, cars, boats, homes, businesses), creator videos and follower growth, business collection, furnished owned home ground floors, hunger/energy/hygiene, ambient city traffic/citizens, police pursuit, in-game jail and fines. Player profile schema v5. See [LIFE_SIMULATION_DESIGN.md](LIFE_SIMULATION_DESIGN.md). Boat purchases are inventory-only, not drivable. No real-money transactions.
 
 

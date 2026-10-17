@@ -4,7 +4,42 @@ task.wait(3)
 local success,problem=pcall(function()
 local world=workspace:WaitForChild("RiftRaidersWorld",20)
 assert(world,"missing world")
-assert(world:GetAttribute("Version")=="0.7.0","version mismatch")
+local imported=workspace:FindFirstChild("OfficialModernCityDistrict")
+assert(imported and imported:IsA("Model"),"official modern city missing")
+assert(imported:GetAttribute("ImportedScriptsRemoved")==true,"imported script safety missing")
+local meshCount=0
+for _,obj in ipairs(imported:GetDescendants()) do
+ if obj:IsA("MeshPart") then meshCount+=1 end
+ assert(not obj:IsA("LuaSourceContainer"),"unsafe imported script found")
+end
+assert(meshCount>=1000,"official detailed 3D meshes missing")
+local downtownCF,downtownSize=imported:GetBoundingBox()
+print("SF_MODERN_BOUNDS",downtownCF.Position,downtownSize)
+local closeParts=0
+for _,obj in ipairs(imported:GetDescendants()) do
+ if obj:IsA("BasePart") and math.abs(obj.Position.X)<12 and
+  math.abs(obj.Position.Z-2350)<12 and obj.Position.Y<35 then
+  closeParts+=1
+  if closeParts<=10 then print("SF_MODERN_SPAWN_NEAR",obj.Name,obj.Position) end
+ end
+end
+print("SF_MODERN_SPAWN_NEAR_COUNT",closeParts)
+local sedan=game:GetService("ServerStorage"):FindFirstChild("OfficialSedanVisual")
+assert(sedan and sedan:IsA("Model"),"official car art missing")
+local carMeshCount=0
+for _,obj in ipairs(sedan:GetDescendants()) do
+ if obj:IsA("MeshPart") then carMeshCount+=1 end
+ assert(not obj:IsA("LuaSourceContainer"),"unsafe imported car script found")
+end
+assert(carMeshCount>=35,"detailed official sedan geometry missing")
+assert(world:FindFirstChild("Downtown Wayfinding"),"downtown portal missing")
+assert(imported:FindFirstChild("Modern City Asphalt Foundation"),"downtown ground missing")
+assert(workspace.StreamingEnabled==true,"streaming must be enabled for mobile")
+assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
+ "official modern city material variants missing")
+assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
+ "downtown not the default spawn")
+assert(world:GetAttribute("Version")=="0.8.0","version mismatch")
 local function count(name)
  local n=0
  for _,v in ipairs(world:GetDescendants()) do if v.Name==name then n+=1 end end

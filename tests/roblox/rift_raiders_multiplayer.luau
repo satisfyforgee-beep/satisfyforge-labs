@@ -40,6 +40,10 @@ end
 local rootA=waitFor(function() return a.Character and a.Character:FindFirstChild("HumanoidRootPart") end,6)
 local rootB=waitFor(function() return b.Character and b.Character:FindFirstChild("HumanoidRootPart") end,6)
 if not rootA or not rootB then fail("character_missing") return end
+local initialBPack=b:FindFirstChildOfClass("Backpack")
+if initialBPack and initialBPack:FindFirstChild("Pulse Rifle") then
+ fail("armed_downtown_spawn") return
+end
 if not request(a,"travel","Travel","CYBER") then fail("no_travel_ack") return end
 if not waitFor(function() return (rootA.Position-Vector3.new(180,6,0)).Magnitude<12 end,4) then fail("travel_missing") return end
 if (rootB.Position-Vector3.new(180,6,0)).Magnitude<20 then fail("cross_player_travel") return end
@@ -78,6 +82,11 @@ local car=waitFor(function()
  end
 end,5)
 if not car or not car:FindFirstChild("DriverSeat") then fail("drivable_car_missing") return end
+local visual=car:FindFirstChild("Official Detailed Sedan Body")
+if not visual or car:GetAttribute("VisualModel")~="Official Modern City Sedan" then
+ fail("real_car_art_missing") return
+end
+print("SF_RIFT_MP_CHECK official_detailed_drivable_sedan PASS")
 local seat=car.DriverSeat
 local humanoid=a.Character and a.Character:FindFirstChildOfClass("Humanoid")
 if not humanoid then fail("car_humanoid_missing") return end
@@ -317,6 +326,23 @@ if not house or house:GetAttribute("OwnerUserId")~=a.UserId then
 end
 if activities.Perform(a,"build_house") then fail("double_house_build") return end
 print("SF_RIFT_MP_CHECK housing_construction PASS")
+-- New art is a genuine Roblox template asset, but teleport access is still
+-- server-allowlisted and only moves the requesting player.
+task.wait(2.2)
+if not request(a,"modern","Travel","MODERN") then fail("modern_travel_ack") return end
+if not waitFor(function() return (rootA.Position-Vector3.new(0,8,2215)).Magnitude<18 end,5) then
+ fail("modern_downtown_travel") return
+end
+if (rootB.Position-Vector3.new(0,8,2215)).Magnitude<25 then
+ fail("modern_shared_travel") return
+end
+local aPack=a:FindFirstChildOfClass("Backpack")
+if (aPack and aPack:FindFirstChild("Pulse Rifle")) or
+ (a.Character and a.Character:FindFirstChild("Pulse Rifle")) then
+ fail("fantasy_weapon_not_removed_in_city") return
+end
+print("SF_RIFT_MP_CHECK official_modern_city_travel PASS")
+print("SF_RIFT_MP_CHECK realistic_city_weapon_rules PASS")
 
 print("SF_RIFT_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:rift_multiplayer")

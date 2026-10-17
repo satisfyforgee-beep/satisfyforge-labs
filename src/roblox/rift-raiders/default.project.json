@@ -27,6 +27,9 @@
       },
       "LifeCityVisuals": {
         "$path": "LifeCityVisuals.lua"
+      },
+      "ModernCityIntegration": {
+        "$path": "ModernCityIntegration.lua"
       }
     },
     "StarterPlayer": {
@@ -45,6 +48,50 @@
       },
       "LifeCatalog": {
         "$path": "LifeCatalog.lua"
+      }
+    },
+    "Workspace": {
+      "$className": "Workspace",
+      "OfficialModernCityDistrict": {
+        "$path": "assets/OfficialModernCityDistrict.rbxmx"
+      },
+      "$properties": {
+        "StreamingEnabled": true,
+        "StreamingMinRadius": 64,
+        "StreamingTargetRadius": 256
+      }
+    },
+    "MaterialService": {
+      "$className": "MaterialService",
+      "Plaster_A": {
+        "$path": "assets/materials/Plaster_A.rbxmx"
+      },
+      "Concrete_Ribbed_A": {
+        "$path": "assets/materials/Concrete_Ribbed_A.rbxmx"
+      },
+      "Concrete_Tie_Holes_A": {
+        "$path": "assets/materials/Concrete_Tie_Holes_A.rbxmx"
+      },
+      "Concrete_Tiles_A": {
+        "$path": "assets/materials/Concrete_Tiles_A.rbxmx"
+      },
+      "PaintedBrick": {
+        "$path": "assets/materials/PaintedBrick.rbxmx"
+      },
+      "Sidewalk_A": {
+        "$path": "assets/materials/Sidewalk_A.rbxmx"
+      },
+      "Concrete_Board_Formed_A": {
+        "$path": "assets/materials/Concrete_Board_Formed_A.rbxmx"
+      },
+      "CarPaint_A": {
+        "$path": "assets/materials/CarPaint_A.rbxmx"
+      }
+    },
+    "ServerStorage": {
+      "$className": "ServerStorage",
+      "OfficialSedanVisual": {
+        "$path": "assets/OfficialSedanVisual.rbxmx"
       }
     }
   }

@@ -14,10 +14,11 @@ local WorldActivities=require(ServerScriptService:WaitForChild("WorldActivities"
 local WorldPolish=require(ServerScriptService:WaitForChild("WorldPolish"))
 local Life=require(ServerScriptService:WaitForChild("LifeSimulation"))
 local LifeCityVisuals=require(ServerScriptService:WaitForChild("LifeCityVisuals"))
+local ModernCityIntegration=require(ServerScriptService:WaitForChild("ModernCityIntegration"))
 local Catalog=require(ReplicatedStorage:WaitForChild("PrestigeCatalog"))
 local Vehicles=require(ServerScriptService:WaitForChild("VehicleService"))
 local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
-world:SetAttribute("Version","0.7.0")
+world:SetAttribute("Version","0.8.0")
 world:SetAttribute("Phase","CALM")
 world:SetAttribute("SecondsLeft",75)
 local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
@@ -274,6 +275,7 @@ local lifeDestination=Life.Build(world,{
  reward=reward,sync=sync,tell=tell
 })
 LifeCityVisuals.Build(world)
+local modernCityDestination=ModernCityIntegration.Build(world,spawn,tell)
 Life.Start()
 local function quest(p,kind,n)
  local s=profiles[p]; if not s then return end
@@ -362,21 +364,18 @@ local function init(p)
  end
  sync(p)
  task.defer(function()
-  grantWeapon(p,pulseTemplate)
+  -- Players start as ordinary citizens in downtown, not armed adventurers.
   Life.GiveCamera(p)
-  if s.scatterOwned then grantWeapon(p,scatterTemplate) end
  end)
  p.CharacterAdded:Connect(function()
   task.wait(.25)
   if profiles[p] then
    sync(p)
-   grantWeapon(p,pulseTemplate)
    Life.GiveCamera(p)
-   if profiles[p].scatterOwned then grantWeapon(p,scatterTemplate) end
    applyTrail(p)
   end
  end)
- tell(p,"WELCOME! COLLECT SHARDS, BLAST DRONES, SEAL RIFTS!")
+ tell(p,"WELCOME TO RIFTLIFE! EXPLORE DOWNTOWN • WORLD → LIFE CITY FOR JOBS!")
 end
 Players.PlayerAdded:Connect(init)
 Players.PlayerRemoving:Connect(function(p)
@@ -414,6 +413,7 @@ for _,b in ipairs(biomes) do destinations[b.id]=b.center+Vector3.new(0,6,0) end
 for id,pos in pairs(newDestinations) do destinations[id]=pos end
 for id,pos in pairs(activityDestinations) do destinations[id]=pos end
 destinations.LIFE=lifeDestination
+if modernCityDestination then destinations.MODERN=modernCityDestination end
 local function blast(p)
  local s=profiles[p]; local root=rootFor(p)
  if not s or not root then return end
@@ -630,6 +630,20 @@ action.OnServerEvent:Connect(function(p,kind,arg,extra)
   if now-s.travelAt<2 then return end
   s.travelAt=now
   p.Character:PivotTo(CFrame.new(destinations[arg]))
+  if arg=="MODERN" or arg=="LIFE" then
+   -- Keep realistic life-simulation zones free of the fantasy rifle hotbar.
+   for _,container in ipairs({p.Character,p:FindFirstChildOfClass("Backpack")}) do
+    if container then
+     for _,name in ipairs({"Pulse Rifle","Scatter Blaster"}) do
+      local tool=container:FindFirstChild(name)
+      if tool then tool:Destroy() end
+     end
+    end
+   end
+  else
+   grantWeapon(p,pulseTemplate)
+   if s.scatterOwned then grantWeapon(p,scatterTemplate) end
+  end
   tell(p,"ARRIVED: "..arg)
  elseif kind=="BuyPrestige" then
   if type(arg)~="string" then return end
@@ -751,7 +765,8 @@ task.spawn(function()
   for _,p in ipairs(Players:GetPlayers()) do
    tell(p,"RIFT SURGE! DOUBLE COINS! DEFEAT THE CHAOS TITAN AT HUB!")
   end
-  Lighting.Ambient=Color3.fromRGB(180,75,210)
+  -- Do not tint the entire realistic downtown purple during fantasy surges.
+  Lighting.Ambient=Color3.fromRGB(120,132,179)
   for remaining=25,0,-1 do
    world:SetAttribute("SecondsLeft",remaining)
    task.wait(1)
@@ -762,4 +777,4 @@ task.spawn(function()
   Lighting.Ambient=Color3.fromRGB(120,132,179)
  end
 end)
-print("SF_RIFT_RAIDERS_SERVER_READY v0.7.0")
+print("SF_RIFT_RAIDERS_SERVER_READY v0.8.0")

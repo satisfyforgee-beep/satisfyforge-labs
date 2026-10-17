@@ -64,3 +64,11 @@ Original reusable service: WorldActivities.lua. Profile DataStore migrated from 
 - 28 virtual goods, gradual hunger/energy/hygiene, community meals and rest, furnished ground-floor homes.
 - More detailed procedural storefronts, work props, landscaping, citizens and traffic.
 - No real-world transactions; visuals are an upgraded original blockout, not photorealistic.
+
+
+## v0.8 — First real asset-based city
+- Use the **official Roblox Modern City template's detailed mesh buildings and materials** as a reusable environment kit, not handmade placeholder blocks. The extraction process is documented in OFFICIAL_ASSET_PIPELINE.md.
+- Spawn in modern downtown, then explore the old Life City job stations and the 14 other regions by menu/portals.
+- Realistic-looking official sedan shell replaces the player car's visible cube geometry, while retaining server-controlled arcade driving.
+- Compact HUD, 16 destinations, Workspace streaming enabled for mobile.
+- Imported asset scripts removed; monetization remains inactive.

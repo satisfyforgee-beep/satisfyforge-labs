@@ -2,6 +2,7 @@
 -- VehicleSeat supplies keyboard/gamepad/touch throttle and steering.
 local RunService=game:GetService("RunService")
 local Players=game:GetService("Players")
+local ServerStorage=game:GetService("ServerStorage")
 local Kit=require(script.Parent:WaitForChild("WorldKit"))
 local Expansion=require(script.Parent:WaitForChild("WorldExpansion"))
 local Cars={}
@@ -12,6 +13,7 @@ local function permitted(v)
  local x,z=v.X,v.Z
  if math.abs(x)<52 and math.abs(z)<52 then return true end
  if math.abs(x)<155 and math.abs(z-1600)<115 then return true end
+ if math.abs(x)<135 and math.abs(z-2350)<140 then return true end
  if math.abs(x-180)<52 and math.abs(z)<52 then return true end
  if math.abs(x+180)<52 and math.abs(z)<52 then return true end
  if math.abs(z-180)<52 and math.abs(x)<52 then return true end
@@ -64,6 +66,35 @@ function Cars.Spawn(world,player,kind)
   m,seat=Kit.Car(world,cf,
    kind=="flyingcar" and Color3.fromRGB(196,94,252) or
    kind=="stolen" and Color3.fromRGB(48,54,69) or ownedPaint,true)
+  -- Roblox's own Modern City sedan model replaces the visible primitive car.
+  -- We keep the existing server-controlled seat and invisible collision shell
+  -- so players cannot gain control by injecting local physics or scripts.
+  if kind=="car" or kind=="stolen" then
+   local template=ServerStorage:FindFirstChild("OfficialSedanVisual")
+   if template then
+    for _,node in ipairs(m:GetChildren()) do
+     if node:IsA("BasePart") and node~=seat then
+      node.Transparency=1
+      node.CastShadow=false
+     end
+    end
+    local visual=template:Clone()
+    visual.Name="Official Detailed Sedan Body"
+    visual.Parent=m
+    for _,node in ipairs(visual:GetDescendants()) do
+     if node:IsA("Seat") or node:IsA("VehicleSeat") then
+      node:Destroy()
+     elseif node:IsA("BasePart") then
+      node.Anchored=true; node.CanCollide=false; node.CanTouch=false
+      node.CanQuery=false
+     elseif node:IsA("LuaSourceContainer") then
+      node:Destroy()
+     end
+    end
+    visual:PivotTo(cf*CFrame.new(0,0,0)*CFrame.Angles(0,math.pi,0))
+    m:SetAttribute("VisualModel","Official Modern City Sedan")
+   end
+  end
   if kind=="stolen" then m.Name="Mission Getaway Car" end
   if kind=="flyingcar" then
    m.Name="Player Flying Car"
