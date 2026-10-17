@@ -8,7 +8,7 @@ Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach 
 
 ## Implemented
 
-- **v0.6 Life City:** new destination with storefronts, seven careers, timed shifts, a 21-item in-game catalog (apparel, phones/cameras, cars, boats, homes, businesses), creator videos and follower growth, business collection, owned property exteriors, police pursuit, in-game jail and fines. Player profile schema v4. See [LIFE_SIMULATION_DESIGN.md](LIFE_SIMULATION_DESIGN.md). Boat purchases are inventory-only, not drivable. No real-money transactions.
+- **v0.7 Life City:** new detailed destination with storefronts, 20 careers, two-stage workplace tasks, a 28-item in-game catalog (apparel, phones/cameras, cars, boats, homes, businesses), creator videos and follower growth, business collection, furnished owned home ground floors, hunger/energy/hygiene, ambient city traffic/citizens, police pursuit, in-game jail and fines. Player profile schema v5. See [LIFE_SIMULATION_DESIGN.md](LIFE_SIMULATION_DESIGN.md). Boat purchases are inventory-only, not drivable. No real-money transactions.
 
 
 

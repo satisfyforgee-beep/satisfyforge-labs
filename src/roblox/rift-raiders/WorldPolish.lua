@@ -92,6 +92,16 @@ function Polish.Build(world,kit)
   local b=c+Vector3.new(x+32,0,-6)
   table.insert(people,pedestrian(folder,i+6,a,{a,b,a}))
  end
+ -- Life City citizens move between storefronts, workplaces and the public plaza.
+ for i=1,8 do
+  local x=-135+(i-1)*36
+  local start=Vector3.new(x,3,1566)
+  local store=Vector3.new(x+8,3,1546)
+  local plaza=Vector3.new(x+16,3,1608)
+  local work=Vector3.new(x+4,3,1662)
+  table.insert(people,pedestrian(folder,i+10,start,
+   {start,store,plaza,work,plaza,start}))
+ end
  local traffic={}
  local roadCenter=Vector3.new(180,2.3,0)
  for _,z in ipairs({-39,39}) do
@@ -120,6 +130,20 @@ function Polish.Build(world,kit)
   end
   table.insert(traffic,{model=car,waypoints=waypoints,next=start%4+1,
    position=waypoints[start],speed=14+i*3,wait=0})
+ end
+ -- Two more lightweight NPC cars drive the Life City boulevard.
+ for i=1,2 do
+  local start=Vector3.new(i==1 and -135 or 135,5,1600+(i==1 and -4 or 4))
+  local finish=Vector3.new(i==1 and 135 or -135,5,1600+(i==1 and -4 or 4))
+  local car=kit.Car(folder,CFrame.new(start),
+   i==1 and Color3.fromRGB(71,102,122) or Color3.fromRGB(176,140,105),false)
+  car.Name="Life City Traffic "..i
+  car:SetAttribute("NPCType","Traffic")
+  for _,desc in ipairs(car:GetDescendants()) do
+   if desc:IsA("BasePart") then desc.CanCollide=false; desc.CanTouch=false end
+  end
+  table.insert(traffic,{model=car,waypoints={start,finish},next=2,
+   position=start,speed=11+i*2,wait=0})
  end
  local weatherStates={"CLEAR","CLOUDY","RAIN","MIST"}
  local weatherIndex=1

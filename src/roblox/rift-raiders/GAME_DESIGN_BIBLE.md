@@ -57,3 +57,10 @@ Original reusable service: WorldActivities.lua. Profile DataStore migrated from 
 - A playable life-simulation district connects careers, earned wages, shops, content creation, property and business ownership, and police consequences.
 - See LIFE_SIMULATION_DESIGN.md for exact implementation, test coverage and limitations.
 - This is an early vertical slice, not photorealism or a complete real-world simulation.
+
+
+## v0.7 Career and environment expansion
+- 20 careers with 19 two-task wage job loops and an equipment-gated content creator role.
+- 28 virtual goods, gradual hunger/energy/hygiene, community meals and rest, furnished ground-floor homes.
+- More detailed procedural storefronts, work props, landscaping, citizens and traffic.
+- No real-world transactions; visuals are an upgraded original blockout, not photorealistic.

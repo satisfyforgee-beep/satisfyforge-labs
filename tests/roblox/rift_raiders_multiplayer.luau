@@ -161,7 +161,27 @@ local beforeShift=a:GetAttribute("RRCoins")
 if not request(a,"shift_start","LifeAction","Work","RETAIL") then fail("work_start_ack") return end
 task.wait(.4)
 if a:GetAttribute("RRCoins")~=beforeShift then fail("work_instant_wages") return end
-task.wait(3)
+task.wait(1.6)
+if not request(a,"shift_early","LifeAction","Work","RETAIL") then fail("work_early_ack") return end
+task.wait(.3)
+if a:GetAttribute("RRCoins")~=beforeShift then fail("life_shift_skip_tasks") return end
+local task1=world:FindFirstChild("Job Task RETAIL 1",true)
+local task2=world:FindFirstChild("Job Task RETAIL 2",true)
+if not task1 or not task2 then fail("retail_tasks_missing") return end
+a.Character:PivotTo(CFrame.new(task2.Position+Vector3.new(0,4,0)))
+task.wait(.4)
+local life=ServerScriptService:WaitForChild("LifeSimulation")
+local lifeApi=require(life)
+if lifeApi.Process(a,"Task","RETAIL",2) then fail("out_of_order_task") return end
+a.Character:PivotTo(CFrame.new(task1.Position+Vector3.new(0,4,0)))
+task.wait(.4)
+if not lifeApi.Process(a,"Task","RETAIL",1) then fail("task_one_failed") return end
+task.wait(1.6)
+a.Character:PivotTo(CFrame.new(task2.Position+Vector3.new(0,4,0)))
+task.wait(.4)
+if not lifeApi.Process(a,"Task","RETAIL",2) then fail("task_two_failed") return end
+a.Character:PivotTo(CFrame.new(retail.Position+Vector3.new(0,4,0)))
+task.wait(.4)
 if not request(a,"shift","LifeAction","Work","RETAIL") then fail("work_finish_ack") return end
 if not waitFor(function() return (a:GetAttribute("RRCoins") or 0)>=beforeShift+22 end,3) then
  fail("work_wages_missing") return

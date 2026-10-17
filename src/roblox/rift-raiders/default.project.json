@@ -24,6 +24,9 @@
       },
       "LifeSimulation": {
         "$path": "LifeSimulation.lua"
+      },
+      "LifeCityVisuals": {
+        "$path": "LifeCityVisuals.lua"
       }
     },
     "StarterPlayer": {

@@ -1,6 +1,12 @@
 # Visual realism, behavior and performance production roadmap
 
-## Current (v0.5): real code, not concept art
+## Current (v0.7): real code, not concept art
+- Life City has 20 professions, each of 19 wage jobs with two required workplace tasks; camera-based creator career; 28 virtual products; business income; hunger, energy and hygiene; walkable furnished home ground floors; city pedestrians, moving cars, police patrol and pursuit.
+- New original procedural architecture: painted storefront signs, awnings, window trim, roof cornices, display merchandise, sidewalks, crosswalks, trees, park benches, fountain, street lighting, job-specific work props, home gables, porches and gardens.
+- **Still not photoreal**: visual geometry remains mostly basic Roblox Parts, cylinders, wedges and spheres; high-quality custom imported meshes, PBR texture maps, proper humanoid rigs and motion-captured animations are still needed.
+- Real boats, real flight jobs, vehicle physics, advanced police pathfinding, live persistent property plots and player-to-player trade remain future milestones.
+
+## Previous v0.5 foundation
 - Dynamic day/night, cloud cover, CLEAR/CLOUDY/RAIN/MIST weather states, atmospheric haze, natural color grade, sun rays, global shadows.
 - Client-selectable LOW/MED/HIGH graphics, rain streak visuals.
 - 10 decorative route-following pedestrian NPCs with alternating walk and pause behavior; 2 moving traffic cars and a city ring road.

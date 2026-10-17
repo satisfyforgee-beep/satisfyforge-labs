@@ -180,6 +180,18 @@ local lifeHelp=item(lifeList,"LifeHelp",
  "GO TO LIFE CITY • APPLY AT CAREER CENTER • WORK AT YOUR JOB • BUY AT STORES",
  Color3.fromRGB(70,89,116),function() end)
 lifeHelp.Active=false
+local lifeTask=item(lifeList,"LifeTask","NO ACTIVE SHIFT",
+ Color3.fromRGB(79,119,101),function() end)
+lifeTask.Active=false
+local careerHeading=item(lifeList,"CareerHeading","AVAILABLE REAL-WORLD CAREERS",
+ Color3.fromRGB(83,112,145),function() end)
+careerHeading.Active=false
+for _,career in ipairs(LifeCatalog.Careers) do
+ local listing=item(lifeList,"Career_"..career.id,
+  career.name.." • "..career.wage.." COINS/SHIFT • LEVEL "..career.level,
+  Color3.fromRGB(60,83,107),function() end)
+ listing.Active=false
+end
 local creatorButton=item(lifeList,"CreatorPublish",
  "RECORD CONTENT • CREATOR CAREER + PHONE + EQUIPPED CAMERA",
  Color3.fromRGB(127,80,141),function()
@@ -309,12 +321,21 @@ local function update()
  local coins=player:GetAttribute("RRCoins") or 0
  local level=player:GetAttribute("RRLevel") or 1
  local career=player:GetAttribute("RRLifeCareer") or "UNEMPLOYED"
+ local shift=player:GetAttribute("RRLifeShift") or ""
+ lifeTask.Text=shift~="" and
+  ("WORK SHIFT: "..shift.." • TASK "..(player:GetAttribute("RRLifeTaskStep") or 0)..
+  "/2 • "..(player:GetAttribute("RRLifeTaskName") or "")) or
+  "FIND A JOB AT THE CAREER CENTER IN LIFE CITY"
  lifeSummary.Text="CAREER: "..career..
   " • FOLLOWERS: "..(player:GetAttribute("RRLifeFollowers") or 0)..
   " • POSTS: "..(player:GetAttribute("RRLifeUploads") or 0)..
   " • FINES: "..(player:GetAttribute("RRLifeFines") or 0)..
   " • ARRESTS: "..(player:GetAttribute("RRLifeArrests") or 0)..
   (player:GetAttribute("RRLifeJailed") and " • IN JAIL" or "")
+ lifeHelp.Text="HUNGER "..(player:GetAttribute("RRLifeHunger") or 100)..
+  " • ENERGY "..(player:GetAttribute("RRLifeEnergy") or 100)..
+  " • HYGIENE "..(player:GetAttribute("RRLifeHygiene") or 100)..
+  " • FREE MEALS AND REST AT THE COMMUNITY PARK • HOME BED & SINK"
  for _,entry in ipairs(LifeCatalog.Items) do
   local owned=player:GetAttribute("RRLifeOwn_"..entry.id)==true
   lifeItems[entry.id].Text=entry.name.." • "..entry.price.." COINS"..
@@ -375,12 +396,29 @@ for _,name in ipairs({"RRCoins","RRShards","RRLevel","RRXP","RRBlaster",
  "RROwn_HOME_GARAGE","RROwn_AURORA_TRAIL",
  "RROwn_SNOWMOBILE_LICENSE","RROwn_JETPACK_LICENSE","RROwn_FLIGHT_LICENSE",
  "RRLifeCareer","RRLifeFollowers","RRLifeUploads","RRLifeFines",
- "RRLifeArrests","RRLifeJailed","RRLifeReputation","RRLifeShifts"}) do
+ "RRLifeArrests","RRLifeJailed","RRLifeReputation","RRLifeShifts",
+ "RRLifeShift","RRLifeTaskStep","RRLifeTaskName",
+ "RRLifeHunger","RRLifeEnergy","RRLifeHygiene"}) do
  player:GetAttributeChangedSignal(name):Connect(update)
 end
 for _,entry in ipairs(LifeCatalog.Items) do
  player:GetAttributeChangedSignal("RRLifeOwn_"..entry.id):Connect(update)
 end
+task.spawn(function()
+ while gui.Parent do
+  task.wait(2)
+  local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+  if root and root.Position.Z>1430 and root.Position.Z<1930 then
+   title.Text="RIFTLIFE  •  CITY & CHAOS"
+   local shift=player:GetAttribute("RRLifeShift") or ""
+   hint.Text=shift~="" and
+    ("ON SHIFT: "..shift.." • "..(player:GetAttribute("RRLifeTaskName") or "")) or
+    "LIFE CITY • FIND WORK • EARN WAGES • BUY A HOME • RUN A BUSINESS"
+  else
+   title.Text="RIFT RAIDERS  ⚡  CHAOS ISLANDS"
+  end
+ end
+end)
 local function phaseUpdate()
  local current=world:GetAttribute("Phase") or "CALM"
  phase.Text=current.." | "..(world:GetAttribute("SecondsLeft") or 0).."s"..
