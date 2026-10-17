@@ -35,6 +35,12 @@ function Cars.Spawn(world,player,kind)
  if kind~="car" and kind~="snowmobile" and kind~="flyingcar" and kind~="stolen" then
   return false,"UNKNOWN VEHICLE"
  end
+ if kind=="snowmobile" and player:GetAttribute("RROwn_SNOWMOBILE_LICENSE")~=true then
+  return false,"EARN THE SNOWMOBILE LICENSE IN THE COIN SHOP FIRST!"
+ end
+ if kind=="flyingcar" and player:GetAttribute("RROwn_FLIGHT_LICENSE")~=true then
+  return false,"EARN THE FLYING CAR LICENSE IN THE COIN SHOP FIRST!"
+ end
  cooldown[player]=now
  local previous=active[player]
  if previous and previous.model then previous.model:Destroy() end
@@ -47,9 +53,13 @@ function Cars.Spawn(world,player,kind)
  if kind=="snowmobile" then
   m,seat=Expansion.Prefabs.Snowmobile(world,Vector3.new(spot.X,2,spot.Z),true)
  else
+  local wrap=player:GetAttribute("RRActiveVehicleWrap")
+  local ownedPaint=wrap=="PLATINUM" and Color3.fromRGB(205,216,231) or
+   wrap=="MIDNIGHT" and Color3.fromRGB(28,36,59) or
+   Color3.fromRGB(74,215,245)
   m,seat=Kit.Car(world,cf,
    kind=="flyingcar" and Color3.fromRGB(196,94,252) or
-   kind=="stolen" and Color3.fromRGB(48,54,69) or Color3.fromRGB(74,215,245),true)
+   kind=="stolen" and Color3.fromRGB(48,54,69) or ownedPaint,true)
   if kind=="stolen" then m.Name="Mission Getaway Car" end
   if kind=="flyingcar" then
    m.Name="Player Flying Car"

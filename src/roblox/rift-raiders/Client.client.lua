@@ -2,11 +2,14 @@
 local Players=game:GetService("Players")
 local ReplicatedStorage=game:GetService("ReplicatedStorage")
 local TweenService=game:GetService("TweenService")
+local Lighting=game:GetService("Lighting")
+local RunService=game:GetService("RunService")
 local player=Players.LocalPlayer
 local action=ReplicatedStorage:WaitForChild("RiftRaidersAction")
 local event=ReplicatedStorage:WaitForChild("RiftRaidersEvent")
 local activitySignal=ReplicatedStorage:WaitForChild("RiftActivitiesSignal")
 local world=workspace:WaitForChild("RiftRaidersWorld")
+local Catalog=require(ReplicatedStorage:WaitForChild("PrestigeCatalog"))
 local gui=Instance.new("ScreenGui"); gui.Name="RiftRaidersHUD"
 gui.ResetOnSpawn=false; gui.IgnoreGuiInset=false; gui.Parent=player:WaitForChild("PlayerGui")
 local function round(object,radius)
@@ -70,6 +73,9 @@ local shopButton=button("ShopToggle","SHOP",UDim2.fromOffset(98,47),
  UDim2.new(.02,0,1,-145),Color3.fromRGB(90,194,128))
 local mapButton=button("MapToggle","WORLD",UDim2.fromOffset(98,47),
  UDim2.new(.02,107,1,-145),Color3.fromRGB(87,149,229))
+local qualityButton=button("GraphicsQuality","GRAPHICS: MED",
+ UDim2.fromOffset(110,40),UDim2.new(1,-118,0,269),
+ Color3.fromRGB(82,117,130))
 local packButton=button("PackToggle","PACK",UDim2.fromOffset(98,47),
  UDim2.new(.02,0,1,-202),Color3.fromRGB(144,117,86))
 blast.Activated:Connect(function() action:FireServer("Blast") end)
@@ -136,7 +142,7 @@ local function panel(name,heading)
  end)
  return f,scroll
 end
-local shop,shopList=panel("ShopPanel","EARNED COIN SHOP")
+local shop,shopList=panel("ShopPanel","EARNED COIN SHOP + PRESTIGE")
 local map,mapList=panel("MapPanel","EXPLORE 14 WORLD LOCATIONS")
 local pack,packList=panel("PackPanel","YOUR RESOURCES & PROGRESS")
 local function item(parent,name,content,color,fn)
@@ -152,6 +158,17 @@ local scatterItem=item(shopList,"ScatterUpgrade","SCATTER BLASTER • 175 COINS"
  Color3.fromRGB(233,120,74),function() action:FireServer("Buy","SCATTER") end)
 local petItem=item(shopList,"PetUpgrade","ADOPT RIFTLING PET • 250 COINS",
  Color3.fromRGB(71,172,153),function() action:FireServer("Buy","PET") end)
+local prestigeItems={}
+for _,entry in ipairs(Catalog.Items) do
+ prestigeItems[entry.id]=item(shopList,"Prestige_"..entry.id,
+  entry.name.." • "..Catalog.PriceText(entry),
+  Color3.fromRGB(80,100,132),
+  function() action:FireServer("BuyPrestige",entry.id) end)
+end
+local premiumInfo=item(shopList,"RobuxNotice",
+ "ROBUX COSMETICS: NOT FOR SALE YET • ALL ITEMS ABOVE EARNABLE",
+ Color3.fromRGB(65,78,102),function() end)
+premiumInfo.Active=false
 local places={
  {"HUB","CENTRAL HUB"},{"CYBER","NEON METROPOLIS"},{"CRYSTAL","PRISM WILDS"},
  {"VOLCANO","MAGMA OUTPOST"},{"SKY","CLOUD KINGDOM"},
@@ -287,19 +304,89 @@ local function update()
   "UNLOCK SCATTER BLASTER • 175 COINS"
  petItem.Text=player:GetAttribute("RRPet") and "RIFTLING PET OWNED" or
   "ADOPT RIFTLING PET • 250 COINS"
+ for _,entry in ipairs(Catalog.Items) do
+  local owned=player:GetAttribute("RROwn_"..entry.id)==true
+  local enoughLevel=level>=entry.level
+  local status=owned and "OWNED" or
+   (not enoughLevel and ("LOCKED UNTIL LEVEL "..entry.level)) or
+   (coins<entry.coins and "KEEP EARNING COINS") or "AVAILABLE TO EARN"
+  prestigeItems[entry.id].Text=entry.name.." | "..Catalog.PriceText(entry)..
+   " | "..status
+  prestigeItems[entry.id].BackgroundColor3=owned and Color3.fromRGB(49,112,88)
+   or enoughLevel and Color3.fromRGB(90,102,137)
+   or Color3.fromRGB(59,68,82)
+ end
 end
 for _,name in ipairs({"RRCoins","RRShards","RRLevel","RRXP","RRBlaster",
  "RRShield","RRPet","RRScatter","RRSeals","RRDeliveryTarget","RRQuestShards",
- "RRWood","RRMetal","RRFish","RRHide","RRToolkits","RRHeat","RRSportsWins","RRHeists","RRHouseOwned","RRQuestDrones","RRQuestSeals"}) do
+ "RRWood","RRMetal","RRFish","RRHide","RRToolkits","RRHeat","RRSportsWins","RRHeists","RRHouseOwned","RRQuestDrones","RRQuestSeals",
+ "RROwn_CITY_WRAP","RROwn_ESTATE_ROOF","RROwn_PLATINUM_WRAP",
+ "RROwn_HOME_GARAGE","RROwn_AURORA_TRAIL",
+ "RROwn_SNOWMOBILE_LICENSE","RROwn_JETPACK_LICENSE","RROwn_FLIGHT_LICENSE"}) do
  player:GetAttributeChangedSignal(name):Connect(update)
 end
 local function phaseUpdate()
  local current=world:GetAttribute("Phase") or "CALM"
  phase.Text=current.." | "..(world:GetAttribute("SecondsLeft") or 0).."s"..
+  " | "..(world:GetAttribute("Weather") or "CLEAR")..
   (current=="SURGE" and (" TITAN HP: "..(world:GetAttribute("BossHealth") or 0)) or " TO SURGE")
 end
 world:GetAttributeChangedSignal("Phase"):Connect(phaseUpdate)
 world:GetAttributeChangedSignal("SecondsLeft"):Connect(phaseUpdate)
 world:GetAttributeChangedSignal("BossHealth"):Connect(phaseUpdate)
+world:GetAttributeChangedSignal("Weather"):Connect(phaseUpdate)
+local qualityModes={"LOW","MED","HIGH"}
+local qualityIndex=2
+local rainStreaks={}
+for i=1,22 do
+ local streak=Instance.new("Part")
+ streak.Name="LocalRainStreak"
+ streak.Size=Vector3.new(.09,3.5,.09)
+ streak.Color=Color3.fromRGB(175,207,241)
+ streak.Material=Enum.Material.Glass
+ streak.Transparency=.35
+ streak.Anchored=true; streak.CanCollide=false; streak.CanTouch=false
+ streak.CanQuery=false; streak.CastShadow=false
+ streak.Parent=workspace
+ streak.LocalTransparencyModifier=1
+ table.insert(rainStreaks,streak)
+end
+local function applyGraphics()
+ local quality=qualityModes[qualityIndex]
+ qualityButton.Text="GRAPHICS: "..quality
+ for _,effect in ipairs(Lighting:GetChildren()) do
+  if effect:IsA("BloomEffect") or effect:IsA("SunRaysEffect") or
+   effect:IsA("ColorCorrectionEffect") then
+   effect.Enabled=quality~="LOW" and
+    (quality=="HIGH" or not effect:IsA("SunRaysEffect"))
+  end
+ end
+ local clouds=workspace.Terrain:FindFirstChildOfClass("Clouds")
+ if clouds then clouds.Enabled=quality~="LOW" end
+ Lighting.GlobalShadows=quality~="LOW"
+end
+qualityButton.Activated:Connect(function()
+ qualityIndex=qualityIndex%#qualityModes+1
+ applyGraphics()
+end)
+task.defer(applyGraphics)
+local rainAccum=0
+RunService.Heartbeat:Connect(function(dt)
+ rainAccum+=dt
+ if rainAccum<.085 then return end
+ rainAccum=0
+ local count=qualityIndex==3 and 22 or qualityIndex==2 and 8 or 0
+ local raining=world:GetAttribute("Weather")=="RAIN"
+ local camera=workspace.CurrentCamera
+ for i,streak in ipairs(rainStreaks) do
+  local show=raining and i<=count and camera~=nil
+  streak.LocalTransparencyModifier=show and 0 or 1
+  if show then
+   streak.CFrame=CFrame.new(camera.CFrame.Position+
+    Vector3.new(math.random(-28,28),math.random(-7,22),math.random(-25,25)))*
+    CFrame.Angles(0,0,math.rad(10))
+  end
+ end
+end)
 update(); phaseUpdate()
 print("SF_RIFT_RAIDERS_CLIENT_READY")

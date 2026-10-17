@@ -4,13 +4,28 @@ task.wait(3)
 local success,problem=pcall(function()
 local world=workspace:WaitForChild("RiftRaidersWorld",20)
 assert(world,"missing world")
-assert(world:GetAttribute("Version")=="0.4.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.5.0","version mismatch")
 local function count(name)
  local n=0
  for _,v in ipairs(world:GetDescendants()) do if v.Name==name then n+=1 end end
  return n
 end
 assert(count("Central Hub")==1,"hub missing")
+assert(count("Living World Atmosphere")==1,"world polish missing")
+assert(count("Ambient Pedestrian 1")==1,"pedestrian simulation missing")
+assert(count("Ambient City Traffic 1")==1,"traffic missing")
+assert(count("City Ring Road")==4,"city road loop missing")
+assert(world:GetAttribute("Weather")=="CLEAR","weather initialization missing")
+assert(game:GetService("Lighting"):FindFirstChild("RiftNaturalColorGrade"),
+ "natural color grading missing")
+assert(workspace.Terrain:FindFirstChildOfClass("Clouds"),"dynamic clouds missing")
+local catalog=require(game:GetService("ReplicatedStorage"):WaitForChild("PrestigeCatalog"))
+assert(#catalog.Items>=8,"earned prestige catalog missing")
+assert(catalog.ById.HOME_GARAGE.coins==6000,"garage pricing mismatch")
+assert(catalog.ById.FLIGHT_LICENSE.level==12,"flight license missing")
+assert(catalog.ValidateOwned({CITY_WRAP=true,HACKED=true}).HACKED==nil,
+ "catalog allowed unknown item")
+
 assert(count("Safe Skybridge")==4,"four bridges required")
 assert(count("Rift Shard")==36,"36 shards required")
 assert(count("Rift Drone")==12,"12 drones required")

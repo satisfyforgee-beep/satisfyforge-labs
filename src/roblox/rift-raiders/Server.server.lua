@@ -11,9 +11,11 @@ local ServerScriptService=game:GetService("ServerScriptService")
 local WorldKit=require(ServerScriptService:WaitForChild("WorldKit"))
 local WorldExpansion=require(ServerScriptService:WaitForChild("WorldExpansion"))
 local WorldActivities=require(ServerScriptService:WaitForChild("WorldActivities"))
+local WorldPolish=require(ServerScriptService:WaitForChild("WorldPolish"))
+local Catalog=require(ReplicatedStorage:WaitForChild("PrestigeCatalog"))
 local Vehicles=require(ServerScriptService:WaitForChild("VehicleService"))
 local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
-world:SetAttribute("Version","0.4.0")
+world:SetAttribute("Version","0.5.0")
 world:SetAttribute("Phase","CALM")
 world:SetAttribute("SecondsLeft",75)
 local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
@@ -197,6 +199,23 @@ local function cleanInt(n,max)
  return (type(n)=="number" and n==n and n>=0) and math.clamp(math.floor(n),0,max) or 0
 end
 local function tell(p,msg) event:FireClient(p,tostring(msg)) end
+local function applyTrail(p)
+ local s=profiles[p]
+ local root=p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+ if not s or not root or not s.owned.AURORA_TRAIL then return end
+ if root:FindFirstChild("AuroraLegendTrail") then return end
+ local a=Instance.new("Attachment"); a.Name="AuroraTrailTop"
+ a.Position=Vector3.new(0,1,0); a.Parent=root
+ local b=Instance.new("Attachment"); b.Name="AuroraTrailBottom"
+ b.Position=Vector3.new(0,-1,0); b.Parent=root
+ local t=Instance.new("Trail"); t.Name="AuroraLegendTrail"
+ t.Attachment0=a; t.Attachment1=b; t.Lifetime=.65
+ t.MinLength=.12; t.LightEmission=.8; t.FaceCamera=true
+ t.Color=ColorSequence.new(Color3.fromRGB(103,255,218),
+  Color3.fromRGB(160,104,255))
+ t.Transparency=NumberSequence.new(0.22,1)
+ t.Parent=root
+end
 local function sync(p)
  local s=profiles[p]; if not s then return end
  p:SetAttribute("RRCoins",s.coins); p:SetAttribute("RRShards",s.shards)
@@ -215,6 +234,12 @@ local function sync(p)
  p:SetAttribute("RRSportsWins",(s.jobs and s.jobs.sports) or 0)
  p:SetAttribute("RRHeists",(s.jobs and s.jobs.heists) or 0)
  p:SetAttribute("RRHouseOwned",(s.jobs and s.jobs.houseOwned) or false)
+ for _,item in ipairs(Catalog.Items) do
+  p:SetAttribute("RROwn_"..item.id,s.owned[item.id]==true)
+ end
+ p:SetAttribute("RRActiveVehicleWrap",
+  s.owned.PLATINUM_WRAP and "PLATINUM" or
+  s.owned.CITY_WRAP and "MIDNIGHT" or "DEFAULT")
  local ls=p:FindFirstChild("leaderstats")
  if ls then
   ls.Level.Value=s.level; ls.Coins.Value=s.coins; ls.Rifts.Value=s.seals
@@ -240,6 +265,7 @@ local activityDestinations=WorldActivities.Build(world,{
  reward=reward,sync=sync,tell=tell,signal=activitySignal,
  spawnVehicle=Vehicles.Spawn,hasVehicle=Vehicles.HasActive
 })
+WorldPolish.Build(world,WorldKit)
 local function quest(p,kind,n)
  local s=profiles[p]; if not s then return end
  s.quest[kind]=math.min(({shards=8,drones=3,seals=1})[kind],s.quest[kind]+(n or 1))
@@ -252,7 +278,7 @@ end
 local function save(p)
  local s=profiles[p]
  if not store or not s or not s.loaded then return end
- local payload={version=2,coins=s.coins,shards=s.shards,level=s.level,xp=s.xp,
+ local payload={version=3,coins=s.coins,shards=s.shards,level=s.level,xp=s.xp,
   blaster=s.blaster,shieldOwned=s.shieldOwned,petOwned=s.petOwned,
   scatterOwned=s.scatterOwned,seals=s.seals,
   resources={
@@ -265,13 +291,14 @@ local function save(p)
    bankCooldownUntil=cleanInt(s.jobs.bankCooldownUntil,9999999999),
    carCooldownUntil=cleanInt(s.jobs.carCooldownUntil,9999999999),
    houseOwned=s.jobs.houseOwned==true
-  }}
+  },
+  prestige=Catalog.ValidateOwned(s.owned)}
  local key="Player_"..p.UserId
  local ok,err=pcall(function()
   store:UpdateAsync(key,function(previous)
    local value=type(previous)=="table" and previous or {}
    -- Never regress an existing account to an older schema.
-   if type(value.version)=="number" and value.version>2 then return nil end
+   if type(value.version)=="number" and value.version>3 then return nil end
    return payload
   end)
  end)
@@ -284,11 +311,11 @@ local function init(p)
   shieldUntil=0,travelAt=0,lastShoot=0,loaded=false,pet=nil,
   resources={wood=0,metal=0,fish=0,hide=0,toolkit=0},
   jobs={sports=0,heists=0,bankCooldownUntil=0,carCooldownUntil=0,
-   houseOwned=false},heat=0}
+   houseOwned=false},owned={},heat=0}
  if store then
   local ok,data=pcall(function() return store:GetAsync("Player_"..p.UserId) end)
   if ok then
-   if type(data)=="table" and (data.version==nil or data.version==1 or data.version==2) then
+   if type(data)=="table" and (data.version==nil or data.version==1 or data.version==2 or data.version==3) then
     s.coins=cleanInt(data.coins,1000000); s.shards=cleanInt(data.shards,100000)
     s.level=math.max(1,cleanInt(data.level,100)); s.xp=cleanInt(data.xp,100000)
     s.blaster=math.clamp(cleanInt(data.blaster,4),1,4)
@@ -307,6 +334,7 @@ local function init(p)
      s.jobs.carCooldownUntil=cleanInt(data.jobs.carCooldownUntil,9999999999)
      s.jobs.houseOwned=data.jobs.houseOwned==true
     end
+    s.owned=Catalog.ValidateOwned(data.prestige)
    end
    s.loaded=true
   else
@@ -331,6 +359,7 @@ local function init(p)
    sync(p)
    grantWeapon(p,pulseTemplate)
    if profiles[p].scatterOwned then grantWeapon(p,scatterTemplate) end
+   applyTrail(p)
   end
  end)
  tell(p,"WELCOME! COLLECT SHARDS, BLAST DRONES, SEAL RIFTS!")
@@ -579,6 +608,29 @@ action.OnServerEvent:Connect(function(p,kind,arg,extra)
   s.travelAt=now
   p.Character:PivotTo(CFrame.new(destinations[arg]))
   tell(p,"ARRIVED: "..arg)
+ elseif kind=="BuyPrestige" then
+  if type(arg)~="string" then return end
+  local item=Catalog.ById[arg]
+  if not item then return end
+  if s.owned[item.id] then tell(p,"ALREADY OWNED: "..item.name); return end
+  if s.level<item.level then
+   tell(p,item.name.." UNLOCKS AT LEVEL "..item.level); return
+  end
+  if s.coins<item.coins then
+   tell(p,"EARN "..(item.coins-s.coins).." MORE COINS FOR "..item.name); return
+  end
+  local wood=item.wood or 0; local metal=item.metal or 0
+  if s.resources.wood<wood or s.resources.metal<metal then
+   tell(p,"NEED "..wood.." WOOD AND "..metal.." METAL"); return
+  end
+  s.coins-=item.coins
+  s.resources.wood-=wood; s.resources.metal-=metal
+  s.owned[item.id]=true
+  sync(p)
+  WorldActivities.RefreshHouse(p)
+  applyTrail(p)
+  tell(p,"PRESTIGE UNLOCKED: "..item.name.."!")
+  return
  elseif kind=="Buy" then
   if arg=="BLASTER" then
    if s.blaster>=4 then tell(p,"BLASTER MAX LEVEL!"); return end
@@ -687,4 +739,4 @@ task.spawn(function()
   Lighting.Ambient=Color3.fromRGB(120,132,179)
  end
 end)
-print("SF_RIFT_RAIDERS_SERVER_READY v0.4.0")
+print("SF_RIFT_RAIDERS_SERVER_READY v0.5.0")

@@ -52,6 +52,18 @@ print("SF_RIFT_MP_CHECK travel_allowlist PASS")
 if not request(a,"shop","Buy","PET") then fail("no_shop_ack") return end
 task.wait(.3)
 if a:GetAttribute("RRPet") or a:GetAttribute("RRCoins")~=0 then fail("free_pet") return end
+if not request(a,"prestige","BuyPrestige","PLATINUM_WRAP") then
+ fail("prestige_no_ack") return
+end
+task.wait(.2)
+if a:GetAttribute("RROwn_PLATINUM_WRAP") or a:GetAttribute("RRCoins")~=0 then
+ fail("free_prestige") return
+end
+if not request(a,"invalidprestige","BuyPrestige","HACKED_ITEM") then
+ fail("invalid_prestige_no_ack") return
+end
+if a:GetAttribute("RROwn_HACKED_ITEM") then fail("invalid_prestige_granted") return end
+print("SF_RIFT_MP_CHECK prestige_purchase_validation PASS")
 print("SF_RIFT_MP_CHECK no_free_purchases PASS")
 local world=workspace:WaitForChild("RiftRaidersWorld")
 local rifle=waitFor(function()
@@ -118,6 +130,15 @@ task.wait(2)
 if not request(a,"arctic","Travel","ARCTIC") then fail("arctic_travel_ack") return end
 if not waitFor(function() return (rootA.Position-Vector3.new(0,8,-520)).Magnitude<16 end,5) then fail("arctic_travel_missing") return end
 task.wait(2.5)
+if not request(a,"sled_denied","SpawnSnowmobile") then fail("snowmobile_denial_ack") return end
+task.wait(.25)
+for _,item in ipairs(world:GetChildren()) do
+ if item.Name=="Player Snowmobile" and item:GetAttribute("OwnerUserId")==a.UserId then
+  fail("free_snowmobile") return
+ end
+end
+-- Simulate a legitimately earned server-owned entitlement, never client-reported.
+a:SetAttribute("RROwn_SNOWMOBILE_LICENSE",true)
 if not request(a,"sled","SpawnSnowmobile") then fail("snowmobile_spawn_ack") return end
 local sled=waitFor(function()
  for _,item in ipairs(world:GetChildren()) do
@@ -126,6 +147,15 @@ local sled=waitFor(function()
 end,5)
 if not sled or not sled:FindFirstChild("DriverSeat") then fail("snowmobile_missing") return end
 print("SF_RIFT_MP_CHECK arctic_snowmobile PASS")
+if not request(b,"fly_denied","SpawnFlyingCar") then fail("flyingcar_denial_ack") return end
+task.wait(.25)
+for _,item in ipairs(world:GetChildren()) do
+ if item.Name=="Player Flying Car" and item:GetAttribute("OwnerUserId")==b.UserId then
+  fail("free_flying_car") return
+ end
+end
+b:SetAttribute("RROwn_FLIGHT_LICENSE",true)
+print("SF_RIFT_MP_CHECK advanced_vehicle_licenses PASS")
 if not request(b,"fly","SpawnFlyingCar") then fail("flyingcar_spawn_ack") return end
 local flyer=waitFor(function()
  for _,item in ipairs(world:GetChildren()) do

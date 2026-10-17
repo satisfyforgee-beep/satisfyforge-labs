@@ -18,6 +18,9 @@
       },
       "WorldActivities": {
         "$path": "WorldActivities.lua"
+      },
+      "WorldPolish": {
+        "$path": "WorldPolish.lua"
       }
     },
     "StarterPlayer": {
@@ -27,6 +30,12 @@
         "RiftRaidersHUD": {
           "$path": "Client.client.lua"
         }
+      }
+    },
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "PrestigeCatalog": {
+        "$path": "PrestigeCatalog.lua"
       }
     }
   }

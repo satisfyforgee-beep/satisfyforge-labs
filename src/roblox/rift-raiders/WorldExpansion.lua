@@ -427,6 +427,10 @@ function Expansion.Build(world,kit,reward,tell,spawnVehicle)
    end
    local pack,core=jetpack(area,c+Vector3.new(32,2,28))
    prompt(core,"ACTIVATE","Jetpack Launch",function(p)
+    if p:GetAttribute("RROwn_JETPACK_LICENSE")~=true then
+     tell(p,"EARN THE JETPACK LICENSE IN THE COIN SHOP FIRST!")
+     return
+    end
     local root=p.Character and p.Character:FindFirstChild("HumanoidRootPart")
     if not root then return end
     local k="jetpack"

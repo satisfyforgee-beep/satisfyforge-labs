@@ -2,11 +2,17 @@
 
 An original multiplayer Roblox game, created separately from all existing SatisfyForge games.
 
-## Playable loop (v0.4 prototype)
+## Playable loop (v0.5 prototype)
 
 Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach Neon Metropolis, Prism Wilds, Magma Outpost, or Cloud Kingdom. Collect 36 scattered shards, BLAST 12 roaming drones, spend 12 shards to seal one of four rifts, level up, earn coins, and unlock upgrades. Complete repeatable missions for bonus coins. During a periodic 25-second Rift Surge, eligible coin rewards double. Cloud Kingdom includes a five-platform summit challenge. Version 0.2 added reusable scenery, arcade hovercars and two aimable sci-fi guns. Version 0.3 expanded the map with seven terrain worlds, reusable prefabs, portals, snowmobiles, jetpacks and flying cars. Version 0.4 adds a sports complex, housing neighborhood, resource gathering, crafting, fishing and wildlife minigames, fictional heists and vehicle jobs, plus player-profile schema v2.
 
 ## Implemented
+
+- **v0.5:** natural lighting/atmosphere/clouds and cycling day/night/weather, decorative walking pedestrians and moving city traffic, LOW/MED/HIGH graphics settings with local rain effects.
+- **Earned prestige economy:** eight permanent cosmetics/upgrades and advanced vehicle licenses with level and resource requirements, server-validated purchases, car wraps, upgraded roof lighting, luxury garage and character trail.
+- **Save migration:** DataStore profile v3 preserves prior v1/v2 progress and allowlists owned prestige items; no Robux payment products or purchases activated.
+
+
 
 - Football field-goal, baseball batting and soccer penalty timing minigames with animated shot visuals.
 - Marina fishing with fish inventory/market sales; non-graphic safari wildlife tracking.

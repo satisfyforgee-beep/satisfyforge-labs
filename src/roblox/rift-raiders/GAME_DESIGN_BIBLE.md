@@ -1,4 +1,4 @@
-# Rift Raiders v0.4 — Sports, Jobs, Resources, Crime & Consequence
+# Rift Raiders v0.5 — Sports, Jobs, Resources, Crime & Consequence
 
 ## Actual playable implementation
 
@@ -36,3 +36,18 @@ Original reusable service: WorldActivities.lua. Profile DataStore migrated from 
 4. Fishing and wildlife depth: bait, rods, species, water weather, animal movement, non-graphic tracking.
 5. More believable streets and interiors, lighting, audio, weather and streaming performance.
 6. Once players love the free game: ethical cosmetic monetization, creator analytics, private beta and launch.
+
+
+## v0.5 realistic presentation and prestige economy
+
+- WorldPolish.lua adds global time-of-day, natural color grading, clouds, sun rays, four cycling weather conditions, animated decorative pedestrians, and NPC route-following traffic in a small city road loop.
+- Mobile graphics control offers LOW / MED / HIGH client visual settings and local rain streaks. This is a graphics baseline, not photorealism.
+- PrestigeCatalog.lua defines eight permanent coin-earned items with level gates: Midnight City Car Wrap (level 3, 450 coins), Modern Estate Roof (level 5, 1200), Platinum Hypercar Finish (level 10, 3800), Luxury Home Garage (level 12, 6000 coins plus 10 wood and 8 metal), and Aurora Legend Trail (level 18, 9000), Snowmobile License (level 5, 1400), Jetpack License (level 7, 2200), and Flying Car License (level 12, 6500).
+- Personal car wraps affect spawned car paint. Estate roof adds new exterior lighting. Garage adds a physical structure and driveway to owned houses. Aurora Trail attaches to the player's character.
+- Player profile migrates from v1/v2 to v3 without changing the existing DataStore key, preserving existing progress. Owned prestige IDs are validated against an allowlist.
+- No real Robux purchases, pass IDs or products have been created. Prestige items are earned only until verified purchase integration is authorized.
+- Animated ambient pedestrians and traffic are decorative finite-state behavior, not advanced obstacle-aware pathfinding or police AI.
+- Realistic shadows, custom meshes, sound assets, facial animation, vehicle suspension, NPC traffic collision and device performance profiling are still backlog.
+
+
+- Advanced snowmobiles, jetpack launches and flying cars now require server-validated earned licenses. Basic personal cars remain free for immediate fun. All licenses can be bought with earned in-game coins; no Robux is necessary.

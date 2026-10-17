@@ -174,6 +174,59 @@ function Kit.Hit(player,id)
  context.sync(player)
  return true
 end
+function Kit.RefreshHouse(player)
+ local s=profile(player)
+ local m=playerHouses[player]
+ if not s or not m then return end
+ local roof=m:FindFirstChild("House Roof")
+ if roof then
+  roof.Color=s.owned.ESTATE_ROOF and Color3.fromRGB(51,63,75)
+   or Color3.fromRGB(73,97,121)
+  if s.owned.ESTATE_ROOF and not m:FindFirstChild("Estate Porch Light") then
+   for _,x in ipairs({-8,8}) do
+    local lamp=part(m,"Estate Porch Light",Vector3.new(1,2,1),
+     CFrame.new(roof.Position+Vector3.new(x,-8,-15)),
+     Color3.fromRGB(255,221,148),Enum.Material.Neon,false)
+    local point=Instance.new("PointLight"); point.Brightness=1
+    point.Range=20; point.Parent=lamp
+   end
+  end
+ end
+ if s.owned.HOME_GARAGE and not m:FindFirstChild("Luxury Garage") then
+  local center=plotCenters[playerPlots[player]]
+  if not center then return end
+  local garage=Instance.new("Model"); garage.Name="Luxury Garage"
+  garage.Parent=m
+  local origin=center+Vector3.new(30,0,1)
+  part(garage,"Garage Slab",Vector3.new(20,1,25),
+   CFrame.new(origin+Vector3.new(0,2,0)),
+   Color3.fromRGB(135,137,138),Enum.Material.Concrete,true)
+  for _,x in ipairs({-10,10}) do
+   part(garage,"Garage Wall",Vector3.new(1,12,25),
+    CFrame.new(origin+Vector3.new(x,9,0)),
+    Color3.fromRGB(205,206,195),Enum.Material.Concrete,true)
+  end
+  part(garage,"Garage Back Wall",Vector3.new(20,12,1),
+   CFrame.new(origin+Vector3.new(0,9,12)),
+   Color3.fromRGB(205,206,195),Enum.Material.Concrete,true)
+  part(garage,"Garage Roof",Vector3.new(22,2,27),
+   CFrame.new(origin+Vector3.new(0,16,0)),
+   Color3.fromRGB(48,62,78),Enum.Material.Slate,true)
+  part(garage,"Garage Door",Vector3.new(18,10,1),
+   CFrame.new(origin+Vector3.new(0,8,-12)),
+   Color3.fromRGB(101,123,141),Enum.Material.Metal,false)
+  part(garage,"Driveway",Vector3.new(18,.5,20),
+   CFrame.new(origin+Vector3.new(0,2,-24)),
+   Color3.fromRGB(108,109,113),Enum.Material.Concrete,true)
+  for _,x in ipairs({-6,6}) do
+   local lamp=part(garage,"Garage Exterior Light",Vector3.new(1.5,1.5,1.5),
+    CFrame.new(origin+Vector3.new(x,12,-13)),
+    Color3.fromRGB(251,229,159),Enum.Material.Neon,false)
+   local point=Instance.new("PointLight"); point.Range=16
+   point.Brightness=.9; point.Parent=lamp
+  end
+ end
+end
 local function buildHouse(player)
  local slot=playerPlots[player]
  if not slot or not housingFolder then return false end
@@ -218,6 +271,7 @@ local function buildHouse(player)
  label(m,player.DisplayName.."'S HOME",center+Vector3.new(0,26,0),
   Color3.fromRGB(243,220,165))
  playerHouses[player]=m
+ Kit.RefreshHouse(player)
  return true
 end
 function Kit.PlayerJoined(player)
