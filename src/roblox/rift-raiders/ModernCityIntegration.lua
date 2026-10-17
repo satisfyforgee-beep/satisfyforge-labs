@@ -95,7 +95,7 @@ function Integration.Build(world,spawn,tell)
   spawn.CanCollide=false
  end
  portal(folder,Vector3.new(23,7,2215),
-  "LIFE CITY JOBS","20 CAREERS • STORES • HOMES",function(player)
+  "LIFE CITY JOBS", "60 CAREERS • STORES • HOMES",function(player)
    if player.Character then
     player.Character:PivotTo(CFrame.new(0,7,1600))
     tell(player,"WELCOME TO LIFE CITY • START YOUR CAREER!")

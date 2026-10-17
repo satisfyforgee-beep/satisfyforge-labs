@@ -21,7 +21,6 @@
 				<Content name="NormalMap"><url>rbxassetid://12404989068</url></Content>
 				<Content name="RoughnessMap"><url>rbxassetid://12404995267</url></Content>
 				<float name="StudsPerTile">2</float>
-				<Content name="TexturePack"><url>rbxassetid://12434963172</url></Content>
 				<string name="Name">CarPaint_A</string>
 				</Properties>
 		</Item>

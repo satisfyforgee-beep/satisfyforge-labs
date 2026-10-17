@@ -1,3 +1,10 @@
+## v0.13 — Homes that react to purchases and selectable detailed cars
+- A genuine, new residential neighborhood offers 12 assigned owner-home plots and 12 real official mesh trees.
+- Owner-only keypad / physical opening doors, custom furniture and usable home entertainment, cooking, laundry and bedroom basics tied to purchases.
+- Selected car appearance now reuses both official red and white detailed sedan mesh templates, with 7 earned trim choices and actual server-driven speed differences.
+- Profile v7 migration adds home security, current car selection and Fun.
+- High priorities still open: replace stylized housing and boat placeholders with high-quality models; add authentic car bodies and chassis physics; make more purchased goods usable; build believable interactions/relationships; test actual phones and public save/rejoin stability.
+
 ## v0.12 — New careers, actually usable gardens and drivable watercraft
 - Expanded to 60 careers and 173 in-game shop choices, including realistic-life-inspired wages and ownership.
 - Raised beds, organic-looking crop stages, consumable seeds, equippable trowel and watering can, watering, harvest and market sales.

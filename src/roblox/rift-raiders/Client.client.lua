@@ -192,7 +192,7 @@ local function panel(name,heading)
  return f,scroll
 end
 local shop,shopList=panel("ShopPanel","EARNED COIN SHOP + PRESTIGE")
-local map,mapList=panel("MapPanel","EXPLORE 17 WORLD LOCATIONS")
+local map,mapList=panel("MapPanel","EXPLORE 18 WORLD LOCATIONS")
 local pack,packList=panel("PackPanel","YOUR RESOURCES & PROGRESS")
 local lifePanel,lifeList=panel("LifePanel","RIFTLIFE • DOWNTOWN CAREERS & SHOPPING")
 local itemOrder=setmetatable({}, {__mode="k"})
@@ -236,6 +236,7 @@ local lifeMode="CAREERS"
 local careerControls={}
 local shopControls={}
 local gardenControls={}
+local garageControls={}
 local updateLifeView
 local careerViewButton=item(lifeList,"CareerView","CAREERS • APPLY & WORK",
  Color3.fromRGB(69,112,137),function()
@@ -252,6 +253,14 @@ local gardenViewButton=item(lifeList,"GardenView","GARDEN • PLANT, WATER & HAR
 local boatViewButton=item(lifeList,"BoatView","MARINA • LAUNCH YOUR BOATS",
  Color3.fromRGB(66,114,151),function()
   lifeMode="BOATS"; updateLifeView()
+ end)
+local garageViewButton=item(lifeList,"GarageView","GARAGE • SELECT YOUR DETAILED CAR",
+ Color3.fromRGB(106,110,146),function()
+  lifeMode="GARAGE"; updateLifeView()
+ end)
+local homeViewButton=item(lifeList,"HomeView","MY HOME • FURNITURE & SECURITY",
+ Color3.fromRGB(110,118,101),function()
+  lifeMode="HOME"; updateLifeView()
  end)
 local careerHeading=item(lifeList,"CareerHeading","AVAILABLE REAL-WORLD CAREERS",
  Color3.fromRGB(83,112,145),function() end)
@@ -315,6 +324,38 @@ for _,id in ipairs({"KAYAK","FISHING_BOAT","JET_SKI","PONTOON",
   end)
  table.insert(boatControls,control)
 end
+local homeControls={}
+local homeInfo=item(lifeList,"HomeStatus","BUY A HOME TO UNLOCK YOUR ESTATE.",
+ Color3.fromRGB(94,109,100),function() end)
+homeInfo.Active=false;table.insert(homeControls,homeInfo)
+local goHome=item(lifeList,"VisitMyHome","VISIT MY PERSONAL HOME LOT",
+ Color3.fromRGB(91,137,110),function()
+  action:FireServer("LifeAction","GoHome")
+ end)
+table.insert(homeControls,goHome)
+local homeHelp=item(lifeList,"HomeGuide",
+ "PURCHASE FRIDGE, TV, GAME CONSOLE, BED, COUCH & FURNISHINGS IN LIFE SHOPPING."..
+ " VISIT YOUR HOME AND USE REAL APPLIANCES. KEYPAD CONTROLS GUEST ACCESS.",
+ Color3.fromRGB(94,105,120),function() end)
+homeHelp.Active=false;table.insert(homeControls,homeHelp)
+local garageInfo=item(lifeList,"GarageInfo",
+ "7 EARNABLE SEDAN TRIMS • TWO OFFICIAL 45-MESH BODIES • VISIT MOTOR ROW",
+ Color3.fromRGB(96,103,132),function() end)
+garageInfo.Active=false;table.insert(garageControls,garageInfo)
+local garageButtons={}
+for _,id in ipairs(LifeCatalog.DrivableCars) do
+ local choice=LifeCatalog.CarChoices[id]
+ local control=item(lifeList,"GarageCar_"..id,choice.name:upper()..
+  " • TOP SPEED "..choice.speed.." • SELECT AT DEALER",
+  Color3.fromRGB(97,110,139),function()
+   action:FireServer("LifeAction","SelectCar",id)
+  end)
+ garageButtons[id]=control;table.insert(garageControls,control)
+end
+local garageTip=item(lifeList,"GarageTip",
+ "SELECT A PURCHASED CAR AT MOTOR ROW, THEN USE THE CAR BUTTON. OTHER VEHICLES NEED FUTURE MODELS.",
+ Color3.fromRGB(88,95,119),function() end)
+garageTip.Active=false;table.insert(garageControls,garageTip)
 local gardenStatus=item(lifeList,"GardenStatus",
  "VISIT DOWNTOWN COMMUNITY GARDEN • BUY A TROWEL, CAN & SEEDS",
  Color3.fromRGB(85,115,77),function() end)
@@ -355,6 +396,10 @@ updateLifeView=function()
  local shopping=lifeMode=="SHOP"
  local gardening=lifeMode=="GARDEN"
  local boating=lifeMode=="BOATS"
+ local garage=lifeMode=="GARAGE"
+ local atHome=lifeMode=="HOME"
+ for _,control in ipairs(homeControls) do control.Visible=atHome end
+ for _,control in ipairs(garageControls) do control.Visible=garage end
  for _,control in ipairs(boatControls) do control.Visible=boating end
  for _,control in ipairs(careerControls) do control.Visible=careers end
  for _,control in ipairs(gardenControls) do control.Visible=gardening end
@@ -383,12 +428,28 @@ updateLifeView=function()
  shoppingViewButton.BackgroundColor3=shopping and Color3.fromRGB(104,94,128) or Color3.fromRGB(69,88,102)
  gardenViewButton.BackgroundColor3=gardening and Color3.fromRGB(76,142,81) or Color3.fromRGB(69,88,102)
  boatViewButton.BackgroundColor3=boating and Color3.fromRGB(66,132,171) or Color3.fromRGB(69,88,102)
+ garageViewButton.BackgroundColor3=garage and Color3.fromRGB(131,119,161) or Color3.fromRGB(69,88,102)
+ homeViewButton.BackgroundColor3=atHome and Color3.fromRGB(123,147,114) or Color3.fromRGB(69,88,102)
+ homeInfo.Text="HOME LOT: "..tostring(player:GetAttribute("RRLifeHomePlot") or 0)..
+  " • SECURITY "..(player:GetAttribute("RRLifeHomeLocked") and "LOCKED" or "UNLOCKED")..
+  " • FUN "..tostring(player:GetAttribute("RRLifeFun") or 100)..
+  " • VISIT WORLD → ESTATES TO SEE THE NEIGHBORHOOD"
+ local selected=player:GetAttribute("RRLifeSelectedCar") or ""
+ for id,control in pairs(garageButtons) do
+  local owned=player:GetAttribute("RRLifeOwn_"..id)==true
+  control.Text=LifeCatalog.CarChoices[id].name.." • "..
+   LifeCatalog.CarChoices[id].speed.." SPEED • "..
+   (selected==id and "YOUR CURRENT CAR" or owned and "SELECT OWNED CAR" or "BUY FIRST")
+  control.BackgroundColor3=selected==id and Color3.fromRGB(62,138,109) or
+   owned and Color3.fromRGB(95,111,144) or Color3.fromRGB(62,70,78)
+ end
  lifeList.CanvasPosition=Vector2.zero
 end
 updateLifeView()
 local places={
  {"MODERN","MODERN DOWNTOWN • REAL 3D CITY"},
  {"WATERFRONT","WATERFRONT • OWNED BOATS & YACHTS"},
+ {"ESTATES","RESIDENTIAL ESTATES • YOUR HOME"},
  {"HUB","CENTRAL HUB"},{"CYBER","NEON METROPOLIS"},{"CRYSTAL","PRISM WILDS"},
  {"VOLCANO","MAGMA OUTPOST"},{"SKY","CLOUD KINGDOM"},
  {"CASTLE","CASTLE KINGDOM"},{"FARM","HARVEST VALLEY"},
@@ -492,6 +553,21 @@ event.OnClientEvent:Connect(function(message)
  task.delay(2.7,function() if current==seq then toast.Visible=false end end)
 end)
 local function update()
+ if lifeMode=="HOME" then
+  homeInfo.Text="HOME LOT: "..tostring(player:GetAttribute("RRLifeHomePlot") or 0)..
+   " • SECURITY "..(player:GetAttribute("RRLifeHomeLocked") and "LOCKED" or "UNLOCKED")..
+   " • FUN "..tostring(player:GetAttribute("RRLifeFun") or 100)..
+   " • VISIT WORLD → ESTATES TO SEE THE NEIGHBORHOOD"
+ elseif lifeMode=="GARAGE" then
+  local selected=player:GetAttribute("RRLifeSelectedCar") or ""
+  for id,control in pairs(garageButtons) do
+   local owned=player:GetAttribute("RRLifeOwn_"..id)==true
+   control.Text=LifeCatalog.CarChoices[id].name.." • "..
+    LifeCatalog.CarChoices[id].speed.." SPEED • "..
+    (selected==id and "YOUR CURRENT CAR" or owned and
+     "SELECT OWNED CAR" or "BUY FIRST")
+  end
+ end
  local target=player:GetAttribute("RRDeliveryTarget")
  hint.Text=(type(target)=="string" and target~="" and
   ("COURIER JOB: DELIVER TO "..target:upper()) or
@@ -520,6 +596,8 @@ local function update()
  lifeHelp.Text="HUNGER "..(player:GetAttribute("RRLifeHunger") or 100)..
   " • ENERGY "..(player:GetAttribute("RRLifeEnergy") or 100)..
   " • HYGIENE "..(player:GetAttribute("RRLifeHygiene") or 100)..
+  " • FUN "..(player:GetAttribute("RRLifeFun") or 100)..
+  " • HOME "..(player:GetAttribute("RRLifeHomeLocked") and "LOCKED" or "UNLOCKED")..
   " • FREE MEALS AND REST AT THE COMMUNITY PARK • HOME BED & SINK"
  for _,entry in ipairs(LifeCatalog.Items) do
   local owned=player:GetAttribute("RRLifeOwn_"..entry.id)==true
@@ -591,6 +669,7 @@ for _,name in ipairs({"RRCoins","RRShards","RRLevel","RRXP","RRBlaster",
  "RRLifeArrests","RRLifeJailed","RRLifeReputation","RRLifeShifts",
  "RRLifeShift","RRLifeTaskStep","RRLifeTaskName",
  "RRLifeHunger","RRLifeEnergy","RRLifeHygiene",
+ "RRLifeFun","RRLifeHomeLocked","RRLifeHomePlot","RRLifeSelectedCar",
  "RRLifeGardenPlot","RRLifeGardenCrop","RRLifeGardenStatus",
  "RRLifeGardenHarvests","RRLifeGardenProduce"}) do
  player:GetAttributeChangedSignal(name):Connect(update)

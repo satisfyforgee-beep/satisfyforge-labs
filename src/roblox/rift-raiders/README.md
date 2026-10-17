@@ -8,6 +8,9 @@ Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach 
 
 ## Implemented
 
+- **v0.13 Real Home Living & Garage:** 12 landscaped, owner-allocated estate lots with official Modern City mesh trees; functional homes for eleven residential property purchases; physical purchased furniture and household appliances; lockable doors, owner-only interactions, saved security setting, and a fourth Fun lifestyle need. Seven server-authorized sedan-based car choices now use **both the red and white official 45-mesh Roblox city sedan models** and different arcade driving speeds. New LIFE → GARAGE, MY HOME and WORLD → ESTATES destinations. The updated saved profile is v7 with v1–v6 migration. [V0_13_RELEASE_NOTES.md](V0_13_RELEASE_NOTES.md) gives tested features and important quality limitations.
+
+
 - **v0.12 Careers, Gardening & Marina:** 60 real-world-inspired careers (40 newly added), 173 earnable purchases (125 newly added), and 22 owned business choices. Players can buy a garden trowel, watering can and consumable seed packets, tend one of 16 personal raised garden beds with 14 crop varieties, water crops, harvest produce, and sell it at the Farm Market. Equipment can be held as tools. Nine owned watercraft (kayaks through superyachts) can be launched, boarded, steered and driven in the new WATERFRONT zone, with tier-specific arcade speed limits. Gardens and seed inventory are persisted in profile schema v6, migrated from v1–v5. All are server-validated and use earned coins. **Boats and crops are stylized gameplay prototypes, not photorealistic meshes**; many new catalog items are ownership records rather than equipped, usable products. The v0.11 Social Citizens conversation/hair work is preserved. See [V0_12_RELEASE_NOTES.md](V0_12_RELEASE_NOTES.md).
 
 

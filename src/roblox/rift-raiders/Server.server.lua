@@ -20,7 +20,7 @@ local Catalog=require(ReplicatedStorage:WaitForChild("PrestigeCatalog"))
 local Vehicles=require(ServerScriptService:WaitForChild("VehicleService"))
 local Boats=require(ServerScriptService:WaitForChild("BoatService"))
 local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
-world:SetAttribute("Version","0.12.0")
+world:SetAttribute("Version","0.13.0")
 world:SetAttribute("Phase","CALM")
 world:SetAttribute("SecondsLeft",75)
 local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
@@ -296,7 +296,7 @@ end
 local function save(p)
  local s=profiles[p]
  if not store or not s or not s.loaded then return end
- local payload={version=6,coins=s.coins,shards=s.shards,level=s.level,xp=s.xp,
+ local payload={version=7,coins=s.coins,shards=s.shards,level=s.level,xp=s.xp,
   blaster=s.blaster,shieldOwned=s.shieldOwned,petOwned=s.petOwned,
   scatterOwned=s.scatterOwned,seals=s.seals,
   resources={
@@ -317,7 +317,7 @@ local function save(p)
   store:UpdateAsync(key,function(previous)
    local value=type(previous)=="table" and previous or {}
    -- Never regress an existing account to an older schema.
-   if type(value.version)=="number" and value.version>6 then return nil end
+   if type(value.version)=="number" and value.version>7 then return nil end
    return payload
   end)
  end)
@@ -334,7 +334,7 @@ local function init(p)
  if store then
   local ok,data=pcall(function() return store:GetAsync("Player_"..p.UserId) end)
   if ok then
-   if type(data)=="table" and (data.version==nil or data.version==1 or data.version==2 or data.version==3 or data.version==4 or data.version==5 or data.version==6) then
+   if type(data)=="table" and (data.version==nil or data.version==1 or data.version==2 or data.version==3 or data.version==4 or data.version==5 or data.version==6 or data.version==7) then
     s.coins=cleanInt(data.coins,1000000); s.shards=cleanInt(data.shards,100000)
     s.level=math.max(1,cleanInt(data.level,100)); s.xp=cleanInt(data.xp,100000)
     s.blaster=math.clamp(cleanInt(data.blaster,4),1,4)
@@ -421,6 +421,7 @@ for _,b in ipairs(biomes) do destinations[b.id]=b.center+Vector3.new(0,6,0) end
 for id,pos in pairs(newDestinations) do destinations[id]=pos end
 for id,pos in pairs(activityDestinations) do destinations[id]=pos end
 destinations.LIFE=lifeDestination
+destinations.ESTATES=Vector3.new(0,8,2711)
 if modernCityDestination then destinations.MODERN=modernCityDestination end
 local function blast(p)
  local s=profiles[p]; local root=rootFor(p)
@@ -790,4 +791,4 @@ task.spawn(function()
   Lighting.Ambient=Color3.fromRGB(120,132,179)
  end
 end)
-print("SF_RIFT_RAIDERS_SERVER_READY v0.12.0")
+print("SF_RIFT_RAIDERS_SERVER_READY v0.13.0")

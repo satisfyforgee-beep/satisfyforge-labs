@@ -5,6 +5,7 @@ local RunService=game:GetService("RunService")
 local Terrain=workspace.Terrain
 local Catalog=require(game:GetService("ReplicatedStorage"):WaitForChild("LifeCatalog"))
 local Garden=require(script.Parent:WaitForChild("UrbanGardening"))
+local Home=require(script.Parent:WaitForChild("HomeLiving"))
 local Life={}
 local context,world,folder
 local stores={}
@@ -29,11 +30,12 @@ local publicMealCooldown={}
 local propertySlots={}
 local playerSlots={}
 local playerProperties={}
-local propertyBases={
- Vector3.new(-115,0,1712),Vector3.new(-69,0,1712),
- Vector3.new(-23,0,1712),Vector3.new(23,0,1712),
- Vector3.new(69,0,1712),Vector3.new(115,0,1712),
-}
+local propertyBases={}
+for row=0,1 do
+ for col=0,5 do
+  table.insert(propertyBases,Vector3.new(-155+col*62,0,2750+row*70))
+ end
+end
 local jailCenter=Vector3.new(126,7,1655)
 local townCenter=Vector3.new(0,0,1600)
 local function part(parent,name,size,pos,color,material,collide)
@@ -80,6 +82,11 @@ function Life.Normalize(value)
   career=Catalog.SanitizeCareer(value.career),
   owned=Catalog.SanitizeOwned(value.owned),
   garden=Garden.Normalize(value.garden),
+  homeLocked=value.homeLocked~=false,
+  selectedCar=type(value.selectedCar)=="string" and
+   Catalog.CarChoices[value.selectedCar] and
+   type(value.owned)=="table" and value.owned[value.selectedCar]==true and
+   value.selectedCar or "",
   followers=math.clamp(math.floor(tonumber(value.followers) or 0),0,10000000),
   uploads=math.clamp(math.floor(tonumber(value.uploads) or 0),0,1000000),
   shifts=math.clamp(math.floor(tonumber(value.shifts) or 0),0,1000000),
@@ -90,21 +97,29 @@ function Life.Normalize(value)
    hunger=math.clamp(math.floor(tonumber(type(value.needs)=="table" and value.needs.hunger) or 100),0,100),
    energy=math.clamp(math.floor(tonumber(type(value.needs)=="table" and value.needs.energy) or 100),0,100),
    hygiene=math.clamp(math.floor(tonumber(type(value.needs)=="table" and value.needs.hygiene) or 100),0,100),
+   fun=math.clamp(math.floor(tonumber(type(value.needs)=="table" and value.needs.fun) or 100),0,100),
   },
-  lastWork=0,lastPost=0,lastBusiness=0,jailUntil=0,activeShift=nil,
+  lastWork=0,lastPost=0,lastBusiness=0,lastHome=-100,
+  jailUntil=0,activeShift=nil,
  }
 end
 function Life.Serialize(value)
  local s=Life.Normalize(value)
  return {career=s.career,owned=s.owned,followers=s.followers,
   uploads=s.uploads,shifts=s.shifts,reputation=s.reputation,
-  fines=s.fines,arrests=s.arrests,needs=s.needs,garden=s.garden}
+  fines=s.fines,arrests=s.arrests,needs=s.needs,garden=s.garden,
+  homeLocked=s.homeLocked,selectedCar=s.selectedCar}
 end
 function Life.Sync(player)
  local s=profile(player)
  if not s or not s.life then return end
  local life=s.life
  player:SetAttribute("RRLifeCareer",life.career)
+ player:SetAttribute("RRLifeHomeLocked",life.homeLocked)
+ player:SetAttribute("RRLifeHomePlot",
+  playerProperties[player] and playerSlots[player] or 0)
+ player:SetAttribute("RRLifeSelectedCar",life.selectedCar)
+ player:SetAttribute("RRLifeFun",life.needs.fun)
  Garden.SyncPlayer(player,life.garden)
  player:SetAttribute("RRLifeHunger",life.needs.hunger)
  player:SetAttribute("RRLifeEnergy",life.needs.energy)
@@ -223,6 +238,33 @@ function Life.Build(targetWorld,options)
    tell(player,"OPEN LIFE SHOP • "..name.." • WALK NEAR THE COUNTER TO BUY")
   end)
  end
+ -- Dedicated owner neighborhood, separate from job stations and downtown.
+ Terrain:FillBlock(CFrame.new(0,-4,2785),
+  Vector3.new(430,12,230),Enum.Material.Grass)
+ local neighborhood=Instance.new("Folder")
+ neighborhood.Name="Residential Estates Neighborhood"
+ neighborhood.Parent=folder
+ for _,z in ipairs({2711,2781}) do
+  part(neighborhood,"Residential Asphalt Road",Vector3.new(420,.65,14),
+   Vector3.new(0,2.4,z),Color3.fromRGB(59,63,68),
+   Enum.Material.Asphalt,true)
+  for x=-196,196,28 do
+   part(neighborhood,"Neighborhood Street Lane",Vector3.new(11,.1,.45),
+    Vector3.new(x,2.8,z),Color3.fromRGB(233,215,149),
+    Enum.Material.Concrete,false)
+  end
+ end
+ for i,location in ipairs(propertyBases) do
+  part(neighborhood,"Home Plot "..i,Vector3.new(46,.5,51),
+   location+Vector3.new(0,2.4,0),Color3.fromRGB(88,124,82),
+   Enum.Material.Grass,true)
+  local sign=part(neighborhood,"Property Lot Plaque "..i,Vector3.new(5,3,.4),
+   location+Vector3.new(-20,5,-19),
+   Color3.fromRGB(99,94,81),Enum.Material.Wood,true)
+  sign:SetAttribute("LotNumber",i)
+ end
+ textSign(neighborhood,"RESIDENTIAL ESTATES • OWNED HOMES",
+  Vector3.new(0,20,2688),Color3.fromRGB(226,232,202))
  local license=stores.BUSINESS
  prompt(license,"COLLECT REVENUE","Owned Business Earnings",function(player)
   Life.Process(player,"BusinessCollect")
@@ -533,6 +575,38 @@ function Life.AttachDowntown(cityModel)
   process=function(p,kind,arg) return Life.Process(p,kind,arg) end,
   getProfile=profile,tell=tell,sync=Life.Sync,reward=context.reward
  })
+ -- Reuse genuine official Modern City tree meshes to landscape the estates.
+ -- All source assets were stripped of executable scripts before import.
+ local estate=folder:FindFirstChild("Residential Estates Neighborhood")
+ local streetTrees=cityModel:FindFirstChild("StreetTrees",true)
+ if estate and streetTrees then
+  local source=streetTrees:GetChildren()
+  local placed=0
+  for row=0,1 do
+   for i=1,6 do
+    local tree=source[((i-1)%#source)+1]
+    if tree and tree:IsA("Model") then
+     local clone=tree:Clone()
+     clone.Name="Official Estate Mesh Tree "..(row*6+i)
+     clone.Parent=estate
+     local cf,size=clone:GetBoundingBox()
+     local target=Vector3.new(-186+(i-1)*73,2.6,2738+row*70)
+     local bottom=cf.Position.Y-size.Y*.5
+     clone:PivotTo(clone:GetPivot()+Vector3.new(
+      target.X-cf.Position.X,target.Y-bottom,target.Z-cf.Position.Z))
+     for _,part in ipairs(clone:GetDescendants()) do
+      if part:IsA("BasePart") then
+       part.Anchored=true
+       part.CanTouch=false
+       part.CanCollide=false
+      end
+     end
+     placed+=1
+    end
+   end
+  end
+  estate:SetAttribute("OfficialMeshTrees",placed)
+ end
  -- Two additional officers make the detailed district participate in the law system.
  officer(services,3,Vector3.new(-92,7,2295))
  officer(services,4,Vector3.new(92,7,2395))
@@ -545,9 +619,15 @@ function Life.RefreshProperty(player)
  local s=profile(player)
  if not s or not s.life then return end
  local owned=s.life.owned
- local tier=owned.MANSION and "MANSION" or
-  owned.TOWNHOUSE and "TOWNHOUSE" or
-  owned.APARTMENT and "APARTMENT" or nil
+ local priority={
+  "PRIVATE_ISLAND","VILLA","PENTHOUSE","MANSION","BEACH_HOUSE",
+  "FARMHOUSE","LAKE_CABIN","TOWNHOUSE","STARTER_HOME",
+  "CONDO","APARTMENT",
+ }
+ local tier=nil
+ for _,candidate in ipairs(priority) do
+  if owned[candidate] then tier=candidate;break end
+ end
  local old=playerProperties[player]
  if old then old:Destroy(); playerProperties[player]=nil end
  if not tier then return end
@@ -560,11 +640,14 @@ function Life.RefreshProperty(player)
  m:SetAttribute("PropertyTier",tier)
  m.Parent=folder
  playerProperties[player]=m
- local width=tier=="MANSION" and 36 or tier=="TOWNHOUSE" and 29 or 24
- local floors=tier=="MANSION" and 3 or tier=="TOWNHOUSE" and 2 or 1
+ local luxury={PRIVATE_ISLAND=true,VILLA=true,PENTHOUSE=true,MANSION=true}
+ local middle={BEACH_HOUSE=true,FARMHOUSE=true,LAKE_CABIN=true,
+  TOWNHOUSE=true,STARTER_HOME=true}
+ local width=luxury[tier] and 36 or middle[tier] and 29 or 24
+ local floors=luxury[tier] and 3 or middle[tier] and 2 or 1
  local height=floors*10
- local color=tier=="MANSION" and Color3.fromRGB(216,211,199) or
-  tier=="TOWNHOUSE" and Color3.fromRGB(183,143,115) or
+ local color=luxury[tier] and Color3.fromRGB(216,211,199) or
+  middle[tier] and Color3.fromRGB(183,143,115) or
   Color3.fromRGB(173,181,190)
  part(m,"Property Foundation",Vector3.new(width+3,1,30),
   center+Vector3.new(0,3,0),Color3.fromRGB(132,134,132),Enum.Material.Concrete,true)
@@ -712,11 +795,15 @@ function Life.RefreshProperty(player)
    end
   end
  end
- part(m,"Property Entrance",Vector3.new(6,8,.5),
+ local originalDoor=part(m,"Property Entrance",Vector3.new(6,8,.5),
   center+Vector3.new(0,7,-13.5),
   Color3.fromRGB(76,92,108),Enum.Material.WoodPlanks,false)
+ originalDoor.Transparency=1
  textSign(m,tier.." • "..player.DisplayName,
   center+Vector3.new(0,height+12,-15),Color3.fromRGB(255,235,169))
+ Home.Furnish(m,center,width,floors,player,owned,{
+  getProfile=profile,tell=tell,sync=Life.Sync,
+ })
 end
 function Life.PlayerJoined(player)
  if playerSlots[player] then return end
@@ -874,6 +961,33 @@ function Life.Process(player,kind,arg,step)
    context.sync(player)
    return true
   end)() or false
+ elseif kind=="GoHome" then
+  local slot=playerSlots[player]
+  if not slot or not playerProperties[player] then
+   tell(player,"BUY A HOME AT METRO REALTY BEFORE YOU CAN MOVE IN.")
+   return false
+  end
+  if now-(life.lastHome or -100)<5 then return false end
+  local char=player.Character
+  if not char then return false end
+  life.lastHome=now
+  char:PivotTo(CFrame.new(propertyBases[slot]+Vector3.new(0,7,-23)))
+  tell(player,"WELCOME HOME • LOT "..slot.." • USE THE SECURITY KEYPAD TO SET VISITOR ACCESS.")
+ elseif kind=="SelectCar" then
+  if type(arg)~="string" or not Catalog.CarChoices[arg] then
+   return false
+  end
+  if not nearbyEither(player,stores.VEHICLE,downtownStores.VEHICLE,24) then
+   tell(player,"VISIT THE VEHICLE DEALER TO SWITCH YOUR DAILY DRIVER.")
+   return false
+  end
+  if not life.owned[arg] then
+   tell(player,"BUY THIS CAR AT THE VEHICLE DEALER FIRST.")
+   return false
+  end
+  life.selectedCar=arg
+  tell(player,"GARAGE: "..Catalog.CarChoices[arg].name:upper()..
+   " SELECTED. USE THE CAR BUTTON TO SPAWN IT.")
  elseif kind=="Buy" then
   local item=type(arg)=="string" and Catalog.ById[arg]
   if not item or not nearbyEither(player,stores[item.category],downtownStores[item.category],24) then
@@ -891,13 +1005,21 @@ function Life.Process(player,kind,arg,step)
   end
   s.coins-=item.price
   life.owned[item.id]=true
+  if Catalog.CarChoices[item.id] and life.selectedCar=="" then
+   life.selectedCar=item.id
+  end
   if seedPacket then
    life.garden.seeds[item.id]=math.min(99,(life.garden.seeds[item.id] or 0)+3)
    tell(player,"SEED PACK ADDED: 3 "..item.name.." PLANTINGS.")
   end
   if item.id=="CAMERA" or item.id=="GARDEN_TROWEL" or
    item.id=="WATERING_CAN" then Life.GiveCamera(player) end
-  if item.category=="PROPERTY" then Life.RefreshProperty(player) end
+  if item.category=="PROPERTY" or item.category=="HOME" or
+   item.id=="SMART_TV" or item.id=="GAME_CONSOLE" or
+   item.id=="WORKSTATION" or item.id=="DESKTOP_PC" or
+   item.id=="LAPTOP" then
+   Life.RefreshProperty(player)
+  end
   tell(player,"PURCHASED: "..item.name.."! THIS IS AN IN-GAME ITEM.")
  elseif kind=="Publish" then
   if life.career~="CREATOR" or
@@ -978,6 +1100,7 @@ function Life.Start()
      needs.energy=math.max(0,needs.energy-2)
      needs.hunger=math.max(0,needs.hunger-2)
      needs.hygiene=math.max(0,needs.hygiene-1)
+     needs.fun=math.max(0,needs.fun-1)
      Life.Sync(player)
     end
    end

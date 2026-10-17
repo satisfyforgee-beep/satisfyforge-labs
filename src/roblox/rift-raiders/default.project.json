@@ -39,6 +39,9 @@
       },
       "BoatService": {
         "$path": "BoatService.lua"
+      },
+      "HomeLiving": {
+        "$path": "HomeLiving.lua"
       }
     },
     "StarterPlayer": {
@@ -101,6 +104,9 @@
       "$className": "ServerStorage",
       "OfficialSedanVisual": {
         "$path": "assets/OfficialSedanVisual.rbxmx"
+      },
+      "OfficialRedSedanVisual": {
+        "$path": "assets/OfficialRedSedanVisual.rbxmx"
       }
     }
   }

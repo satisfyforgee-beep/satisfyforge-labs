@@ -283,6 +283,19 @@ Catalog.Items={
 }
 Catalog.ById={}
 for _,entry in ipairs(Catalog.Items) do Catalog.ById[entry.id]=entry end
+-- These car purchases currently share an official detailed sedan silhouette.
+-- Red/white paint and driving performance differ, not the vehicle body style.
+Catalog.DrivableCars={"SEDAN","SPORTS_CAR","LUXURY_SEDAN",
+ "ELECTRIC_CAR","SUPERCAR","HYPERCAR","CLASSIC_CAR"}
+Catalog.CarChoices={
+ SEDAN={name="Family Sedan",speed=37,model="WHITE"},
+ SPORTS_CAR={name="Sports Sedan Trim",speed=50,model="RED"},
+ LUXURY_SEDAN={name="Executive Sedan",speed=41,model="WHITE"},
+ ELECTRIC_CAR={name="Electric Sedan",speed=45,model="WHITE"},
+ SUPERCAR={name="Performance Sedan Trim",speed=57,model="RED"},
+ HYPERCAR={name="Hyper Performance Sedan Trim",speed=63,model="RED"},
+ CLASSIC_CAR={name="Classic Sedan Trim",speed=35,model="WHITE"},
+}
 Catalog.ShopLocations={
  TECH="Creator Technology Store",APPAREL="Clothing Boutique",
  HOME="Home Supply Store",VEHICLE="Vehicle and Marine Dealer",

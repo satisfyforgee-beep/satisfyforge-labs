@@ -498,6 +498,65 @@ captainHumanoid.Sit=false;vessel:Destroy()
 a:SetAttribute("RRLifeOwn_SPEEDBOAT",false)
 print("SF_RIFT_MP_CHECK earned_watercraft_boat_controls PASS")
 
+-- A home is not granted just because the player reaches the Estates district.
+-- Paid cars cannot be selected by forging replicated owner attributes.
+if lifeService.Process(a,"GoHome") then
+ fail("free_personal_property_teleport") return
+end
+task.wait(2.2)
+if not request(a,"modern_final","Travel","MODERN") then
+ fail("garage_travel_ack") return
+end
+local dealer=world:FindFirstChild("Downtown Store VEHICLE",true)
+if not dealer then fail("garage_vehicle_dealer_missing") return end
+a.Character:PivotTo(CFrame.new(dealer.Position+Vector3.new(0,4,0)))
+task.wait(.5)
+a:SetAttribute("RRLifeOwn_SPORTS_CAR",true)
+if lifeService.Process(a,"SelectCar","SPORTS_CAR") then
+ fail("free_car_selection_from_attribute") return
+end
+print("SF_RIFT_MP_CHECK garage_car_ownership_validation PASS")
+-- In isolated Studio testing only, simulate the validated server's selected
+-- owned car attribute to verify official-red detailed meshes and top speed.
+a:SetAttribute("RRLifeSelectedCar","SPORTS_CAR")
+local vehicleService=require(ServerScriptService:WaitForChild("VehicleService"))
+local spawned,msg=vehicleService.Spawn(world,a,"car")
+if not spawned then fail("red_sedan_spawn_"..tostring(msg)) return end
+local redCar
+for _,candidate in ipairs(world:GetChildren()) do
+ if candidate.Name=="Player Hovercar" and candidate:GetAttribute("OwnerUserId")==a.UserId then
+  redCar=candidate
+ end
+end
+if not redCar or not redCar:FindFirstChild("Official Detailed Sedan Body") then
+ fail("red_detailed_sedan_missing") return
+end
+if redCar:GetAttribute("SelectedVehicle")~="SPORTS_CAR" or
+ redCar:GetAttribute("DetailedPaint")~="RED" or
+ redCar:GetAttribute("TopSpeed")~=50 then
+ fail("premium_car_speed_and_paint") return
+end
+print("SF_RIFT_MP_CHECK official_red_car_and_selected_driving_speed PASS")
+-- The owner-only vehicle logic must prevent another player from hijacking it.
+local foreignHumanoid=b.Character and b.Character:FindFirstChildOfClass("Humanoid")
+local premiumSeat=redCar:FindFirstChild("DriverSeat")
+if not foreignHumanoid or not premiumSeat then
+ fail("car_driver_identity_test_missing") return
+end
+b.Character:PivotTo(CFrame.new(premiumSeat.Position+Vector3.new(0,3,0)))
+premiumSeat:Sit(foreignHumanoid)
+task.wait(.3)
+local carBeforeHijack=redCar:GetPivot().Position
+premiumSeat.ThrottleFloat=1
+task.wait(.35)
+if (redCar:GetPivot().Position-carBeforeHijack).Magnitude>.4 then
+ fail("unauthorized_vehicle_driver") return
+end
+foreignHumanoid.Sit=false
+print("SF_RIFT_MP_CHECK personal_car_owner_only_driving PASS")
+redCar:Destroy()
+a:SetAttribute("RRLifeOwn_SPORTS_CAR",false)
+a:SetAttribute("RRLifeSelectedCar","")
 print("SF_RIFT_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:rift_multiplayer")
 ]==]

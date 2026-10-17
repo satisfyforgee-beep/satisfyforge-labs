@@ -89,3 +89,11 @@ The R15 downtown population now has named proximity conversations and verified c
 - Marine ownership can now translate into a 9-class arcade watercraft, controlled by VehicleSeat with server checks and safe-water limits.
 - Garden produce and seed stock are saved in migrated v6 profiles. The v0.11 named, talkable R15 downtown citizen functionality is retained.
 - Next milestone should concentrate on realistic assets, environmental interactivity and real-device performance rather than another pile of catalog-only items.
+
+
+## v0.13 — Residential Estates and purchase-reactive environments
+- Purchased homes now generate player-owned, lockable houses in the 12-lot Residential Estates district. Buying compatible furnishings physically adds interiors/interactive appliances.
+- Home owners control visitor access with smart locks. Ownership is verified on the server.
+- A Fun lifestyle need is tracked. Entertainment/books/computers restore fun, fridge food restores hunger and a laundry appliance improves hygiene (all cooldown-gated).
+- Selectable, previously purchased sedan trims now change official imported red/white 3D body and driving top speed, with a server-verified garage selector.
+- No Robux purchase products or public release; the game remains in iterative development.

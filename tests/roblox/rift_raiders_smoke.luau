@@ -39,6 +39,14 @@ for _,obj in ipairs(sedan:GetDescendants()) do
  assert(not obj:IsA("LuaSourceContainer"),"unsafe imported car script found")
 end
 assert(carMeshCount>=35,"detailed official sedan geometry missing")
+local redSedan=game:GetService("ServerStorage"):FindFirstChild("OfficialRedSedanVisual")
+assert(redSedan and redSedan:IsA("Model"),"official red sedan missing")
+local redMeshes=0
+for _,obj in ipairs(redSedan:GetDescendants()) do
+ if obj:IsA("MeshPart") then redMeshes+=1 end
+ assert(not obj:IsA("LuaSourceContainer"),"unsafe red car script found")
+end
+assert(redMeshes>=35,"detailed red sedan geometry incomplete")
 assert(world:FindFirstChild("Downtown Wayfinding"),"downtown portal missing")
 assert(imported:FindFirstChild("Modern City Asphalt Foundation"),"downtown ground missing")
 assert(workspace.StreamingEnabled==true,"streaming must be enabled for mobile")
@@ -46,13 +54,22 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.12.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.13.0","version mismatch")
 local function count(name)
  local n=0
  for _,v in ipairs(world:GetDescendants()) do if v.Name==name then n+=1 end end
  return n
 end
 assert(count("Life City Simulation")==1,"life city missing")
+assert(count("Residential Estates Neighborhood")==1,
+ "residential neighborhood missing")
+local estates=world:FindFirstChild("Residential Estates Neighborhood",true)
+assert(estates:FindFirstChild("Home Plot 1") and
+ estates:FindFirstChild("Home Plot 12"),
+ "twelve property plots not built")
+assert(count("Residential Asphalt Road")==2,"neighborhood roads missing")
+assert(estates:GetAttribute("OfficialMeshTrees")==12,
+ "estate official mesh-tree landscaping not installed")
 assert(count("Modern Downtown Life Services")==1,"downtown life services missing")
 assert(count("Living Modern Downtown")==1,"living downtown folder missing")
 assert(count("Downtown Citizen 1")==1 and count("Downtown Citizen 8")==1,
@@ -134,6 +151,9 @@ assert(life.CareerById.GARDENER and life.CareerById.BOAT_CAPTAIN and
 assert(life.ById.TOMATO_SEEDS and life.ById.GARDEN_TROWEL and
  life.ById.WATERING_CAN and life.ById.SPEEDBOAT and
  life.ById.HYPERCAR,"garden and premium vehicles missing")
+assert(#life.DrivableCars==7,"seven selectable detailed car trims missing")
+assert(life.CarChoices.HYPERCAR.speed>life.CarChoices.SEDAN.speed,
+ "purchased car speed tiers invalid")
 assert(life.BusinessPayouts.MARINA_BUSINESS==590,
  "new owned business revenue missing")
 assert(life.ById.TABLET and life.ById.COUCH and life.ById.CONDO,
@@ -155,6 +175,39 @@ assert(cleaned.career=="UNEMPLOYED" and cleaned.needs.hunger==0 and
 assert(lifeApi.Serialize(cleaned).needs.hygiene==17,"needs save data missing")
 assert(lifeApi.Serialize(cleaned).garden.harvests==0,
  "new garden schema serialization missing")
+assert(cleaned.needs.fun==100 and cleaned.homeLocked,
+ "new life needs and default home security missing")
+local restored=lifeApi.Normalize({owned={SEDAN=true},
+ selectedCar="SEDAN",homeLocked=false,needs={fun=26}})
+assert(restored.selectedCar=="SEDAN" and restored.homeLocked==false and
+ restored.needs.fun==26,"legacy profile selected car/home security migration failed")
+assert(lifeApi.Normalize({selectedCar="HACKED_CAR"}).selectedCar=="",
+ "malicious selected vehicle failed validation")
+local livingHomes=require(game:GetService("ServerScriptService"):WaitForChild("HomeLiving"))
+local sample=Instance.new("Model")
+sample.Name="Studio Furniture Test House";sample.Parent=workspace
+local dummy={UserId=55155}
+local state={life={homeLocked=true,needs={fun=35,hunger=30,energy=60,hygiene=50}}}
+livingHomes.Furnish(sample,Vector3.new(0,500,0),29,2,dummy,{
+ SMART_TV=true,GAME_CONSOLE=true,FRIDGE=true,DINING_TABLE=true,
+ WASHER_DRYER=true,KING_BED=true,BABY_CRIB=true,BOOKSHELF=true,
+ PET_BED=true,WORKSTATION=true,COUCH=true,
+},{
+ getProfile=function() return state end,
+ tell=function() end,sync=function() end,
+})
+assert(sample:FindFirstChild("Security Entrance Door")
+ and sample:FindFirstChild("Wall Mounted Smart TV")
+ and sample:FindFirstChild("Home Refrigerator")
+ and sample:FindFirstChild("Purchased King Mattress")
+ and sample:FindFirstChild("Nursery Crib Base")
+ and sample:FindFirstChild("Home Washing Machine")
+ and sample:FindFirstChild("Creator Work Desk"),
+ "purchased home furnishing models missing")
+local locked=sample:FindFirstChild("Door Smart Lock")
+assert(locked and locked:GetAttribute("Locked")==true,
+ "owned-home door lock validation missing")
+sample:Destroy()
 assert(count("Central Hub")==1,"hub missing")
 assert(count("Living World Atmosphere")==1,"world polish missing")
 assert(count("Ambient Pedestrian 1")==1,"pedestrian simulation missing")
