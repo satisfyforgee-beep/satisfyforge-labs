@@ -8,6 +8,10 @@ Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach 
 
 ## Implemented
 
+- **v0.6 Life City:** new destination with storefronts, seven careers, timed shifts, a 21-item in-game catalog (apparel, phones/cameras, cars, boats, homes, businesses), creator videos and follower growth, business collection, owned property exteriors, police pursuit, in-game jail and fines. Player profile schema v4. See [LIFE_SIMULATION_DESIGN.md](LIFE_SIMULATION_DESIGN.md). Boat purchases are inventory-only, not drivable. No real-money transactions.
+
+
+
 - **v0.5:** natural lighting/atmosphere/clouds and cycling day/night/weather, decorative walking pedestrians and moving city traffic, LOW/MED/HIGH graphics settings with local rain effects.
 - **Earned prestige economy:** eight permanent cosmetics/upgrades and advanced vehicle licenses with level and resource requirements, server-validated purchases, car wraps, upgraded roof lighting, luxury garage and character trail.
 - **Save migration:** DataStore profile v3 preserves prior v1/v2 progress and allowlists owned prestige items; no Robux payment products or purchases activated.

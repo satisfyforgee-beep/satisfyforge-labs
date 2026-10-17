@@ -21,6 +21,9 @@
       },
       "WorldPolish": {
         "$path": "WorldPolish.lua"
+      },
+      "LifeSimulation": {
+        "$path": "LifeSimulation.lua"
       }
     },
     "StarterPlayer": {
@@ -36,6 +39,9 @@
       "$className": "ReplicatedStorage",
       "PrestigeCatalog": {
         "$path": "PrestigeCatalog.lua"
+      },
+      "LifeCatalog": {
+        "$path": "LifeCatalog.lua"
       }
     }
   }

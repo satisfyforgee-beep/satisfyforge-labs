@@ -126,6 +126,55 @@ if not request(a,"castle","Travel","CASTLE") then fail("castle_travel_ack") retu
 if not waitFor(function() return (rootA.Position-Vector3.new(520,8,0)).Magnitude<16 end,5) then fail("castle_travel_missing") return end
 if (rootB.Position-Vector3.new(520,8,0)).Magnitude<30 then fail("castle_travel_shared") return end
 print("SF_RIFT_MP_CHECK new_world_travel PASS")
+task.wait(2.2)
+if not request(a,"life","Travel","LIFE") then fail("life_travel_ack") return end
+if not waitFor(function() return (rootA.Position-Vector3.new(0,7,1600)).Magnitude<20 end,5) then
+ fail("life_travel_missing") return
+end
+local lifeCoinsBefore=a:GetAttribute("RRCoins")
+if not request(a,"life_bad","LifeAction","Buy","YACHT") then
+ fail("life_invalid_purchase_ack") return
+end
+task.wait(.2)
+if a:GetAttribute("RRLifeOwn_YACHT") or a:GetAttribute("RRCoins")~=lifeCoinsBefore then
+ fail("life_free_yacht") return
+end
+local careerBoard=nil
+for _,node in ipairs(world:GetDescendants()) do
+ if node.Name=="Career Board RETAIL" then careerBoard=node; break end
+end
+if not careerBoard then fail("career_board_missing") return end
+a.Character:PivotTo(CFrame.new(careerBoard.Position+Vector3.new(0,3,0)))
+task.wait(.4)
+if not request(a,"hire","LifeAction","Career","RETAIL") then fail("hire_ack") return end
+if not waitFor(function() return a:GetAttribute("RRLifeCareer")=="RETAIL" end,3) then
+ fail("hire_missing") return
+end
+local retail=nil
+for _,node in ipairs(world:GetDescendants()) do
+ if node.Name=="Retail Register" then retail=node; break end
+end
+if not retail then fail("retail_site_missing") return end
+a.Character:PivotTo(CFrame.new(retail.Position+Vector3.new(0,4,0)))
+task.wait(.4)
+local beforeShift=a:GetAttribute("RRCoins")
+if not request(a,"shift_start","LifeAction","Work","RETAIL") then fail("work_start_ack") return end
+task.wait(.4)
+if a:GetAttribute("RRCoins")~=beforeShift then fail("work_instant_wages") return end
+task.wait(3)
+if not request(a,"shift","LifeAction","Work","RETAIL") then fail("work_finish_ack") return end
+if not waitFor(function() return (a:GetAttribute("RRCoins") or 0)>=beforeShift+22 end,3) then
+ fail("work_wages_missing") return
+end
+if b:GetAttribute("RRLifeCareer")~="UNEMPLOYED" or
+ (b:GetAttribute("RRCoins") or 0)~=0 then fail("life_job_isolation") return end
+if not request(a,"shift2","LifeAction","Work","RETAIL") then fail("work2_ack") return end
+task.wait(.3)
+if a:GetAttribute("RRCoins")~=beforeShift+22 then fail("life_wage_cooldown_bypass") return end
+print("SF_RIFT_MP_CHECK life_career_wages_and_isolation PASS")
+if not request(a,"arctic_after_life","Travel","ARCTIC") then fail("arctic_retravel_ack") return end
+task.wait(2)
+
 task.wait(2)
 if not request(a,"arctic","Travel","ARCTIC") then fail("arctic_travel_ack") return end
 if not waitFor(function() return (rootA.Position-Vector3.new(0,8,-520)).Magnitude<16 end,5) then fail("arctic_travel_missing") return end

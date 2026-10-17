@@ -11,6 +11,7 @@ local function permitted(v)
  if v.Y<2 or v.Y>40 then return false end
  local x,z=v.X,v.Z
  if math.abs(x)<52 and math.abs(z)<52 then return true end
+ if math.abs(x)<155 and math.abs(z-1600)<115 then return true end
  if math.abs(x-180)<52 and math.abs(z)<52 then return true end
  if math.abs(x+180)<52 and math.abs(z)<52 then return true end
  if math.abs(z-180)<52 and math.abs(x)<52 then return true end
@@ -53,10 +54,13 @@ function Cars.Spawn(world,player,kind)
  if kind=="snowmobile" then
   m,seat=Expansion.Prefabs.Snowmobile(world,Vector3.new(spot.X,2,spot.Z),true)
  else
+  local tier=player:GetAttribute("RRLifeCarTier")
   local wrap=player:GetAttribute("RRActiveVehicleWrap")
   local ownedPaint=wrap=="PLATINUM" and Color3.fromRGB(205,216,231) or
    wrap=="MIDNIGHT" and Color3.fromRGB(28,36,59) or
    Color3.fromRGB(74,215,245)
+  if tier=="SPORTS" then ownedPaint=Color3.fromRGB(222,76,83)
+  elseif tier=="SEDAN" then ownedPaint=Color3.fromRGB(111,146,164) end
   m,seat=Kit.Car(world,cf,
    kind=="flyingcar" and Color3.fromRGB(196,94,252) or
    kind=="stolen" and Color3.fromRGB(48,54,69) or ownedPaint,true)

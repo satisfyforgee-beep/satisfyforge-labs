@@ -51,3 +51,9 @@ Original reusable service: WorldActivities.lua. Profile DataStore migrated from 
 
 
 - Advanced snowmobiles, jetpack launches and flying cars now require server-validated earned licenses. Basic personal cars remain free for immediate fun. All licenses can be bought with earned in-game coins; no Robux is necessary.
+
+
+## v0.6 Life City
+- A playable life-simulation district connects careers, earned wages, shops, content creation, property and business ownership, and police consequences.
+- See LIFE_SIMULATION_DESIGN.md for exact implementation, test coverage and limitations.
+- This is an early vertical slice, not photorealism or a complete real-world simulation.

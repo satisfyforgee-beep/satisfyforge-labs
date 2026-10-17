@@ -12,10 +12,11 @@ local WorldKit=require(ServerScriptService:WaitForChild("WorldKit"))
 local WorldExpansion=require(ServerScriptService:WaitForChild("WorldExpansion"))
 local WorldActivities=require(ServerScriptService:WaitForChild("WorldActivities"))
 local WorldPolish=require(ServerScriptService:WaitForChild("WorldPolish"))
+local Life=require(ServerScriptService:WaitForChild("LifeSimulation"))
 local Catalog=require(ReplicatedStorage:WaitForChild("PrestigeCatalog"))
 local Vehicles=require(ServerScriptService:WaitForChild("VehicleService"))
 local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
-world:SetAttribute("Version","0.5.0")
+world:SetAttribute("Version","0.6.0")
 world:SetAttribute("Phase","CALM")
 world:SetAttribute("SecondsLeft",75)
 local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
@@ -240,6 +241,7 @@ local function sync(p)
  p:SetAttribute("RRActiveVehicleWrap",
   s.owned.PLATINUM_WRAP and "PLATINUM" or
   s.owned.CITY_WRAP and "MIDNIGHT" or "DEFAULT")
+ Life.Sync(p)
  local ls=p:FindFirstChild("leaderstats")
  if ls then
   ls.Level.Value=s.level; ls.Coins.Value=s.coins; ls.Rifts.Value=s.seals
@@ -266,6 +268,11 @@ local activityDestinations=WorldActivities.Build(world,{
  spawnVehicle=Vehicles.Spawn,hasVehicle=Vehicles.HasActive
 })
 WorldPolish.Build(world,WorldKit)
+local lifeDestination=Life.Build(world,{
+ getProfile=function(p) return profiles[p] end,
+ reward=reward,sync=sync,tell=tell
+})
+Life.Start()
 local function quest(p,kind,n)
  local s=profiles[p]; if not s then return end
  s.quest[kind]=math.min(({shards=8,drones=3,seals=1})[kind],s.quest[kind]+(n or 1))
@@ -278,7 +285,7 @@ end
 local function save(p)
  local s=profiles[p]
  if not store or not s or not s.loaded then return end
- local payload={version=3,coins=s.coins,shards=s.shards,level=s.level,xp=s.xp,
+ local payload={version=4,coins=s.coins,shards=s.shards,level=s.level,xp=s.xp,
   blaster=s.blaster,shieldOwned=s.shieldOwned,petOwned=s.petOwned,
   scatterOwned=s.scatterOwned,seals=s.seals,
   resources={
@@ -292,13 +299,14 @@ local function save(p)
    carCooldownUntil=cleanInt(s.jobs.carCooldownUntil,9999999999),
    houseOwned=s.jobs.houseOwned==true
   },
-  prestige=Catalog.ValidateOwned(s.owned)}
+  prestige=Catalog.ValidateOwned(s.owned),
+  life=Life.Serialize(s.life)}
  local key="Player_"..p.UserId
  local ok,err=pcall(function()
   store:UpdateAsync(key,function(previous)
    local value=type(previous)=="table" and previous or {}
    -- Never regress an existing account to an older schema.
-   if type(value.version)=="number" and value.version>3 then return nil end
+   if type(value.version)=="number" and value.version>4 then return nil end
    return payload
   end)
  end)
@@ -311,11 +319,11 @@ local function init(p)
   shieldUntil=0,travelAt=0,lastShoot=0,loaded=false,pet=nil,
   resources={wood=0,metal=0,fish=0,hide=0,toolkit=0},
   jobs={sports=0,heists=0,bankCooldownUntil=0,carCooldownUntil=0,
-   houseOwned=false},owned={},heat=0}
+   houseOwned=false},owned={},life=Life.Normalize(nil),heat=0}
  if store then
   local ok,data=pcall(function() return store:GetAsync("Player_"..p.UserId) end)
   if ok then
-   if type(data)=="table" and (data.version==nil or data.version==1 or data.version==2 or data.version==3) then
+   if type(data)=="table" and (data.version==nil or data.version==1 or data.version==2 or data.version==3 or data.version==4) then
     s.coins=cleanInt(data.coins,1000000); s.shards=cleanInt(data.shards,100000)
     s.level=math.max(1,cleanInt(data.level,100)); s.xp=cleanInt(data.xp,100000)
     s.blaster=math.clamp(cleanInt(data.blaster,4),1,4)
@@ -335,6 +343,7 @@ local function init(p)
      s.jobs.houseOwned=data.jobs.houseOwned==true
     end
     s.owned=Catalog.ValidateOwned(data.prestige)
+    s.life=Life.Normalize(data.life)
    end
    s.loaded=true
   else
@@ -344,6 +353,7 @@ local function init(p)
  if not p.Parent then return end
  profiles[p]=s
  WorldActivities.PlayerJoined(p)
+ Life.PlayerJoined(p)
  local ls=Instance.new("Folder"); ls.Name="leaderstats"; ls.Parent=p
  for _,name in ipairs({"Level","Coins","Rifts"}) do
   local v=Instance.new("IntValue"); v.Name=name; v.Parent=ls
@@ -351,6 +361,7 @@ local function init(p)
  sync(p)
  task.defer(function()
   grantWeapon(p,pulseTemplate)
+  Life.GiveCamera(p)
   if s.scatterOwned then grantWeapon(p,scatterTemplate) end
  end)
  p.CharacterAdded:Connect(function()
@@ -358,6 +369,7 @@ local function init(p)
   if profiles[p] then
    sync(p)
    grantWeapon(p,pulseTemplate)
+   Life.GiveCamera(p)
    if profiles[p].scatterOwned then grantWeapon(p,scatterTemplate) end
    applyTrail(p)
   end
@@ -399,6 +411,7 @@ local destinations={HUB=Vector3.new(0,6,0)}
 for _,b in ipairs(biomes) do destinations[b.id]=b.center+Vector3.new(0,6,0) end
 for id,pos in pairs(newDestinations) do destinations[id]=pos end
 for id,pos in pairs(activityDestinations) do destinations[id]=pos end
+destinations.LIFE=lifeDestination
 local function blast(p)
  local s=profiles[p]; local root=rootFor(p)
  if not s or not root then return end
@@ -570,6 +583,14 @@ action.OnServerEvent:Connect(function(p,kind,arg,extra)
  local s=profiles[p]; local root=rootFor(p)
  if not s or not root or type(kind)~="string" then return end
  local now=os.clock()
+ if kind=="LifeAction" then
+  if type(arg)=="string" and #arg<=24 then Life.Process(p,arg,extra) end
+  return
+ end
+ if Life.IsJailed(p) then
+  tell(p,"SERVE YOUR IN-GAME JAIL SENTENCE BEFORE TAKING ACTION.")
+  return
+ end
  if kind=="ActivityHit" then
   if type(arg)=="string" and #arg<32 then WorldActivities.Hit(p,arg) end
   return
@@ -739,4 +760,4 @@ task.spawn(function()
   Lighting.Ambient=Color3.fromRGB(120,132,179)
  end
 end)
-print("SF_RIFT_RAIDERS_SERVER_READY v0.5.0")
+print("SF_RIFT_RAIDERS_SERVER_READY v0.6.0")

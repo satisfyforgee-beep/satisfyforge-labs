@@ -10,6 +10,7 @@ local event=ReplicatedStorage:WaitForChild("RiftRaidersEvent")
 local activitySignal=ReplicatedStorage:WaitForChild("RiftActivitiesSignal")
 local world=workspace:WaitForChild("RiftRaidersWorld")
 local Catalog=require(ReplicatedStorage:WaitForChild("PrestigeCatalog"))
+local LifeCatalog=require(ReplicatedStorage:WaitForChild("LifeCatalog"))
 local gui=Instance.new("ScreenGui"); gui.Name="RiftRaidersHUD"
 gui.ResetOnSpawn=false; gui.IgnoreGuiInset=false; gui.Parent=player:WaitForChild("PlayerGui")
 local function round(object,radius)
@@ -76,6 +77,8 @@ local mapButton=button("MapToggle","WORLD",UDim2.fromOffset(98,47),
 local qualityButton=button("GraphicsQuality","GRAPHICS: MED",
  UDim2.fromOffset(110,40),UDim2.new(1,-118,0,269),
  Color3.fromRGB(82,117,130))
+local lifeButton=button("LifeToggle","LIFE",UDim2.fromOffset(98,47),
+ UDim2.new(.02,107,1,-202),Color3.fromRGB(83,149,130))
 local packButton=button("PackToggle","PACK",UDim2.fromOffset(98,47),
  UDim2.new(.02,0,1,-202),Color3.fromRGB(144,117,86))
 blast.Activated:Connect(function() action:FireServer("Blast") end)
@@ -143,8 +146,9 @@ local function panel(name,heading)
  return f,scroll
 end
 local shop,shopList=panel("ShopPanel","EARNED COIN SHOP + PRESTIGE")
-local map,mapList=panel("MapPanel","EXPLORE 14 WORLD LOCATIONS")
+local map,mapList=panel("MapPanel","EXPLORE 15 WORLD LOCATIONS")
 local pack,packList=panel("PackPanel","YOUR RESOURCES & PROGRESS")
+local lifePanel,lifeList=panel("LifePanel","LIFE CITY • CAREERS & SHOPPING")
 local function item(parent,name,content,color,fn)
  local b=button(name,content,UDim2.new(1,-12,0,53),UDim2.fromOffset(0,0),color,parent)
  b.Activated:Connect(fn)
@@ -169,6 +173,31 @@ local premiumInfo=item(shopList,"RobuxNotice",
  "ROBUX COSMETICS: NOT FOR SALE YET • ALL ITEMS ABOVE EARNABLE",
  Color3.fromRGB(65,78,102),function() end)
 premiumInfo.Active=false
+local lifeSummary=item(lifeList,"LifeSummary","CAREER • FOLLOWERS • FINES",
+ Color3.fromRGB(67,102,118),function() end)
+lifeSummary.Active=false
+local lifeHelp=item(lifeList,"LifeHelp",
+ "GO TO LIFE CITY • APPLY AT CAREER CENTER • WORK AT YOUR JOB • BUY AT STORES",
+ Color3.fromRGB(70,89,116),function() end)
+lifeHelp.Active=false
+local creatorButton=item(lifeList,"CreatorPublish",
+ "RECORD CONTENT • CREATOR CAREER + PHONE + EQUIPPED CAMERA",
+ Color3.fromRGB(127,80,141),function()
+  action:FireServer("LifeAction","Publish")
+ end)
+local collectButton=item(lifeList,"BusinessCollect",
+ "COLLECT BUSINESS INCOME • VISIT LICENSING OFFICE",
+ Color3.fromRGB(86,131,93),function()
+  action:FireServer("LifeAction","BusinessCollect")
+ end)
+local lifeItems={}
+for _,entry in ipairs(LifeCatalog.Items) do
+ lifeItems[entry.id]=item(lifeList,"LifeItem_"..entry.id,
+  entry.name.." | "..entry.price.." coins | Level "..entry.level,
+  Color3.fromRGB(88,105,129),function()
+   action:FireServer("LifeAction","Buy",entry.id)
+  end)
+end
 local places={
  {"HUB","CENTRAL HUB"},{"CYBER","NEON METROPOLIS"},{"CRYSTAL","PRISM WILDS"},
  {"VOLCANO","MAGMA OUTPOST"},{"SKY","CLOUD KINGDOM"},
@@ -176,6 +205,7 @@ local places={
  {"JAPAN","SAKURA JAPAN"},{"ARCTIC","SNOWBOUND NORTH"},
  {"MARINA","OCEAN MARINA"},{"SAFARI","WILDLIFE SAFARI"},
  {"AIRPORT","INTERNATIONAL AIRPORT"},{"SPORTS","WORLD SPORTS COMPLEX"},{"HOMES","HOUSING MEADOWS"},
+ {"LIFE","LIFE CITY • CAREERS, STORES & POLICE"},
 }
 for i,entry in ipairs(places) do
  item(mapList,"Map"..entry[1],entry[2],
@@ -185,13 +215,17 @@ for i,entry in ipairs(places) do
   end)
 end
 shopButton.Activated:Connect(function()
- map.Visible=false; pack.Visible=false; shop.Visible=not shop.Visible
+ map.Visible=false; pack.Visible=false; lifePanel.Visible=false; shop.Visible=not shop.Visible
 end)
 mapButton.Activated:Connect(function()
- shop.Visible=false; pack.Visible=false; map.Visible=not map.Visible
+ shop.Visible=false; pack.Visible=false; lifePanel.Visible=false; map.Visible=not map.Visible
 end)
 packButton.Activated:Connect(function()
- shop.Visible=false; map.Visible=false; pack.Visible=not pack.Visible
+ shop.Visible=false; map.Visible=false; lifePanel.Visible=false; pack.Visible=not pack.Visible
+end)
+lifeButton.Activated:Connect(function()
+ shop.Visible=false; map.Visible=false; pack.Visible=false
+ lifePanel.Visible=not lifePanel.Visible
 end)
 local packSummary=item(packList,"PackSummary","RESOURCE INVENTORY",
  Color3.fromRGB(66,93,124),function() end)
@@ -273,8 +307,25 @@ local function update()
   ("COURIER JOB: DELIVER TO "..target:upper()) or
   "EXPLORE PORTALS • DRIVE CARS • HARVEST CROPS • VISIT JAPAN & CASTLES")
  local coins=player:GetAttribute("RRCoins") or 0
- local shards=player:GetAttribute("RRShards") or 0
  local level=player:GetAttribute("RRLevel") or 1
+ local career=player:GetAttribute("RRLifeCareer") or "UNEMPLOYED"
+ lifeSummary.Text="CAREER: "..career..
+  " • FOLLOWERS: "..(player:GetAttribute("RRLifeFollowers") or 0)..
+  " • POSTS: "..(player:GetAttribute("RRLifeUploads") or 0)..
+  " • FINES: "..(player:GetAttribute("RRLifeFines") or 0)..
+  " • ARRESTS: "..(player:GetAttribute("RRLifeArrests") or 0)..
+  (player:GetAttribute("RRLifeJailed") and " • IN JAIL" or "")
+ for _,entry in ipairs(LifeCatalog.Items) do
+  local owned=player:GetAttribute("RRLifeOwn_"..entry.id)==true
+  lifeItems[entry.id].Text=entry.name.." • "..entry.price.." COINS"..
+   " • LV "..entry.level.." • "..(owned and "OWNED" or
+    (level<entry.level and "LEVEL LOCKED" or
+    coins<entry.price and "SAVE UP" or "BUY AT STORE"))..
+   " • "..(LifeCatalog.ShopLocations[entry.category] or "")
+  lifeItems[entry.id].BackgroundColor3=owned and Color3.fromRGB(49,107,91)
+   or Color3.fromRGB(88,105,129)
+ end
+ local shards=player:GetAttribute("RRShards") or 0
  local xp=player:GetAttribute("RRXP") or 0
  local blasterLevel=player:GetAttribute("RRBlaster") or 1
  local seals=player:GetAttribute("RRSeals") or 0
@@ -322,8 +373,13 @@ for _,name in ipairs({"RRCoins","RRShards","RRLevel","RRXP","RRBlaster",
  "RRWood","RRMetal","RRFish","RRHide","RRToolkits","RRHeat","RRSportsWins","RRHeists","RRHouseOwned","RRQuestDrones","RRQuestSeals",
  "RROwn_CITY_WRAP","RROwn_ESTATE_ROOF","RROwn_PLATINUM_WRAP",
  "RROwn_HOME_GARAGE","RROwn_AURORA_TRAIL",
- "RROwn_SNOWMOBILE_LICENSE","RROwn_JETPACK_LICENSE","RROwn_FLIGHT_LICENSE"}) do
+ "RROwn_SNOWMOBILE_LICENSE","RROwn_JETPACK_LICENSE","RROwn_FLIGHT_LICENSE",
+ "RRLifeCareer","RRLifeFollowers","RRLifeUploads","RRLifeFines",
+ "RRLifeArrests","RRLifeJailed","RRLifeReputation","RRLifeShifts"}) do
  player:GetAttributeChangedSignal(name):Connect(update)
+end
+for _,entry in ipairs(LifeCatalog.Items) do
+ player:GetAttributeChangedSignal("RRLifeOwn_"..entry.id):Connect(update)
 end
 local function phaseUpdate()
  local current=world:GetAttribute("Phase") or "CALM"
