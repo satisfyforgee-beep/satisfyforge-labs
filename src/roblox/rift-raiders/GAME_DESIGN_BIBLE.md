@@ -78,3 +78,14 @@ The official Modern City art is no longer presentation-only. The district now co
 
 ## v0.10 — Living population and traffic
 Modern Downtown now contains eight actual R15 Humanoid citizens walking repeated sidewalk routes and four detailed official-sedan traffic vehicles circulating around the city. The population layer is a separate reusable `DowntownPopulation.lua` module so future city maps can replace or expand it without touching the economy, careers or imported art. Movement is server-authoritative.
+
+## v0.11 — Social citizen layer
+The R15 downtown population now has named proximity conversations and verified classic hair accessories. Dialogue remains deterministic and server-owned so it cannot be used to grant client-requested rewards. This is the beginning of a reusable social-NPC layer; later releases can add memory, schedules and relationship state without replacing the underlying R15 population service.
+
+
+## v0.12 — Gardening, marina, broader careers
+- 60 careers (40 new) and 173 earnable item choices (125 new), organized by real-world shopping category.
+- Gardening is a real farm-to-market loop: unique player plot, three usable seeds per purchased pack, trowel, watering can, time-gated organic crop growth, harvest inventory, profit through market sales and optional fertilizer.
+- Marine ownership can now translate into a 9-class arcade watercraft, controlled by VehicleSeat with server checks and safe-water limits.
+- Garden produce and seed stock are saved in migrated v6 profiles. The v0.11 named, talkable R15 downtown citizen functionality is retained.
+- Next milestone should concentrate on realistic assets, environmental interactivity and real-device performance rather than another pile of catalog-only items.

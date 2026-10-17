@@ -33,6 +33,12 @@
       },
       "DowntownPopulation": {
         "$path": "DowntownPopulation.lua"
+      },
+      "UrbanGardening": {
+        "$path": "UrbanGardening.lua"
+      },
+      "BoatService": {
+        "$path": "BoatService.lua"
       }
     },
     "StarterPlayer": {

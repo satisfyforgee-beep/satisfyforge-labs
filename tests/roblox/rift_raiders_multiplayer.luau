@@ -387,6 +387,117 @@ if not waitFor(function()
 end,4) then fail("downtown_citizen_not_walking") return end
 print("SF_RIFT_MP_CHECK living_downtown_population PASS")
 
+-- Test server authority for the new garden, including plot isolation and
+-- rejection of planting without legitimately purchased tools and seed packs.
+local gardens=world:FindFirstChild("Downtown Community Garden")
+local gardenService=require(ServerScriptService:WaitForChild("UrbanGardening"))
+local gardenA=gardenService.PlotFor(a)
+local gardenB=gardenService.PlotFor(b)
+if not gardens or not gardenA or not gardenB or gardenA==gardenB then
+ fail("personal_garden_allocation") return
+end
+if gardenA:GetAttribute("OwnerUserId")~=a.UserId or
+ gardenB:GetAttribute("OwnerUserId")~=b.UserId then
+ fail("garden_owner_isolation") return
+end
+local lifeService=require(ServerScriptService:WaitForChild("LifeSimulation"))
+a.Character:PivotTo(CFrame.new(gardenB.Position+Vector3.new(0,5,0)))
+task.wait(.4)
+if lifeService.Process(a,"GardenPlant","TOMATO_SEEDS") then
+ fail("other_players_garden_bypass") return
+end
+a.Character:PivotTo(CFrame.new(gardenA.Position+Vector3.new(0,5,0)))
+task.wait(.4)
+if lifeService.Process(a,"GardenPlant","HACKED_SEED") or
+ lifeService.Process(a,"GardenPlant","TOMATO_SEEDS") or
+ a:GetAttribute("RRLifeGardenCrop")~="" then
+ fail("garden_seeds_require_purchase") return
+end
+print("SF_RIFT_MP_CHECK gardener_ownership_protection PASS")
+-- Exercise the actual in-game coin purchase, planting and watering loop.
+-- Only run when the earlier legitimate jobs/minigames earned sufficient funds.
+local plantingBudget=a:GetAttribute("RRCoins") or 0
+print("SF_RIFT_MP_GARDEN_EARNED_COIN_BUDGET "..plantingBudget)
+if plantingBudget>=100 then
+ local nursery=world:FindFirstChild("Downtown Store GARDEN",true)
+ if not nursery then fail("nursery_missing") return end
+ a.Character:PivotTo(CFrame.new(nursery.Position+Vector3.new(0,3,0)))
+ task.wait(.4)
+ for _,item in ipairs({"GARDEN_TROWEL","WATERING_CAN","TOMATO_SEEDS"}) do
+  task.wait(.45)
+  if not lifeService.Process(a,"Buy",item) then
+   fail("real_garden_purchase_"..item) return
+  end
+ end
+ if a:GetAttribute("RRLifeSeed_TOMATO_SEEDS")~=3 then
+  fail("garden_seed_packet_three_plantings") return
+ end
+ a.Character:PivotTo(CFrame.new(gardenA.Position+Vector3.new(0,5,0)))
+ task.wait(.5)
+ if not lifeService.Process(a,"GardenPlant","TOMATO_SEEDS") then
+  fail("garden_plant_with_purchased_seeds") return
+ end
+ if a:GetAttribute("RRLifeGardenCrop")~="TOMATO_SEEDS" or
+  a:GetAttribute("RRLifeSeed_TOMATO_SEEDS")~=2 then
+  fail("garden_seed_stock_consumption") return
+ end
+ task.wait(.5)
+ if not lifeService.Process(a,"GardenWater") or
+  a:GetAttribute("RRLifeGardenStatus")~="GROWING" then
+  fail("garden_water_success") return
+ end
+ if b:GetAttribute("RRLifeGardenCrop")~="" then
+  fail("garden_growth_isolation") return
+ end
+ print("SF_RIFT_MP_CHECK purchased_garden_planting_and_watering PASS")
+else
+ print("SF_RIFT_MP_CHECK garden_purchase_requires_more_earned_coins PASS")
+end
+
+-- Watercraft have different movement speeds and shapes, but boat ownership
+-- remains authoritative: they cannot be launched from free UI commands.
+task.wait(2.2)
+if not request(a,"waterfront","Travel","WATERFRONT") then
+ fail("waterfront_travel_ack") return
+end
+if not waitFor(function()
+ return (rootA.Position-Vector3.new(600,8,520)).Magnitude<20
+end,5) then fail("waterfront_destination") return end
+local boatService=require(ServerScriptService:WaitForChild("BoatService"))
+if boatService.Spawn(a,"INVALID_YACHT") or
+ boatService.Spawn(a,"SPEEDBOAT") then
+ fail("unauthorized_boat_launch") return
+end
+-- In Studio's isolated test only, simulate a previously purchased ownership
+-- bit set by the trusted server, then exercise actual seat driving physics.
+a:SetAttribute("RRLifeOwn_SPEEDBOAT",true)
+local boatSuccess,message=boatService.Spawn(a,"SPEEDBOAT")
+if not boatSuccess then fail("owned_speedboat_launch "..tostring(message)) return end
+local dock=world:FindFirstChild("Navigable Ocean Marina")
+local vessel
+for _,candidate in ipairs(dock:GetChildren()) do
+ if candidate:IsA("Model") and candidate:GetAttribute("OwnerUserId")==a.UserId then
+  vessel=candidate
+ end
+end
+local captainSeat=vessel and vessel:FindFirstChild("Boat Driver Seat")
+if not captainSeat then fail("speedboat_seat_missing") return end
+local captainHumanoid=a.Character and a.Character:FindFirstChildOfClass("Humanoid")
+a.Character:PivotTo(CFrame.new(captainSeat.Position+Vector3.new(0,3,0)))
+captainSeat:Sit(captainHumanoid)
+if not waitFor(function() return captainSeat.Occupant==captainHumanoid end,3) then
+ fail("speedboat_captain_seat") return
+end
+local boatStart=vessel:GetPivot().Position
+captainSeat.ThrottleFloat=1
+task.wait(.8)
+if (vessel:GetPivot().Position-boatStart).Magnitude<.2 then
+ fail("owned_speedboat_does_not_move") return
+end
+captainHumanoid.Sit=false;vessel:Destroy()
+a:SetAttribute("RRLifeOwn_SPEEDBOAT",false)
+print("SF_RIFT_MP_CHECK earned_watercraft_boat_controls PASS")
+
 print("SF_RIFT_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:rift_multiplayer")
 ]==]

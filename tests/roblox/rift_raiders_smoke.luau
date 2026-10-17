@@ -8,7 +8,7 @@ local imported=workspace:FindFirstChild("OfficialModernCityDistrict")
 assert(imported and imported:IsA("Model"),"official modern city missing")
 assert(imported:GetAttribute("ImportedScriptsRemoved")==true,"imported script safety missing")
 assert(imported:GetAttribute("LifeSimulationIntegrated")==true,"downtown life integration missing")
-assert(imported:GetAttribute("DowntownCareerCount")==20,"downtown career count mismatch")
+assert(imported:GetAttribute("DowntownCareerCount")==60,"downtown career count mismatch")
 assert(imported:GetAttribute("LivingDowntownIntegrated")==true,"living downtown integration missing")
 local living=world:WaitForChild("Living Modern Downtown",20)
 assert(living:WaitForChild("Downtown Citizen 8",20),"R15 downtown citizens missing")
@@ -46,7 +46,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.10.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.12.0","version mismatch")
 local function count(name)
  local n=0
  for _,v in ipairs(world:GetDescendants()) do if v.Name==name then n+=1 end end
@@ -63,12 +63,44 @@ for i=1,8 do
  local citizen=world:FindFirstChild("Downtown Citizen "..i,true)
  local hum=citizen and citizen:FindFirstChildOfClass("Humanoid")
  assert(hum and hum.RigType==Enum.HumanoidRigType.R15,"downtown citizen is not R15")
+ local accessory=citizen and citizen:FindFirstChildOfClass("Accessory")
+ assert(accessory,"downtown citizen hair/accessory missing")
+ local talk=citizen and citizen:FindFirstChild("Talk to Citizen",true)
+ assert(talk and talk:IsA("ProximityPrompt"),"downtown citizen talk prompt missing")
+ assert(type(citizen:GetAttribute("CitizenName"))=="string","citizen name missing")
 end
+assert(world:GetAttribute("DowntownConversations")==0,"conversation counter initialization missing")
 assert((world:GetAttribute("DowntownTrafficDistance") or 0)>0,
  "downtown traffic did not move")
 assert((world:FindFirstChild("Downtown Traffic Sedan 1",true):GetAttribute("DistanceTravelled") or 0)>0,
  "detailed traffic distance attribute missing")
 assert(count("Downtown Employment Center")==1,"downtown employment office missing")
+assert(count("Downtown Store GARDEN")==1,"downtown nursery store missing")
+assert(count("Downtown Worksite GARDENER")==1,"new gardener worksite missing")
+assert(count("Downtown Job Task BOAT_CAPTAIN 2")==1,
+ "boat captain interactive work task missing")
+assert(count("Downtown Community Garden")==1,"community garden missing")
+assert(count("Raised Garden Bed 1")==1 and count("Raised Garden Bed 16")==1,
+ "interactive garden plots missing")
+assert(count("Downtown Farm Produce Market")==1,"garden market missing")
+assert(count("Navigable Ocean Marina")==1,"drivable ocean marina missing")
+assert(count("Public Marina Boat Launch")==1,"boat launch dock missing")
+local Boats=require(game:GetService("ServerScriptService"):WaitForChild("BoatService"))
+assert(Boats.Vessels.SPEEDBOAT.speed>Boats.Vessels.FISHING_BOAT.speed,
+ "speedboat speed model invalid")
+assert(Boats.Vessels.LUXURY_YACHT.length>Boats.Vessels.SPEEDBOAT.length,
+ "yacht model dimensions invalid")
+local Garden=require(game:GetService("ServerScriptService"):WaitForChild("UrbanGardening"))
+assert(#Garden.Order==14,"crop varieties missing")
+assert(Garden.Normalize(nil).crop=="","new garden should be empty")
+local savedGarden=Garden.Normalize({crop="TOMATO_SEEDS",plantedAt=os.time()-75,
+ watered=true,produce={TOMATO_SEEDS=3,BAD_ITEM=900}})
+assert(Garden.Status(savedGarden)=="READY","offline mature crop growth failed")
+assert(savedGarden.produce.BAD_ITEM==nil and savedGarden.produce.TOMATO_SEEDS==3,
+ "garden crop inventory allowlist failed")
+local savedSeeds=Garden.Normalize({seeds={TOMATO_SEEDS=4,HACKED_SEEDS=99}})
+assert(savedSeeds.seeds.TOMATO_SEEDS==4 and savedSeeds.seeds.HACKED_SEEDS==nil,
+ "purchasable seed stock data not sanitized")
 assert(count("Downtown Store TECH")==1,"downtown technology storefront missing")
 assert(count("Downtown Store BUSINESS")==1,"downtown commerce storefront missing")
 assert(count("Downtown Worksite RETAIL")==1,"downtown retail worksite missing")
@@ -95,8 +127,15 @@ assert(count("Fine Payment Counter")==1,"court fines missing")
 assert(count("AI Police Officer 1")==1,"police AI missing")
 assert(count("Media Recording Studio")==1,"creator studio missing")
 local life=require(game:GetService("ReplicatedStorage"):WaitForChild("LifeCatalog"))
-assert(#life.Careers==20,"careers missing")
-assert(#life.Items>=48,"expanded real-world catalog too small")
+assert(#life.Careers==60,"careers missing")
+assert(#life.Items==173,"expanded real-world catalog count changed")
+assert(life.CareerById.GARDENER and life.CareerById.BOAT_CAPTAIN and
+ life.CareerById.SOFTWARE_ENGINEER,"new real-life careers missing")
+assert(life.ById.TOMATO_SEEDS and life.ById.GARDEN_TROWEL and
+ life.ById.WATERING_CAN and life.ById.SPEEDBOAT and
+ life.ById.HYPERCAR,"garden and premium vehicles missing")
+assert(life.BusinessPayouts.MARINA_BUSINESS==590,
+ "new owned business revenue missing")
 assert(life.ById.TABLET and life.ById.COUCH and life.ById.CONDO,
  "expanded everyday shopping catalog missing")
 assert(life.BusinessPayouts.RESTAURANT_BUSINESS==230,
@@ -114,6 +153,8 @@ assert(cleaned.career=="UNEMPLOYED" and cleaned.needs.hunger==0 and
  cleaned.needs.energy==100 and cleaned.needs.hygiene==17,
  "life needs migration sanitization failed")
 assert(lifeApi.Serialize(cleaned).needs.hygiene==17,"needs save data missing")
+assert(lifeApi.Serialize(cleaned).garden.harvests==0,
+ "new garden schema serialization missing")
 assert(count("Central Hub")==1,"hub missing")
 assert(count("Living World Atmosphere")==1,"world polish missing")
 assert(count("Ambient Pedestrian 1")==1,"pedestrian simulation missing")

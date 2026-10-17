@@ -4,6 +4,7 @@ local Players=game:GetService("Players")
 local RunService=game:GetService("RunService")
 local Terrain=workspace.Terrain
 local Catalog=require(game:GetService("ReplicatedStorage"):WaitForChild("LifeCatalog"))
+local Garden=require(script.Parent:WaitForChild("UrbanGardening"))
 local Life={}
 local context,world,folder
 local stores={}
@@ -78,6 +79,7 @@ function Life.Normalize(value)
  return {
   career=Catalog.SanitizeCareer(value.career),
   owned=Catalog.SanitizeOwned(value.owned),
+  garden=Garden.Normalize(value.garden),
   followers=math.clamp(math.floor(tonumber(value.followers) or 0),0,10000000),
   uploads=math.clamp(math.floor(tonumber(value.uploads) or 0),0,1000000),
   shifts=math.clamp(math.floor(tonumber(value.shifts) or 0),0,1000000),
@@ -96,13 +98,14 @@ function Life.Serialize(value)
  local s=Life.Normalize(value)
  return {career=s.career,owned=s.owned,followers=s.followers,
   uploads=s.uploads,shifts=s.shifts,reputation=s.reputation,
-  fines=s.fines,arrests=s.arrests,needs=s.needs}
+  fines=s.fines,arrests=s.arrests,needs=s.needs,garden=s.garden}
 end
 function Life.Sync(player)
  local s=profile(player)
  if not s or not s.life then return end
  local life=s.life
  player:SetAttribute("RRLifeCareer",life.career)
+ Garden.SyncPlayer(player,life.garden)
  player:SetAttribute("RRLifeHunger",life.needs.hunger)
  player:SetAttribute("RRLifeEnergy",life.needs.energy)
  player:SetAttribute("RRLifeHygiene",life.needs.hygiene)
@@ -210,6 +213,7 @@ function Life.Build(targetWorld,options)
   {"VEHICLE","Vehicle and Marine Dealer",38,-65,Color3.fromRGB(88,137,143)},
   {"PROPERTY","Real Estate Agency",88,-65,Color3.fromRGB(122,139,103)},
   {"BUSINESS","Business Licensing Office",138,-65,Color3.fromRGB(157,127,89)},
+  {"GARDEN","City Garden & Nursery",-145,-115,Color3.fromRGB(76,143,84)},
  }
  for _,entry in ipairs(entries) do
   local category,name,x,z,color=unpack(entry)
@@ -258,6 +262,18 @@ function Life.Build(targetWorld,options)
   {"PILOT","Flight Training Academy",33,184,Color3.fromRGB(91,133,174)},
   {"MUSICIAN","Recording and Rehearsal",72,184,Color3.fromRGB(179,99,141)},
  }
+ local added=0
+ for _,career in ipairs(Catalog.Careers) do
+  if Catalog.CareerTasks[career.id] then
+   added+=1
+   local col=(added-1)%10
+   local row=math.floor((added-1)/10)
+   table.insert(sites,{career.id,career.name.." Workstation",
+    -146+col*32,232+row*38,Color3.fromRGB(96,128,143)})
+  end
+ end
+ Terrain:FillBlock(CFrame.new(townCenter+Vector3.new(0,-4,315)),
+  Vector3.new(340,12,360),Enum.Material.Grass)
  for _,entry in ipairs(sites) do
   local id,name,x,z,color=unpack(entry)
   local node=part(folder,name,Vector3.new(8,5,5),
@@ -289,7 +305,7 @@ function Life.Build(targetWorld,options)
     PILOT={"RUN PRE-FLIGHT CHECK","CONFIRM LANDING PROCEDURE"},
     MUSICIAN={"TUNE INSTRUMENT","PERFORM ON STAGE"},
    }
-   local actions=steps[id]
+   local actions=steps[id] or Catalog.CareerTasks[id]
    taskSites[id]={}
    for step=1,2 do
     local pos=node.Position+Vector3.new(step==1 and -12 or 12,-.4,9)
@@ -393,7 +409,7 @@ function Life.AttachDowntown(cityModel)
  end
  -- One clean employment office replaces 20 giant floating career boards.
  local employment=plaque("Downtown Employment Center",Vector3.new(-73,5,2247),
-  "CITY EMPLOYMENT","20 CAREERS • APPLY IN LIFE MENU",Color3.fromRGB(47,78,82))
+  "CITY EMPLOYMENT","60 CAREERS • APPLY IN LIFE MENU",Color3.fromRGB(47,78,82))
  prompt(employment,"BROWSE JOBS","Downtown Employment Center",function(player)
   tell(player,"OPEN LIFE • CHOOSE ANY CAREER YOU QUALIFY FOR • APPLY HERE")
  end)
@@ -406,10 +422,12 @@ function Life.AttachDowntown(cityModel)
   {"VEHICLE",18,"MOTOR ROW","CARS • BIKES • BOATS"},
   {"PROPERTY",42,"METRO REALTY","APARTMENTS • HOMES • LAND"},
   {"BUSINESS",68,"CITY COMMERCE","BUY & RUN BUSINESSES"},
+  {"GARDEN",77,"GARDEN NURSERY","SEEDS • TOOLS • LANDSCAPING"},
  }
  for _,entry in ipairs(storefronts) do
   local category,x,title,subtitle=unpack(entry)
-  local node=plaque("Downtown Store "..category,Vector3.new(x,5,2247),
+  local node=plaque("Downtown Store "..category,
+   Vector3.new(x,5,category=="GARDEN" and 2185 or 2247),
    title,subtitle,Color3.fromRGB(50,61,72))
   downtownStores[category]=node
   prompt(node,"SHOP",title,function(player)
@@ -456,19 +474,32 @@ function Life.AttachDowntown(cityModel)
   PILOT={"RUN PRE-FLIGHT CHECK","CONFIRM LANDING PROCEDURE"},
   MUSICIAN={"TUNE INSTRUMENT","PERFORM ON STAGE"},
  }
+ local addedCareers=0
  for _,career in ipairs(Catalog.Careers) do
   local pos=jobPositions[career.id]
+  if not pos then
+   addedCareers+=1
+   local row=math.floor((addedCareers-1)/2)
+   local side=addedCareers%2==1 and -1 or 1
+   pos=Vector3.new(side*140,3,2192+row*17)
+  end
   if pos then
    local site=anchor("Downtown Worksite "..career.id,pos,false)
    site:SetAttribute("CareerSite",career.id)
    downtownWorkSites[career.id]=site
+   if Catalog.CareerTasks[career.id] then
+    local note=plaque("Work Sign "..career.id,pos+Vector3.new(0,5,0),
+     career.name:upper(),"START SHIFT • COMPLETE 2 TASKS",
+     Color3.fromRGB(59,93,106))
+    note.CanCollide=false
+   end
    prompt(site,career.id=="CREATOR" and "RECORD VIDEO" or "WORK SHIFT",
     career.name,function(player)
      Life.Process(player,career.id=="CREATOR" and "Publish" or "Work",career.id)
     end)
    if career.id~="CREATOR" then
     downtownTaskSites[career.id]={}
-    local labels=taskLabels[career.id]
+    local labels=taskLabels[career.id] or Catalog.CareerTasks[career.id]
     local tangent=(math.abs(pos.X)>90) and Vector3.new(0,0,8) or Vector3.new(8,0,0)
     for step=1,2 do
      local taskPos=pos+tangent*(step==1 and -1 or 1)
@@ -497,6 +528,11 @@ function Life.AttachDowntown(cityModel)
  prompt(downtownRestCounter,"REST","Downtown Public Bench",function(player)
   Life.Process(player,"Rest","PUBLIC")
  end)
+ -- Players can own and tend individual garden beds within walking distance.
+ Garden.Build(world,{
+  process=function(p,kind,arg) return Life.Process(p,kind,arg) end,
+  getProfile=profile,tell=tell,sync=Life.Sync,reward=context.reward
+ })
  -- Two additional officers make the detailed district participate in the law system.
  officer(services,3,Vector3.new(-92,7,2295))
  officer(services,4,Vector3.new(92,7,2395))
@@ -691,6 +727,7 @@ function Life.PlayerJoined(player)
   end
  end
  Life.RefreshProperty(player)
+ Garden.PlayerJoined(player)
 end
 function Life.PlayerRemoving(player)
  local slot=playerSlots[player]
@@ -701,10 +738,13 @@ function Life.PlayerRemoving(player)
  playerProperties[player]=nil
  lastAction[player]=nil
  publicMealCooldown[player]=nil
+ Garden.PlayerRemoving(player)
 end
 function Life.GiveCamera(player)
  local s=profile(player)
- if not s or not s.life or not s.life.owned.CAMERA then return end
+ if not s or not s.life then return end
+ Garden.GiveTools(player,s.life)
+ if not s.life.owned.CAMERA then return end
  local backpack=player:FindFirstChildOfClass("Backpack")
  if not backpack then return end
  if backpack:FindFirstChild("Creator Camera") or
@@ -828,12 +868,21 @@ function Life.Process(player,kind,arg,step)
   if arg~="PUBLIC" or not nearbyEither(player,restCounter,downtownRestCounter,17) then return false end
   life.needs.energy=math.min(100,life.needs.energy+25)
   tell(player,"RESTED AT THE PARK • ENERGY RESTORED!")
+ elseif kind=="GardenPlant" or kind=="GardenWater" or
+   kind=="GardenHarvest" or kind=="GardenSell" then
+  return Garden.Process(player,kind,arg,s) and (function()
+   context.sync(player)
+   return true
+  end)() or false
  elseif kind=="Buy" then
   local item=type(arg)=="string" and Catalog.ById[arg]
   if not item or not nearbyEither(player,stores[item.category],downtownStores[item.category],24) then
    tell(player,"VISIT THE CORRECT LIFE CITY STORE TO PURCHASE."); return false
   end
-  if life.owned[item.id] then tell(player,"YOU ALREADY OWN THIS ITEM."); return false end
+  local seedPacket=Garden.Crops[item.id]~=nil
+  if life.owned[item.id] and not seedPacket then
+   tell(player,"YOU ALREADY OWN THIS ITEM."); return false
+  end
   if s.level<item.level then
    tell(player,"REACH LEVEL "..item.level.." FIRST."); return false
   end
@@ -842,7 +891,12 @@ function Life.Process(player,kind,arg,step)
   end
   s.coins-=item.price
   life.owned[item.id]=true
-  if item.id=="CAMERA" then Life.GiveCamera(player) end
+  if seedPacket then
+   life.garden.seeds[item.id]=math.min(99,(life.garden.seeds[item.id] or 0)+3)
+   tell(player,"SEED PACK ADDED: 3 "..item.name.." PLANTINGS.")
+  end
+  if item.id=="CAMERA" or item.id=="GARDEN_TROWEL" or
+   item.id=="WATERING_CAN" then Life.GiveCamera(player) end
   if item.category=="PROPERTY" then Life.RefreshProperty(player) end
   tell(player,"PURCHASED: "..item.name.."! THIS IS AN IN-GAME ITEM.")
  elseif kind=="Publish" then

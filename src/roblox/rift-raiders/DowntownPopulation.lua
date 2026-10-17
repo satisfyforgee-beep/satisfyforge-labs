@@ -24,6 +24,19 @@ local pants={
  Color3.fromRGB(42,53,65),Color3.fromRGB(57,49,45),
 }
 local names={"Alex","Jordan","Morgan","Taylor","Casey","Riley","Avery","Cameron"}
+-- Public classic Roblox hair accessories verified in Studio. They cost the
+-- player nothing and give the generated R15 citizens recognizable silhouettes.
+local hairIds={"63690008","16630147","376548738"}
+local dialogues={
+ "I am heading to work. The Employment Center is near the front block.",
+ "Motor Row is where people shop for vehicles. You still have to earn the coins.",
+ "City Tech sells phones and creator gear if you want to build a following.",
+ "The community pantry and public benches can help if your needs get low.",
+ "Metro Realty handles apartments and homes once you have built up your career.",
+ "City Commerce is where business owners collect their simulated revenue.",
+ "Police patrol the district. High wanted heat can still get you arrested.",
+ "There are more worlds outside downtown through the WORLD menu.",
+}
 
 local function safeDescription(index)
  local d=Instance.new("HumanoidDescription")
@@ -36,6 +49,7 @@ local function safeDescription(index)
  d.WidthScale=.92+(index%3)*.035
  d.DepthScale=.94+(index%2)*.04
  d.HeadScale=.98; d.BodyTypeScale=.28; d.ProportionScale=.18
+ d.HairAccessory=hairIds[(index-1)%#hairIds+1]
  return d
 end
 
@@ -57,7 +71,7 @@ local function walkAnimation(humanoid)
  return nil
 end
 
-local function citizen(parent,index,start,route)
+local function citizen(parent,index,start,route,tellPlayer,world)
  local description=safeDescription(index)
  local ok,model=pcall(function()
   return Players:CreateHumanoidModelFromDescription(description,Enum.HumanoidRigType.R15)
@@ -78,6 +92,21 @@ local function citizen(parent,index,start,route)
  humanoid.AutoRotate=true
  humanoid.BreakJointsOnDeath=false
  root.CanCollide=false
+ local talkAnchor=model:FindFirstChild("UpperTorso") or model:FindFirstChild("Head")
+ if talkAnchor then
+  local talk=Instance.new("ProximityPrompt")
+  talk.Name="Talk to Citizen"
+  talk.ActionText="TALK"
+  talk.ObjectText=model:GetAttribute("CitizenName")
+  talk.HoldDuration=.25; talk.MaxActivationDistance=9
+  talk.RequiresLineOfSight=false; talk.Parent=talkAnchor
+  talk.Triggered:Connect(function(player)
+   if tellPlayer then tellPlayer(player,model:GetAttribute("CitizenName")..": "..dialogues[index]) end
+   if world then
+    world:SetAttribute("DowntownConversations",(world:GetAttribute("DowntownConversations") or 0)+1)
+   end
+  end)
+ end
  pcall(function() root:SetNetworkOwner(nil) end)
  model:PivotTo(CFrame.new(start+Vector3.new(0,3.2,0)))
  local track=walkAnimation(humanoid)
@@ -127,7 +156,8 @@ local function makeTrafficSedan(parent,index,startIndex,route)
  return m
 end
 
-function Population.Build(world,cityModel)
+function Population.Build(world,cityModel,options)
+ options=options or {}
  if heartbeatConnection then heartbeatConnection:Disconnect(); heartbeatConnection=nil end
  citizens={}; traffic={}
  local old=world:FindFirstChild("Living Modern Downtown")
@@ -160,10 +190,15 @@ function Population.Build(world,cityModel)
   {leftA,leftB,leftA},
   {leftB,leftA,leftB},
  }
- for i,route in ipairs(pedestrianRoutes) do citizen(folder,i,route[1],route) end
+ world:SetAttribute("DowntownConversations",0)
+ for i,route in ipairs(pedestrianRoutes) do
+  citizen(folder,i,route[1],route,options.tell,world)
+ end
 
+ -- Keep the front traffic lane behind the third-person camera at spawn.
+ -- This prevents a non-colliding sedan from visually passing through the camera.
  local roadRoute={
-  Vector3.new(-128,4.5,2204),Vector3.new(128,4.5,2204),
+  Vector3.new(-128,4.5,2200),Vector3.new(128,4.5,2200),
   Vector3.new(128,4.5,2502),Vector3.new(-128,4.5,2502),
  }
  for i=1,4 do makeTrafficSedan(folder,i,i,roadRoute) end

@@ -192,7 +192,7 @@ local function panel(name,heading)
  return f,scroll
 end
 local shop,shopList=panel("ShopPanel","EARNED COIN SHOP + PRESTIGE")
-local map,mapList=panel("MapPanel","EXPLORE 16 WORLD LOCATIONS")
+local map,mapList=panel("MapPanel","EXPLORE 17 WORLD LOCATIONS")
 local pack,packList=panel("PackPanel","YOUR RESOURCES & PROGRESS")
 local lifePanel,lifeList=panel("LifePanel","RIFTLIFE • DOWNTOWN CAREERS & SHOPPING")
 local itemOrder=setmetatable({}, {__mode="k"})
@@ -235,6 +235,7 @@ lifeTask.Active=false
 local lifeMode="CAREERS"
 local careerControls={}
 local shopControls={}
+local gardenControls={}
 local updateLifeView
 local careerViewButton=item(lifeList,"CareerView","CAREERS • APPLY & WORK",
  Color3.fromRGB(69,112,137),function()
@@ -243,6 +244,14 @@ local careerViewButton=item(lifeList,"CareerView","CAREERS • APPLY & WORK",
 local shoppingViewButton=item(lifeList,"ShoppingView","SHOPPING • REAL-WORLD CATALOG",
  Color3.fromRGB(104,94,128),function()
   lifeMode="SHOP"; updateLifeView()
+ end)
+local gardenViewButton=item(lifeList,"GardenView","GARDEN • PLANT, WATER & HARVEST",
+ Color3.fromRGB(80,124,85),function()
+  lifeMode="GARDEN"; updateLifeView()
+ end)
+local boatViewButton=item(lifeList,"BoatView","MARINA • LAUNCH YOUR BOATS",
+ Color3.fromRGB(66,114,151),function()
+  lifeMode="BOATS"; updateLifeView()
  end)
 local careerHeading=item(lifeList,"CareerHeading","AVAILABLE REAL-WORLD CAREERS",
  Color3.fromRGB(83,112,145),function() end)
@@ -268,7 +277,7 @@ local collectButton=item(lifeList,"BusinessCollect",
   action:FireServer("LifeAction","BusinessCollect")
  end)
 table.insert(shopControls,collectButton)
-local shopCategories={"ALL","APPAREL","TECH","HOME","VEHICLE","PROPERTY","BUSINESS"}
+local shopCategories={"ALL","GARDEN","APPAREL","TECH","HOME","VEHICLE","PROPERTY","BUSINESS"}
 local shopCategoryIndex=1
 local categoryButton
 categoryButton=item(lifeList,"LifeCategory","CATEGORY: ALL • TAP TO FILTER",
@@ -291,24 +300,95 @@ for _,entry in ipairs(LifeCatalog.Items) do
  lifeItems[entry.id]=control
  table.insert(shopControls,control)
 end
+local boatControls={}
+local boatHelp=item(lifeList,"BoatHelp",
+ "TRAVEL TO WATERFRONT • BUY A VESSEL AT THE VEHICLE DEALER • LAUNCH AT DOCK",
+ Color3.fromRGB(58,94,133),function() end)
+boatHelp.Active=false;table.insert(boatControls,boatHelp)
+for _,id in ipairs({"KAYAK","FISHING_BOAT","JET_SKI","PONTOON",
+ "SPEEDBOAT","SAILBOAT","CABIN_CRUISER","YACHT","LUXURY_YACHT"}) do
+ local entry=LifeCatalog.ById[id]
+ local control=item(lifeList,"Launch_"..id,
+  "LAUNCH "..entry.name:upper().." • REQUIRES OWNERSHIP",
+  Color3.fromRGB(66,116,151),function()
+   action:FireServer("SpawnBoat",id)
+  end)
+ table.insert(boatControls,control)
+end
+local gardenStatus=item(lifeList,"GardenStatus",
+ "VISIT DOWNTOWN COMMUNITY GARDEN • BUY A TROWEL, CAN & SEEDS",
+ Color3.fromRGB(85,115,77),function() end)
+gardenStatus.Active=false
+table.insert(gardenControls,gardenStatus)
+local gardenWater=item(lifeList,"GardenWater","WATER YOUR CROPS • NEEDS WATERING CAN",
+ Color3.fromRGB(57,124,157),function()
+  action:FireServer("LifeAction","GardenWater")
+ end)
+table.insert(gardenControls,gardenWater)
+local gardenHarvest=item(lifeList,"GardenHarvest","HARVEST RIPE VEGETABLES",
+ Color3.fromRGB(104,150,75),function()
+  action:FireServer("LifeAction","GardenHarvest")
+ end)
+table.insert(gardenControls,gardenHarvest)
+local gardenSell=item(lifeList,"GardenSell","SELL PRODUCE • DOWNTOWN FARM MARKET",
+ Color3.fromRGB(142,118,75),function()
+  action:FireServer("LifeAction","GardenSell")
+ end)
+table.insert(gardenControls,gardenSell)
+local gardenPlantControls={}
+for _,id in ipairs({
+ "TOMATO_SEEDS","CARROT_SEEDS","STRAWBERRY_SEEDS","POTATO_SEEDS",
+ "LETTUCE_SEEDS","PEPPER_SEEDS","CUCUMBER_SEEDS","CORN_SEEDS",
+ "PUMPKIN_SEEDS","SUNFLOWER_SEEDS","BLUEBERRY_SEEDS",
+ "ROSE_SEEDS","APPLE_TREE_SEEDS","WATERMELON_SEEDS"
+}) do
+ local seed=LifeCatalog.ById[id]
+ local control=item(lifeList,"Plant_"..id,"PLANT "..seed.name:upper(),
+  Color3.fromRGB(84,125,82),function()
+   action:FireServer("LifeAction","GardenPlant",id)
+  end)
+ gardenPlantControls[id]=control
+ table.insert(gardenControls,control)
+end
 updateLifeView=function()
  local careers=lifeMode=="CAREERS"
+ local shopping=lifeMode=="SHOP"
+ local gardening=lifeMode=="GARDEN"
+ local boating=lifeMode=="BOATS"
+ for _,control in ipairs(boatControls) do control.Visible=boating end
  for _,control in ipairs(careerControls) do control.Visible=careers end
+ for _,control in ipairs(gardenControls) do control.Visible=gardening end
  local category=shopCategories[shopCategoryIndex]
- collectButton.Visible=not careers
- categoryButton.Visible=not careers
+ collectButton.Visible=shopping
+ categoryButton.Visible=shopping
  categoryButton.Text="CATEGORY: "..category.." • TAP TO FILTER"
  for _,entry in ipairs(LifeCatalog.Items) do
   local control=lifeItems[entry.id]
-  control.Visible=not careers and (category=="ALL" or entry.category==category)
+  control.Visible=shopping and (category=="ALL" or entry.category==category)
  end
+ for id,control in pairs(gardenPlantControls) do
+  control.Visible=gardening
+  local remaining=player:GetAttribute("RRLifeSeed_"..id) or 0
+  control.Text="PLANT "..LifeCatalog.ById[id].name:upper()..
+   " • "..remaining.." SEEDS LEFT"
+  control.BackgroundColor3=remaining>0 and
+   Color3.fromRGB(69,133,90) or Color3.fromRGB(88,96,95)
+ end
+ gardenStatus.Text="YOUR PLOT: "..(player:GetAttribute("RRLifeGardenPlot") or "WAIT FOR PLOT")..
+  " • CROP: "..(player:GetAttribute("RRLifeGardenCrop") or "NONE")..
+  " • "..(player:GetAttribute("RRLifeGardenStatus") or "EMPTY")..
+  " • STORED HARVEST: "..(player:GetAttribute("RRLifeGardenProduce") or 0)..
+  " • TOTAL HARVESTS: "..(player:GetAttribute("RRLifeGardenHarvests") or 0)
  careerViewButton.BackgroundColor3=careers and Color3.fromRGB(49,124,112) or Color3.fromRGB(69,88,102)
- shoppingViewButton.BackgroundColor3=not careers and Color3.fromRGB(104,94,128) or Color3.fromRGB(69,88,102)
+ shoppingViewButton.BackgroundColor3=shopping and Color3.fromRGB(104,94,128) or Color3.fromRGB(69,88,102)
+ gardenViewButton.BackgroundColor3=gardening and Color3.fromRGB(76,142,81) or Color3.fromRGB(69,88,102)
+ boatViewButton.BackgroundColor3=boating and Color3.fromRGB(66,132,171) or Color3.fromRGB(69,88,102)
  lifeList.CanvasPosition=Vector2.zero
 end
 updateLifeView()
 local places={
  {"MODERN","MODERN DOWNTOWN • REAL 3D CITY"},
+ {"WATERFRONT","WATERFRONT • OWNED BOATS & YACHTS"},
  {"HUB","CENTRAL HUB"},{"CYBER","NEON METROPOLIS"},{"CRYSTAL","PRISM WILDS"},
  {"VOLCANO","MAGMA OUTPOST"},{"SKY","CLOUD KINGDOM"},
  {"CASTLE","CASTLE KINGDOM"},{"FARM","HARVEST VALLEY"},
@@ -418,6 +498,13 @@ local function update()
   "EXPLORE PORTALS • DRIVE CARS • HARVEST CROPS • VISIT JAPAN & CASTLES")
  local coins=player:GetAttribute("RRCoins") or 0
  local level=player:GetAttribute("RRLevel") or 1
+ if lifeMode=="GARDEN" then
+  gardenStatus.Text="PLOT: "..(player:GetAttribute("RRLifeGardenPlot") or "WAIT FOR PLOT")..
+   " • "..(player:GetAttribute("RRLifeGardenCrop") or "NO CROPS")..
+   " • "..(player:GetAttribute("RRLifeGardenStatus") or "EMPTY")..
+   " • PRODUCE: "..(player:GetAttribute("RRLifeGardenProduce") or 0)..
+   " • HARVESTS: "..(player:GetAttribute("RRLifeGardenHarvests") or 0)
+ end
  local career=player:GetAttribute("RRLifeCareer") or "UNEMPLOYED"
  local shift=player:GetAttribute("RRLifeShift") or ""
  lifeTask.Text=shift~="" and
@@ -436,12 +523,19 @@ local function update()
   " • FREE MEALS AND REST AT THE COMMUNITY PARK • HOME BED & SINK"
  for _,entry in ipairs(LifeCatalog.Items) do
   local owned=player:GetAttribute("RRLifeOwn_"..entry.id)==true
+  local seedStock=player:GetAttribute("RRLifeSeed_"..entry.id)
+  local seedPacket=type(seedStock)=="number"
+  local available=owned and "OWNED" or
+   (level<entry.level and "LEVEL LOCKED" or
+    coins<entry.price and "SAVE UP" or "BUY AT STORE")
+  if seedPacket then
+   available="BUY +3 PLANTINGS • IN BAG: "..seedStock
+   if level<entry.level then available="LEVEL LOCKED" end
+  end
   lifeItems[entry.id].Text=entry.name.." • "..entry.price.." COINS"..
-   " • LV "..entry.level.." • "..(owned and "OWNED" or
-    (level<entry.level and "LEVEL LOCKED" or
-    coins<entry.price and "SAVE UP" or "BUY AT STORE"))..
+   " • LV "..entry.level.." • "..available..
    " • "..(LifeCatalog.ShopLocations[entry.category] or "")
-  lifeItems[entry.id].BackgroundColor3=owned and Color3.fromRGB(49,107,91)
+  lifeItems[entry.id].BackgroundColor3=owned and not seedPacket and Color3.fromRGB(49,107,91)
    or Color3.fromRGB(88,105,129)
  end
  local shards=player:GetAttribute("RRShards") or 0
@@ -496,11 +590,16 @@ for _,name in ipairs({"RRCoins","RRShards","RRLevel","RRXP","RRBlaster",
  "RRLifeCareer","RRLifeFollowers","RRLifeUploads","RRLifeFines",
  "RRLifeArrests","RRLifeJailed","RRLifeReputation","RRLifeShifts",
  "RRLifeShift","RRLifeTaskStep","RRLifeTaskName",
- "RRLifeHunger","RRLifeEnergy","RRLifeHygiene"}) do
+ "RRLifeHunger","RRLifeEnergy","RRLifeHygiene",
+ "RRLifeGardenPlot","RRLifeGardenCrop","RRLifeGardenStatus",
+ "RRLifeGardenHarvests","RRLifeGardenProduce"}) do
  player:GetAttributeChangedSignal(name):Connect(update)
 end
 for _,entry in ipairs(LifeCatalog.Items) do
  player:GetAttributeChangedSignal("RRLifeOwn_"..entry.id):Connect(update)
+ if entry.category=="GARDEN" then
+  player:GetAttributeChangedSignal("RRLifeSeed_"..entry.id):Connect(update)
+ end
 end
 task.spawn(function()
  while gui.Parent do
