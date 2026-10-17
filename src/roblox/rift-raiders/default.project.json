@@ -1,0 +1,21 @@
+{
+  "name": "Rift Raiders: Chaos Islands",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "RiftRaidersServer": {
+        "$path": "Server.server.lua"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "RiftRaidersHUD": {
+          "$path": "Client.client.lua"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,685 @@
+<roblox version="4">
+  <Item class="ServerScriptService" referent="0">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Script" referent="1">
+      <Properties>
+        <string name="Name">RiftRaidersServer</string>
+        <token name="RunContext">0</token>
+        <string name="Source"><![CDATA[-- RIFT RAIDERS: CHAOS ISLANDS. Original, free-to-play multiplayer prototype.
+-- All rewards, combat, abilities and progression are validated on the server.
+local Players=game:GetService("Players")
+local ReplicatedStorage=game:GetService("ReplicatedStorage")
+local RunService=game:GetService("RunService")
+local Lighting=game:GetService("Lighting")
+local DataStoreService=game:GetService("DataStoreService")
+local HttpService=game:GetService("HttpService")
+local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
+world:SetAttribute("Version","0.1.0")
+world:SetAttribute("Phase","CALM")
+world:SetAttribute("SecondsLeft",75)
+local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
+local biomes={
+ {id="CYBER",name="Neon Metropolis",center=Vector3.new(180,0,0),color=palette[1]},
+ {id="CRYSTAL",name="Prism Wilds",center=Vector3.new(-180,0,0),color=palette[3]},
+ {id="VOLCANO",name="Magma Outpost",center=Vector3.new(0,0,180),color=palette[2]},
+ {id="SKY",name="Cloud Kingdom",center=Vector3.new(0,0,-180),color=palette[4]},
+}
+local function part(name,size,pos,color,material,collide)
+ local p=Instance.new("Part"); p.Name=name; p.Anchored=true; p.Size=size; p.Position=pos
+ p.Material=material or Enum.Material.SmoothPlastic; p.Color=color
+ p.CanCollide=collide~=false; p.TopSurface=Enum.SurfaceType.Smooth
+ p.BottomSurface=Enum.SurfaceType.Smooth; p.Parent=world; return p
+end
+local function sign(text,pos,color,width)
+ local anchor=part("SignAnchor",Vector3.new(1,1,1),pos,color,nil,false)
+ anchor.Transparency=1
+ local gui=Instance.new("BillboardGui"); gui.Size=UDim2.fromOffset(width or 280,64)
+ gui.MaxDistance=160; gui.AlwaysOnTop=true; gui.Parent=anchor
+ local label=Instance.new("TextLabel"); label.Size=UDim2.fromScale(1,1)
+ label.BackgroundTransparency=1; label.Text=text; label.TextScaled=true
+ label.TextColor3=color; label.TextStrokeTransparency=.3
+ label.Font=Enum.Font.GothamBlack; label.Parent=gui
+ return anchor
+end
+local function glow(p,color,range)
+ local light=Instance.new("PointLight"); light.Color=color; light.Range=range or 14
+ light.Brightness=1.2; light.Parent=p
+end
+Lighting.ClockTime=16; Lighting.Brightness=2.5
+Lighting.Ambient=Color3.fromRGB(120,132,179)
+local atmosphere=Instance.new("Atmosphere"); atmosphere.Density=.18
+atmosphere.Color=Color3.fromRGB(155,176,236); atmosphere.Parent=Lighting
+local bloom=Instance.new("BloomEffect"); bloom.Intensity=.22; bloom.Threshold=1.8
+bloom.Size=24; bloom.Parent=Lighting
+part("Void Floor",Vector3.new(650,2,650),Vector3.new(0,-70,0),Color3.fromRGB(14,13,32),nil,false)
+local hub=part("Central Hub",Vector3.new(120,4,120),Vector3.new(0,-1,0),Color3.fromRGB(38,45,85))
+local spawn=Instance.new("SpawnLocation"); spawn.Name="RiftRaidersSpawn"
+spawn.Neutral=true; spawn.Anchored=true; spawn.Size=Vector3.new(22,1,22)
+spawn.Position=Vector3.new(0,2,0); spawn.Material=Enum.Material.Neon
+spawn.Color=palette[5]; spawn.Parent=world
+sign("RIFT RAIDERS | CHAOS ISLANDS",Vector3.new(0,23,0),palette[4],460)
+sign("BLAST DRONES • COLLECT SHARDS • SEAL RIFTS",Vector3.new(0,15,0),palette[1],460)
+-- Central arena, tower, rings and colored paths: readable on a small screen.
+for i=1,8 do
+ local angle=(i-1)*math.pi/4
+ local pos=Vector3.new(math.cos(angle)*47,8,math.sin(angle)*47)
+ local tower=part("Hub Beacon Pillar",Vector3.new(6,16,6),pos,palette[(i-1)%5+1],Enum.Material.Metal)
+ local lamp=part("Hub Beacon Light",Vector3.new(8,2,8),pos+Vector3.new(0,9,0),palette[(i-1)%5+1],Enum.Material.Neon)
+ glow(lamp,lamp.Color)
+end
+local bridgeData={
+ {Vector3.new(90,0,0),Vector3.new(75,2,22)},
+ {Vector3.new(-90,0,0),Vector3.new(75,2,22)},
+ {Vector3.new(0,0,90),Vector3.new(22,2,75)},
+ {Vector3.new(0,0,-90),Vector3.new(22,2,75)},
+}
+for i,b in ipairs(bridgeData) do
+ local walkway=part("Safe Skybridge",b[2],b[1],palette[i],Enum.Material.SmoothPlastic)
+ for side=-1,1,2 do
+  local railSize=i<=2 and Vector3.new(75,3,2) or Vector3.new(2,3,75)
+  local offset=i<=2 and Vector3.new(0,2,side*11) or Vector3.new(side*11,2,0)
+  part("Bridge Rail",railSize,b[1]+offset,Color3.fromRGB(31,40,76),Enum.Material.Metal)
+ end
+end
+local shards={}
+local drones={}
+local beacons={}
+-- Co-op Chaos Titan: a shared boss that appears during Rift Surge.
+local boss=part("Chaos Titan",Vector3.new(17,17,17),Vector3.new(0,17,0),
+ palette[2],Enum.Material.Neon,false)
+boss.Shape=Enum.PartType.Ball; boss.Transparency=1; boss.CanTouch=false
+boss:SetAttribute("Health",0)
+glow(boss,palette[2],35)
+local bossActive=false; local bossHP=0; local bossContributors={}
+local bossAttackAt=0
+for index,biome in ipairs(biomes) do
+ local center=biome.center
+ local base=part(biome.id.." Island",Vector3.new(115,4,115),center+Vector3.new(0,-1,0),
+  Color3.fromRGB(38+index*9,37+index*7,75+index*7))
+ sign(biome.name:upper(),center+Vector3.new(0,22,0),biome.color,360)
+ for i=1,8 do
+  local angle=i*math.pi/4
+  local x=math.cos(angle)*42; local z=math.sin(angle)*42
+  local height=9+(i%3)*9
+  local p=part(biome.id.." Landmark",Vector3.new(9,height,9),
+   center+Vector3.new(x,height/2,z),Color3.fromRGB(30,40,74),Enum.Material.Metal)
+  local cap=part(biome.id.." Glow Roof",Vector3.new(11,2,11),
+   p.Position+Vector3.new(0,height/2+1,0),biome.color,Enum.Material.Neon,false)
+  if index==2 then
+   local crystal=part("Prism Spire",Vector3.new(5,height+8,5),
+    p.Position+Vector3.new(0,7,0),biome.color,Enum.Material.Glass,false)
+   crystal.CFrame=crystal.CFrame*CFrame.Angles(0,math.rad(i*30),math.rad(10))
+  elseif index==3 then
+   local fire=Instance.new("Fire"); fire.Size=7; fire.Heat=5; fire.Parent=cap
+  elseif index==4 then
+   local cloud=part("Cloud Platform",Vector3.new(16,2,16),
+    p.Position+Vector3.new(0,height/2+8,0),Color3.fromRGB(235,239,255),nil,false)
+   cloud.Shape=Enum.PartType.Ball
+  end
+ end
+ local beacon=part("Rift Core "..biome.id,Vector3.new(10,13,10),
+  center+Vector3.new(0,8,28),biome.color,Enum.Material.Neon,false)
+ beacon.Shape=Enum.PartType.Ball; glow(beacon,biome.color,22)
+ local prompt=Instance.new("ProximityPrompt"); prompt.ActionText="Seal Rift (12 shards)"
+ prompt.ObjectText=biome.name; prompt.HoldDuration=1; prompt.MaxActivationDistance=14
+ prompt.RequiresLineOfSight=false; prompt.Parent=beacon
+ beacons[beacon]=biome
+ sign("SEAL RIFT: 12 SHARDS",beacon.Position+Vector3.new(0,12,0),biome.color,280)
+ for i=1,9 do
+  local angle=i*math.pi*2/9
+  local radius=20+(i%3)*10
+  local orb=part("Rift Shard",Vector3.new(4,4,4),
+   center+Vector3.new(math.cos(angle)*radius,5,math.sin(angle)*radius),
+   palette[(index+i-2)%5+1],Enum.Material.Neon,false)
+  orb.Shape=Enum.PartType.Ball; orb:SetAttribute("Biome",biome.id)
+  glow(orb,orb.Color,10)
+  table.insert(shards,orb)
+ end
+ for i=1,3 do
+  local a=i*math.pi*2/3
+  local spawnPos=center+Vector3.new(math.cos(a)*28,6,math.sin(a)*28)
+  local drone=part("Rift Drone",Vector3.new(7,7,7),spawnPos,
+   biome.color,Enum.Material.Neon,false)
+  drone.Shape=Enum.PartType.Ball; drone:SetAttribute("Health",3)
+  drone:SetAttribute("Biome",biome.id)
+  glow(drone,biome.color)
+  drones[drone]={home=spawnPos,health=3,alive=true,attackAt=0}
+ end
+end
+-- A small physical skill course with a real summit reward.
+local sky=biomes[4].center
+for i=1,5 do
+ part("Cloud Jump "..i,Vector3.new(13,2,13),
+  sky+Vector3.new(-27+i*10,4+i*5,-18+((i%2)*10)),
+  Color3.fromRGB(228,239,255))
+end
+local summit=part("Cloud Summit",Vector3.new(13,3,13),
+ sky+Vector3.new(23,32,-8),palette[4],Enum.Material.Neon,false)
+sign("SUMMIT BONUS +80 COINS",summit.Position+Vector3.new(0,7,0),palette[4])
+local event=Instance.new("RemoteEvent"); event.Name="RiftRaidersEvent"; event.Parent=ReplicatedStorage
+local action=Instance.new("RemoteEvent"); action.Name="RiftRaidersAction"; action.Parent=ReplicatedStorage
+local profiles={}
+local store=nil
+if not RunService:IsStudio() and game.GameId~=0 then
+ store=DataStoreService:GetDataStore("RiftRaidersProfiles_v1")
+end
+local function cleanInt(n,max)
+ return (type(n)=="number" and n==n and n>=0) and math.clamp(math.floor(n),0,max) or 0
+end
+local function tell(p,msg) event:FireClient(p,tostring(msg)) end
+local function sync(p)
+ local s=profiles[p]; if not s then return end
+ p:SetAttribute("RRCoins",s.coins); p:SetAttribute("RRShards",s.shards)
+ p:SetAttribute("RRLevel",s.level); p:SetAttribute("RRXP",s.xp)
+ p:SetAttribute("RRBlaster",s.blaster); p:SetAttribute("RRShield",s.shieldOwned)
+ p:SetAttribute("RRPet",s.petOwned); p:SetAttribute("RRSeals",s.seals)
+ p:SetAttribute("RRQuestShards",s.quest.shards)
+ p:SetAttribute("RRQuestDrones",s.quest.drones)
+ p:SetAttribute("RRQuestSeals",s.quest.seals)
+ local ls=p:FindFirstChild("leaderstats")
+ if ls then
+  ls.Level.Value=s.level; ls.Coins.Value=s.coins; ls.Rifts.Value=s.seals
+ end
+end
+local function reward(p,coins,xp,shards)
+ local s=profiles[p]; if not s then return end
+ local boost=world:GetAttribute("Phase")=="SURGE" and 2 or 1
+ s.coins=math.min(1000000,s.coins+math.max(0,coins or 0)*boost)
+ s.shards=math.min(100000,s.shards+math.max(0,shards or 0))
+ s.xp+=math.max(0,xp or 0)
+ while s.xp>=80+s.level*25 and s.level<100 do
+  s.xp-=80+s.level*25; s.level+=1
+  s.coins=math.min(1000000,s.coins+50)
+  tell(p,"LEVEL UP! LEVEL "..s.level.." +50 COINS")
+ end
+ sync(p)
+end
+local function quest(p,kind,n)
+ local s=profiles[p]; if not s then return end
+ s.quest[kind]=math.min(({shards=8,drones=3,seals=1})[kind],s.quest[kind]+(n or 1))
+ if s.quest.shards==8 and s.quest.drones==3 and s.quest.seals==1 then
+  s.quest={shards=0,drones=0,seals=0}
+  reward(p,250,120,0); tell(p,"MISSION COMPLETE! +250 COINS +120 XP")
+ end
+ sync(p)
+end
+local function save(p)
+ local s=profiles[p]
+ if not store or not s or not s.loaded then return end
+ local payload={version=1,coins=s.coins,shards=s.shards,level=s.level,xp=s.xp,
+  blaster=s.blaster,shieldOwned=s.shieldOwned,petOwned=s.petOwned,seals=s.seals}
+ local key="Player_"..p.UserId
+ local ok,err=pcall(function()
+  store:UpdateAsync(key,function(previous)
+   local value=type(previous)=="table" and previous or {}
+   -- Never regress an existing account to an older schema.
+   if type(value.version)=="number" and value.version>1 then return nil end
+   return payload
+  end)
+ end)
+ if not ok then warn("RiftRaiders save failed",p.UserId,err) end
+end
+local function init(p)
+ local s={coins=0,shards=0,level=1,xp=0,blaster=1,shieldOwned=false,
+  petOwned=false,seals=0,quest={shards=0,drones=0,seals=0},
+  shardTimes={},beaconTimes={},summitAt=0,lastBlast=0,lastDash=0,lastShield=0,
+  shieldUntil=0,travelAt=0,loaded=false,pet=nil}
+ if store then
+  local ok,data=pcall(function() return store:GetAsync("Player_"..p.UserId) end)
+  if ok then
+   if type(data)=="table" and (data.version==nil or data.version==1) then
+    s.coins=cleanInt(data.coins,1000000); s.shards=cleanInt(data.shards,100000)
+    s.level=math.max(1,cleanInt(data.level,100)); s.xp=cleanInt(data.xp,100000)
+    s.blaster=math.clamp(cleanInt(data.blaster,4),1,4)
+    s.shieldOwned=data.shieldOwned==true; s.petOwned=data.petOwned==true
+    s.seals=cleanInt(data.seals,1000000)
+   end
+   s.loaded=true
+  else
+   warn("RiftRaiders load failed; save disabled for session",p.UserId,data)
+  end
+ end
+ if not p.Parent then return end
+ profiles[p]=s
+ local ls=Instance.new("Folder"); ls.Name="leaderstats"; ls.Parent=p
+ for _,name in ipairs({"Level","Coins","Rifts"}) do
+  local v=Instance.new("IntValue"); v.Name=name; v.Parent=ls
+ end
+ sync(p)
+ p.CharacterAdded:Connect(function()
+  task.wait(.25)
+  if profiles[p] then sync(p) end
+ end)
+ tell(p,"WELCOME! COLLECT SHARDS, BLAST DRONES, SEAL RIFTS!")
+end
+Players.PlayerAdded:Connect(init)
+Players.PlayerRemoving:Connect(function(p)
+ save(p)
+ local s=profiles[p]; if s and s.pet then s.pet:Destroy() end
+ profiles[p]=nil
+end)
+for _,p in ipairs(Players:GetPlayers()) do task.spawn(init,p) end
+task.spawn(function()
+ while world.Parent do
+  task.wait(90)
+  for p in pairs(profiles) do task.spawn(save,p) end
+ end
+end)
+if store then
+ game:BindToClose(function()
+  for p in pairs(profiles) do task.spawn(save,p) end
+  task.wait(3)
+ end)
+end
+
+local function rootFor(p)
+ return p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+end
+local function spawnPet(p)
+ local s=profiles[p]; if not s or not s.petOwned or s.pet then return end
+ local pet=part("Riftling Companion",Vector3.new(3.4,3.4,3.4),
+  Vector3.new(0,10,0),palette[3],Enum.Material.Neon,false)
+ pet.Shape=Enum.PartType.Ball; pet.CanTouch=false; s.pet=pet
+ glow(pet,pet.Color,12)
+end
+local destinations={HUB=Vector3.new(0,6,0)}
+for _,b in ipairs(biomes) do destinations[b.id]=b.center+Vector3.new(0,6,0) end
+local function blast(p)
+ local s=profiles[p]; local root=rootFor(p)
+ if not s or not root then return end
+ local now=os.clock()
+ if now-s.lastBlast<.55 then return end
+ s.lastBlast=now
+ if bossActive and (root.Position-boss.Position).Magnitude<48 then
+  bossHP=math.max(0,bossHP-s.blaster)
+  boss:SetAttribute("Health",bossHP)
+  bossContributors[p]=true
+  tell(p,"CHAOS TITAN HIT! "..bossHP.." HP LEFT!")
+  if bossHP==0 then
+   bossActive=false; boss.Transparency=1
+   world:SetAttribute("BossHealth",0)
+   for contributor in pairs(bossContributors) do
+    if profiles[contributor] then
+     reward(contributor,300,120,10)
+     tell(contributor,"TITAN DEFEATED! +300 COINS +10 SHARDS!")
+    end
+   end
+   bossContributors={}
+  else
+   world:SetAttribute("BossHealth",bossHP)
+  end
+  return
+ end
+ local target=nil; local best=32
+ for drone,d in pairs(drones) do
+  if d.alive then
+   local delta=drone.Position-root.Position
+   local distance=delta.Magnitude
+   if distance<best then
+    target=drone; best=distance
+   end
+  end
+ end
+ if not target then tell(p,"MOVE CLOSER TO A DRONE TO BLAST!"); return end
+ local d=drones[target]
+ d.health-=s.blaster
+ target:SetAttribute("Health",math.max(0,d.health))
+ tell(p,"ZAP! DRONE HIT "..s.blaster.." DAMAGE!")
+ if d.health<=0 then
+  d.alive=false; target.Transparency=1; target.CanTouch=false
+  reward(p,30,25,2); quest(p,"drones",1)
+  tell(p,"DRONE DEFEATED! +30 COINS +2 SHARDS!")
+  task.delay(9,function()
+   if target.Parent then
+    d.alive=true; d.health=3; target.Position=d.home
+    target.Transparency=0; target.CanTouch=true
+    target:SetAttribute("Health",3)
+   end
+  end)
+ end
+end
+for _,shard in ipairs(shards) do
+ shard.Touched:Connect(function(hit)
+  local char=hit:FindFirstAncestorOfClass("Model")
+  local p=char and Players:GetPlayerFromCharacter(char)
+  local s=p and profiles[p]; local root=p and rootFor(p)
+  if not s or not root or (root.Position-shard.Position).Magnitude>14 then return end
+  local now=os.clock()
+  if s.shardTimes[shard] and now-s.shardTimes[shard]<25 then return end
+  s.shardTimes[shard]=now
+  reward(p,5,8,1); quest(p,"shards",1)
+  tell(p,"+1 RIFT SHARD • +5 COINS")
+ end)
+end
+for beacon,biome in pairs(beacons) do
+ local prompt=beacon:FindFirstChildOfClass("ProximityPrompt")
+ prompt.Triggered:Connect(function(p)
+  local s=profiles[p]; local root=rootFor(p)
+  if not s or not root or (root.Position-beacon.Position).Magnitude>17 then return end
+  local now=os.clock()
+  if s.beaconTimes[beacon] and now-s.beaconTimes[beacon]<50 then
+   tell(p,"THIS RIFT NEEDS TIME TO RECHARGE!"); return
+  end
+  if s.shards<12 then tell(p,"NEED 12 SHARDS TO SEAL THIS RIFT!"); return end
+  s.shards-=12; s.beaconTimes[beacon]=now; s.seals+=1
+  reward(p,75,80,0); quest(p,"seals",1)
+  tell(p,"RIFT SEALED! "..biome.name:upper().." +75 COINS!")
+ end)
+end
+summit.Touched:Connect(function(hit)
+ local char=hit:FindFirstAncestorOfClass("Model")
+ local p=char and Players:GetPlayerFromCharacter(char)
+ local s=p and profiles[p]; local root=p and rootFor(p)
+ if not s or not root or (root.Position-summit.Position).Magnitude>15 then return end
+ if root.Position.Y<26 then return end
+ local now=os.clock()
+ if now-s.summitAt<60 then return end
+ s.summitAt=now
+ reward(p,80,65,3)
+ tell(p,"SKY SUMMIT! +80 COINS +3 SHARDS!")
+end)
+action.OnServerEvent:Connect(function(p,kind,arg)
+ local s=profiles[p]; local root=rootFor(p)
+ if not s or not root or type(kind)~="string" then return end
+ local now=os.clock()
+ if kind=="Blast" then blast(p); return end
+ if kind=="Dash" then
+  if now-s.lastDash<6 then return end
+  s.lastDash=now
+  local direction=root.CFrame.LookVector
+  root.AssemblyLinearVelocity=Vector3.new(direction.X*72,18,direction.Z*72)
+  tell(p,"DASH!")
+ elseif kind=="Shield" then
+  if not s.shieldOwned then tell(p,"UNLOCK SHIELD IN SHOP FOR 150 COINS!"); return end
+  if now-s.lastShield<20 then return end
+  s.lastShield=now; s.shieldUntil=now+6
+  local char=p.Character
+  if char then
+   local old=char:FindFirstChild("RiftShield")
+   if old then old:Destroy() end
+   local force=Instance.new("ForceField"); force.Name="RiftShield"
+   force.Parent=char
+   task.delay(6,function() if force.Parent then force:Destroy() end end)
+  end
+  tell(p,"SHIELD ACTIVE FOR 6 SECONDS!")
+ elseif kind=="Travel" then
+  if type(arg)~="string" or not destinations[arg] then return end
+  if now-s.travelAt<2 then return end
+  s.travelAt=now
+  p.Character:PivotTo(CFrame.new(destinations[arg]))
+  tell(p,"ARRIVED: "..arg)
+ elseif kind=="Buy" then
+  if arg=="BLASTER" then
+   if s.blaster>=4 then tell(p,"BLASTER MAX LEVEL!"); return end
+   local cost=s.blaster*90
+   if s.coins<cost then tell(p,"NEED "..cost.." COINS!"); return end
+   s.coins-=cost; s.blaster+=1
+   tell(p,"BLASTER UPGRADED TO LEVEL "..s.blaster.."!")
+  elseif arg=="SHIELD" then
+   if s.shieldOwned then tell(p,"SHIELD ALREADY OWNED!"); return end
+   if s.coins<150 then tell(p,"NEED 150 COINS!"); return end
+   s.coins-=150; s.shieldOwned=true
+   tell(p,"SHIELD UNLOCKED! PRESS SHIELD TO ACTIVATE!")
+  elseif arg=="PET" then
+   if s.petOwned then tell(p,"RIFTLING ALREADY OWNED!"); return end
+   if s.coins<250 then tell(p,"NEED 250 COINS!"); return end
+   s.coins-=250; s.petOwned=true; spawnPet(p)
+   tell(p,"YOU ADOPTED A RIFTLING!")
+  else return end
+  sync(p)
+ end
+end)
+local tickAccum=0
+RunService.Heartbeat:Connect(function(dt)
+ tickAccum+=dt
+ if tickAccum<.18 then return end
+ local step=math.min(tickAccum,.3); tickAccum=0
+ for drone,d in pairs(drones) do
+  if d.alive then
+   local closest=nil; local best=52
+   for p,s in pairs(profiles) do
+    local root=rootFor(p)
+    local hum=p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+    if root and hum and hum.Health>0 then
+     local dist=(root.Position-drone.Position).Magnitude
+     if dist<best then closest=p; best=dist end
+    end
+   end
+   if closest then
+    local root=rootFor(closest)
+    local delta=root.Position-drone.Position
+    if delta.Magnitude>4 then
+     local nextPos=drone.Position+delta.Unit*math.min(delta.Magnitude,step*13)
+     drone.Position=Vector3.new(nextPos.X,d.home.Y,nextPos.Z)
+    elseif os.clock()-d.attackAt>2.2 then
+     d.attackAt=os.clock()
+     local s=profiles[closest]
+     if s and os.clock()>s.shieldUntil then
+      local hum=closest.Character and closest.Character:FindFirstChildOfClass("Humanoid")
+      if hum then hum:TakeDamage(8) end
+      tell(closest,"DRONE HIT! BLAST OR DASH TO ESCAPE!")
+     end
+    end
+   else
+    drone.Position=drone.Position:Lerp(d.home,.07)
+   end
+  end
+ end
+ if bossActive then
+  boss.CFrame=boss.CFrame*CFrame.Angles(0,step*.5,0)
+  if os.clock()-bossAttackAt>2.4 then
+   bossAttackAt=os.clock()
+   for p,s in pairs(profiles) do
+    local root=rootFor(p)
+    if root and (root.Position-boss.Position).Magnitude<24 and os.clock()>s.shieldUntil then
+     local hum=p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+     if hum then hum:TakeDamage(10) end
+     tell(p,"CHAOS TITAN SHOCKWAVE! DASH AWAY!")
+    end
+   end
+  end
+ end
+ for p,s in pairs(profiles) do
+  if s.petOwned and not s.pet then spawnPet(p) end
+  local root=rootFor(p)
+  if root and s.pet then s.pet.CFrame=root.CFrame*CFrame.new(3,3,3) end
+ end
+end)
+task.spawn(function()
+ while world.Parent do
+  for remaining=75,0,-1 do
+   world:SetAttribute("Phase","CALM")
+   world:SetAttribute("SecondsLeft",remaining)
+   task.wait(1)
+  end
+  world:SetAttribute("Phase","SURGE")
+  bossHP=26; bossActive=true; bossContributors={}
+  boss.Transparency=0; boss:SetAttribute("Health",bossHP)
+  world:SetAttribute("BossHealth",bossHP)
+  for _,p in ipairs(Players:GetPlayers()) do
+   tell(p,"RIFT SURGE! DOUBLE COINS! DEFEAT THE CHAOS TITAN AT HUB!")
+  end
+  Lighting.Ambient=Color3.fromRGB(180,75,210)
+  for remaining=25,0,-1 do
+   world:SetAttribute("SecondsLeft",remaining)
+   task.wait(1)
+  end
+  bossActive=false; bossHP=0; bossContributors={}
+  boss.Transparency=1; boss:SetAttribute("Health",0)
+  world:SetAttribute("BossHealth",0)
+  Lighting.Ambient=Color3.fromRGB(120,132,179)
+ end
+end)
+print("SF_RIFT_RAIDERS_SERVER_READY v0.1.0")
+]]></string>
+      </Properties>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="2">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="3">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="LocalScript" referent="4">
+        <Properties>
+          <string name="Name">RiftRaidersHUD</string>
+          <string name="Source"><![CDATA[-- Rift Raiders responsive HUD; no Robux purchase prompts in the prototype.
+local Players=game:GetService("Players")
+local ReplicatedStorage=game:GetService("ReplicatedStorage")
+local player=Players.LocalPlayer
+local action=ReplicatedStorage:WaitForChild("RiftRaidersAction")
+local event=ReplicatedStorage:WaitForChild("RiftRaidersEvent")
+local world=workspace:WaitForChild("RiftRaidersWorld")
+local gui=Instance.new("ScreenGui"); gui.Name="RiftRaidersHUD"
+gui.ResetOnSpawn=false; gui.IgnoreGuiInset=false; gui.Parent=player:WaitForChild("PlayerGui")
+local function round(object,radius)
+ local corner=Instance.new("UICorner"); corner.CornerRadius=UDim.new(0,radius or 12)
+ corner.Parent=object
+ local stroke=Instance.new("UIStroke"); stroke.Color=Color3.fromRGB(100,151,220)
+ stroke.Transparency=.5; stroke.Thickness=1.5; stroke.Parent=object
+end
+local function text(name,content,size,position,color)
+ local label=Instance.new("TextLabel"); label.Name=name; label.Size=size; label.Position=position
+ label.BackgroundColor3=Color3.fromRGB(18,24,53); label.BackgroundTransparency=.12
+ label.TextColor3=color or Color3.new(1,1,1); label.Font=Enum.Font.GothamBold
+ label.TextSize=15; label.Text=content; label.TextWrapped=true
+ label.BorderSizePixel=0; label.Parent=gui; round(label,10)
+ return label
+end
+local function button(name,content,size,position,color,parent)
+ local b=Instance.new("TextButton"); b.Name=name; b.Size=size; b.Position=position
+ b.BackgroundColor3=color; b.TextColor3=Color3.new(1,1,1)
+ b.Font=Enum.Font.GothamBlack; b.TextSize=16; b.Text=content
+ b.TextWrapped=true; b.BorderSizePixel=0; b.Parent=parent or gui; round(b,12)
+ return b
+end
+local title=text("Title","RIFT RAIDERS  ⚡  CHAOS ISLANDS",
+ UDim2.new(.62,0,0,39),UDim2.new(.02,0,0,8),Color3.fromRGB(255,222,97))
+local stats=text("Stats","LEVEL 1  |  0 COINS  |  0 SHARDS",
+ UDim2.new(.62,0,0,33),UDim2.new(.02,0,0,52),Color3.fromRGB(110,250,236))
+local progression=text("Progression","BLASTER 1  |  RIFTS 0  |  XP 0",
+ UDim2.new(.62,0,0,29),UDim2.new(.02,0,0,90),Color3.fromRGB(196,168,255))
+local phase=text("Surge","CALM | NEXT SURGE: 75s",
+ UDim2.new(.32,0,0,34),UDim2.new(.66,0,0,8),Color3.fromRGB(255,154,210))
+local missions=text("Missions","MISSIONS: SHARDS 0/8 | DRONES 0/3 | RIFTS 0/1",
+ UDim2.new(.96,0,0,34),UDim2.new(.02,0,0,130),Color3.fromRGB(255,221,119))
+local hint=text("Hint","BLAST DRONES • PICK UP SHARDS • SEAL RIFTS AT THE GLOWING CORE",
+ UDim2.new(.96,0,0,32),UDim2.new(.02,0,0,169),Color3.fromRGB(228,239,255))
+local toast=text("Toast","",UDim2.new(.82,0,0,55),UDim2.new(.09,0,.68,0),Color3.fromRGB(255,222,99))
+toast.Visible=false
+local blast=button("Blast","⚡ BLAST",UDim2.fromOffset(112,62),
+ UDim2.new(1,-126,1,-88),Color3.fromRGB(239,67,134))
+blast.AnchorPoint=Vector2.new(0,0)
+local dash=button("Dash","➤ DASH",UDim2.fromOffset(104,57),
+ UDim2.new(1,-242,1,-85),Color3.fromRGB(56,178,239))
+local shield=button("Shield","⬡ SHIELD",UDim2.fromOffset(108,51),
+ UDim2.new(1,-126,1,-150),Color3.fromRGB(145,85,231))
+local shopButton=button("ShopToggle","SHOP",UDim2.fromOffset(98,47),
+ UDim2.new(.02,0,1,-75),Color3.fromRGB(90,194,128))
+local mapButton=button("MapToggle","WORLD",UDim2.fromOffset(98,47),
+ UDim2.new(.02,107,1,-75),Color3.fromRGB(87,149,229))
+blast.Activated:Connect(function() action:FireServer("Blast") end)
+dash.Activated:Connect(function() action:FireServer("Dash") end)
+shield.Activated:Connect(function() action:FireServer("Shield") end)
+local function panel(name,heading)
+ local f=Instance.new("Frame"); f.Name=name
+ f.Size=UDim2.new(.86,0,.49,0); f.Position=UDim2.new(.07,0,.28,0)
+ f.BackgroundColor3=Color3.fromRGB(19,27,61); f.BorderSizePixel=0
+ f.Visible=false; f.Parent=gui; round(f,16)
+ local header=Instance.new("TextLabel"); header.Size=UDim2.new(1,-55,0,48)
+ header.Position=UDim2.fromOffset(12,2); header.BackgroundTransparency=1
+ header.Font=Enum.Font.GothamBlack; header.TextSize=20; header.TextColor3=Color3.fromRGB(255,221,110)
+ header.Text=heading; header.Parent=f
+ local close=button("Close","X",UDim2.fromOffset(43,42),
+  UDim2.new(1,-49,0,5),Color3.fromRGB(200,73,113),f)
+ close.Activated:Connect(function() f.Visible=false end)
+ local scroll=Instance.new("ScrollingFrame"); scroll.Name="Options"
+ scroll.Size=UDim2.new(1,-24,1,-64); scroll.Position=UDim2.fromOffset(12,55)
+ scroll.BackgroundTransparency=1; scroll.ScrollBarThickness=5
+ scroll.BorderSizePixel=0; scroll.Parent=f
+ local layout=Instance.new("UIListLayout"); layout.Padding=UDim.new(0,8); layout.Parent=scroll
+ layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+  scroll.CanvasSize=UDim2.fromOffset(0,layout.AbsoluteContentSize.Y+12)
+ end)
+ return f,scroll
+end
+local shop,shopList=panel("ShopPanel","EARNED COIN SHOP")
+local map,mapList=panel("MapPanel","CHOOSE AN ISLAND")
+local function item(parent,name,content,color,fn)
+ local b=button(name,content,UDim2.new(1,-12,0,53),UDim2.fromOffset(0,0),color,parent)
+ b.Activated:Connect(fn)
+ return b
+end
+local blasterItem=item(shopList,"Blaster","BLASTER LEVEL UP • COST: 90+ COINS",
+ Color3.fromRGB(224,77,133),function() action:FireServer("Buy","BLASTER") end)
+local shieldItem=item(shopList,"ShieldUpgrade","SHIELD ABILITY • 150 COINS",
+ Color3.fromRGB(126,86,219),function() action:FireServer("Buy","SHIELD") end)
+local petItem=item(shopList,"PetUpgrade","ADOPT RIFTLING PET • 250 COINS",
+ Color3.fromRGB(71,172,153),function() action:FireServer("Buy","PET") end)
+local places={
+ {"HUB","CENTRAL HUB"},{"CYBER","NEON METROPOLIS"},{"CRYSTAL","PRISM WILDS"},
+ {"VOLCANO","MAGMA OUTPOST"},{"SKY","CLOUD KINGDOM"},
+}
+for i,entry in ipairs(places) do
+ item(mapList,"Map"..entry[1],entry[2],
+  ({Color3.fromRGB(64,177,204),Color3.fromRGB(171,101,219),
+    Color3.fromRGB(227,103,143)})[(i-1)%3+1],function()
+   action:FireServer("Travel",entry[1]); map.Visible=false
+  end)
+end
+shopButton.Activated:Connect(function()
+ map.Visible=false; shop.Visible=not shop.Visible
+end)
+mapButton.Activated:Connect(function()
+ shop.Visible=false; map.Visible=not map.Visible
+end)
+local seq=0
+event.OnClientEvent:Connect(function(message)
+ seq+=1; local current=seq
+ toast.Text=tostring(message); toast.Visible=true
+ task.delay(2.7,function() if current==seq then toast.Visible=false end end)
+end)
+local function update()
+ local coins=player:GetAttribute("RRCoins") or 0
+ local shards=player:GetAttribute("RRShards") or 0
+ local level=player:GetAttribute("RRLevel") or 1
+ local xp=player:GetAttribute("RRXP") or 0
+ local blasterLevel=player:GetAttribute("RRBlaster") or 1
+ local seals=player:GetAttribute("RRSeals") or 0
+ stats.Text="LEVEL "..level.."  |  "..coins.." COINS  |  "..shards.." SHARDS"
+ progression.Text="BLASTER "..blasterLevel.."  |  RIFTS "..seals.."  |  XP "..xp
+ missions.Text="MISSIONS: SHARDS "..(player:GetAttribute("RRQuestShards") or 0)..
+  "/8  •  DRONES "..(player:GetAttribute("RRQuestDrones") or 0)..
+  "/3  •  RIFTS "..(player:GetAttribute("RRQuestSeals") or 0).."/1"
+ blasterItem.Text=blasterLevel>=4 and "BLASTER MAXED" or
+  "BLASTER LEVEL "..(blasterLevel+1).." • "..(blasterLevel*90).." COINS"
+ shieldItem.Text=player:GetAttribute("RRShield") and "SHIELD OWNED • USE SHIELD BUTTON" or
+  "UNLOCK SHIELD • 150 COINS"
+ petItem.Text=player:GetAttribute("RRPet") and "RIFTLING PET OWNED" or
+  "ADOPT RIFTLING PET • 250 COINS"
+end
+for _,name in ipairs({"RRCoins","RRShards","RRLevel","RRXP","RRBlaster",
+ "RRShield","RRPet","RRSeals","RRQuestShards","RRQuestDrones","RRQuestSeals"}) do
+ player:GetAttributeChangedSignal(name):Connect(update)
+end
+local function phaseUpdate()
+ local current=world:GetAttribute("Phase") or "CALM"
+ phase.Text=current.." | "..(world:GetAttribute("SecondsLeft") or 0).."s"..
+  (current=="SURGE" and (" TITAN HP: "..(world:GetAttribute("BossHealth") or 0)) or " TO SURGE")
+end
+world:GetAttributeChangedSignal("Phase"):Connect(phaseUpdate)
+world:GetAttributeChangedSignal("SecondsLeft"):Connect(phaseUpdate)
+world:GetAttributeChangedSignal("BossHealth"):Connect(phaseUpdate)
+update(); phaseUpdate()
+print("SF_RIFT_RAIDERS_CLIENT_READY")
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+</roblox>
