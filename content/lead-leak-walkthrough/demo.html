@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SatisfyForge Lead Leak Walkthrough Demo</title>
+<style>
+  :root{color-scheme:dark;--bg:#07110d;--panel:#0d1d16;--line:#264536;--text:#f5fff9;--muted:#acc7b8;--red:#ff5d67;--amber:#ffc857;--green:#63e69c;--cyan:#63d6ff}
+  *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#020704;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text)}
+  body{display:grid;place-items:center;overflow:hidden}
+  #stage{position:relative;width:min(100vw,calc(100vh * 9 / 16));aspect-ratio:9/16;overflow:hidden;background:
+    radial-gradient(circle at 78% 8%,#164f3566,transparent 28%),
+    linear-gradient(160deg,#07110d 0%,#0b1912 54%,#07100c 100%);padding:7.5% 6%;display:flex;flex-direction:column;gap:3.2%}
+  .brand{font-weight:900;letter-spacing:.08em;color:var(--green);font-size:clamp(14px,2.8vw,34px)}
+  .kicker{display:inline-flex;align-items:center;gap:.6em;color:#dff7e8;font-weight:800;font-size:clamp(12px,2.3vw,28px);text-transform:uppercase;letter-spacing:.06em}
+  .dot{width:.7em;height:.7em;border-radius:50%;background:var(--red);box-shadow:0 0 22px #ff5d67aa}
+  h1{font-size:clamp(30px,7.4vw,78px);line-height:.98;letter-spacing:-.055em;margin:0;max-width:92%}
+  h1 em{font-style:normal;color:var(--green)}
+  .sub{font-size:clamp(14px,3.2vw,34px);line-height:1.25;color:var(--muted);margin:0}
+  .phone{flex:1;min-height:0;border:2px solid #385b48;border-radius:clamp(24px,5vw,54px);background:#f5f8f6;color:#122019;padding:4.5%;box-shadow:0 28px 60px #0009,0 0 0 7px #09110d;position:relative;overflow:hidden}
+  .phone:before{content:"";position:absolute;top:1.5%;left:38%;width:24%;height:1.2%;border-radius:99px;background:#17221d}
+  .screen{height:100%;display:flex;flex-direction:column;gap:2.2%;padding-top:4%}
+  .fictional{align-self:flex-start;font-size:clamp(9px,1.75vw,19px);font-weight:800;background:#e9eee9;border-radius:99px;padding:.45em .8em;color:#486155}
+  .screen h2{font-size:clamp(21px,4.6vw,48px);line-height:1.02;margin:0}.screen p{font-size:clamp(10px,2vw,23px);margin:0;color:#577066}
+  .fields{display:grid;grid-template-columns:1fr 1fr;gap:2%;flex:1;min-height:0}
+  .field{border:2px solid #c7d2cc;border-radius:12px;padding:.6em .75em;font-size:clamp(9px,1.75vw,20px);background:white;color:#6d7b74;display:flex;align-items:center}
+  .field.wide{grid-column:1/-1}.field.problem{border-color:#f3a4aa;background:#fff3f4}
+  .submit{border:0;border-radius:13px;padding:.8em 1em;font-weight:900;font-size:clamp(11px,2.2vw,25px);background:#d7ded9;color:#7c8b83}
+  .note{font-size:clamp(9px,1.65vw,18px);font-weight:800;color:var(--red);text-align:center}
+  .after .fields{grid-template-columns:1fr}.after .field:nth-child(n+4){display:none}.after .field{border-color:#a8d9bc;background:#fbfffc}
+  .after .submit{background:#168c4c;color:white;box-shadow:0 8px 24px #168c4c44}
+  .after .note{color:#167944}.after .dot{background:var(--green)}
+  .badges{display:flex;gap:2%;flex-wrap:wrap}.badge{font-size:clamp(10px,1.8vw,21px);font-weight:850;padding:.55em .8em;border-radius:99px;background:#10281c;border:1px solid #27563c;color:#dff9e9}
+  .controls{display:flex;gap:3%}
+  button.toggle{flex:1;border:1px solid #3f7055;border-radius:16px;background:#11271b;color:white;font-weight:900;font-size:clamp(12px,2.4vw,28px);padding:.9em;cursor:pointer}
+  button.toggle.active{background:var(--green);color:#052012}
+  .footer{font-size:clamp(11px,2.25vw,26px);font-weight:850;text-align:center;color:#ddf7e7}
+  @media(prefers-reduced-motion:no-preference){.phone,.dot,.submit,.field{transition:.38s ease}}
+</style>
+</head>
+<body>
+<main id="stage">
+  <div class="brand">SATISFYFORGE</div>
+  <div class="kicker"><span class="dot"></span><span id="modeLabel">Lead leak: too much friction</span></div>
+  <h1>Your contact form may be <em>losing customers.</em></h1>
+  <p class="sub">A clear request should feel easy—not like paperwork.</p>
+  <section class="phone" id="phone" aria-live="polite">
+    <div class="screen">
+      <span class="fictional">FICTIONAL EXAMPLE · NO CLIENT DATA</span>
+      <h2>Request an Estimate</h2>
+      <p id="helper">Complete every field. We will contact you soon.</p>
+      <div class="fields">
+        <div class="field">First name *</div><div class="field">Last name *</div>
+        <div class="field">Email *</div><div class="field">Phone *</div>
+        <div class="field">Street address *</div><div class="field">ZIP code *</div>
+        <div class="field">Service needed *</div><div class="field">Budget *</div>
+        <div class="field wide problem">Describe the entire project *</div>
+      </div>
+      <button class="submit" type="button" tabindex="-1">SUBMIT</button>
+      <div class="note" id="note">9 required fields · vague next step</div>
+    </div>
+  </section>
+  <div class="badges"><span class="badge">Fewer fields</span><span class="badge">Clear next step</span><span class="badge">Response expectation</span></div>
+  <div class="controls">
+    <button class="toggle active" id="beforeBtn" type="button">BEFORE</button>
+    <button class="toggle" id="afterBtn" type="button">SHOW THE FIX</button>
+  </div>
+  <div class="footer">More traffic won’t fix a broken contact process.</div>
+</main>
+<script>
+  const stage=document.getElementById('stage'),phone=document.getElementById('phone');
+  const beforeBtn=document.getElementById('beforeBtn'),afterBtn=document.getElementById('afterBtn');
+  const label=document.getElementById('modeLabel'),helper=document.getElementById('helper'),note=document.getElementById('note');
+  function setMode(after){
+    stage.classList.toggle('after',after);phone.classList.toggle('after',after);
+    beforeBtn.classList.toggle('active',!after);afterBtn.classList.toggle('active',after);
+    label.textContent=after?'Lead rescue: clear and easy':'Lead leak: too much friction';
+    helper.textContent=after?'Tell us how to reach you and what service you need. Expect a reply within one business day.':'Complete every field. We will contact you soon.';
+    note.textContent=after?'3 clear fields · response time explained':'9 required fields · vague next step';
+    document.querySelector('.submit').textContent=after?'REQUEST MY ESTIMATE':'SUBMIT';
+  }
+  beforeBtn.onclick=()=>setMode(false);afterBtn.onclick=()=>setMode(true);
+  setMode(false);
+</script>
+</body>
+</html>
