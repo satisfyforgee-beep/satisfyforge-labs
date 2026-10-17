@@ -3,7 +3,7 @@ RunService:Run()
 task.wait(2)
 local world=workspace:WaitForChild("HyperMutationRushWorld",20)
 assert(world,"world missing")
-assert(world:GetAttribute("Version")=="0.2.0","version")
+assert(world:GetAttribute("Version")=="0.3.0","version")
 local function count(n) local x=0 for _,p in ipairs(world:GetDescendants()) do if p.Name==n then x+=1 end end return x end
 assert(count("Checkpoint")==12,"12 checkpoints required")
 assert(count("SpeedOrb")==18,"18 orbs required")

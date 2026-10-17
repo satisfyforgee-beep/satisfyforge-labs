@@ -83,6 +83,25 @@ if not waitFor(function() return (a:GetAttribute("MRCoins") or 0)>=270 end,3) th
 end
 if a:GetAttribute("MRQuest")~=0 or b:GetAttribute("MRCoins")~=0 then fail("quest_or_isolation") return end
 print("SF_MUTATION_MP_CHECK festival_and_quest PASS")
+-- Mutation gate abilities are server-owned and isolated per player.
+local world=workspace:WaitForChild("HyperMutationRushWorld")
+local bounceGate=nil
+local shieldGate=nil
+for _,item in ipairs(world:GetChildren()) do
+ if item.Name=="MutationGate" and item:GetAttribute("Ability")=="BOUNCE" then bounceGate=item end
+ if item.Name=="MutationGate" and item:GetAttribute("Ability")=="SHIELD" then shieldGate=item end
+end
+if not bounceGate or not shieldGate then fail("ability_gates_missing") return end
+a.Character:PivotTo(CFrame.new(bounceGate.Position))
+if not waitFor(function() return a:GetAttribute("MRAbility")=="BOUNCE" end,3) then fail("bounce_not_granted") return end
+if b:GetAttribute("MRAbility")~="" then fail("ability_cross_player") return end
+local ah=a.Character:FindFirstChildOfClass("Humanoid")
+if not ah or ah.JumpPower<90 then fail("bounce_jump_not_applied") return end
+print("SF_MUTATION_MP_CHECK bounce_ability_isolated PASS")
+a.Character:PivotTo(CFrame.new(shieldGate.Position))
+if not waitFor(function() return a:GetAttribute("MRAbility")=="SHIELD" end,3) then fail("shield_not_granted") return end
+if not a.Character:FindFirstChild("MutationShield") then fail("shield_visual_missing") return end
+print("SF_MUTATION_MP_CHECK shield_ability PASS")
 print("SF_MUTATION_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:mutation_multiplayer")
 ]==]

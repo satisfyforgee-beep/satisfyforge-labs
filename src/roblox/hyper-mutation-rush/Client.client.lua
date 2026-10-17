@@ -72,6 +72,8 @@ petButton.Activated:Connect(function()
 end)
 local raceRecord=label("RaceRecord","BEST RACE: -- | BEAT YOUR TIME!",
  UDim2.new(.9,0,0,29),UDim2.new(.05,0,0,199),Color3.fromRGB(125,255,255))
+local mutationAbility=label("MutationAbility","MUTATION: FIND A GATE!",
+ UDim2.new(.9,0,0,29),UDim2.new(.05,0,0,235),Color3.fromRGB(255,140,225))
 local quest=label("WorldQuest","WORLD QUEST: 0/3 ACTIVITIES = 150 COINS",
  UDim2.new(.9,0,0,29),UDim2.new(.05,0,0,164),Color3.fromRGB(255,225,69))
 -- First-session call to action: get the player racing immediately.
@@ -98,12 +100,14 @@ local function update()
  status.Text="STAGE "..stage.."/12 | SPEED "..(player:GetAttribute("MRSpeed") or 18)
  coins.Text=(player:GetAttribute("MRCoins") or 0).." COINS | "..(player:GetAttribute("MRMutations") or 0).." MUTATIONS"
  local best=player:GetAttribute("MRBestTime") or 0
+ local active=player:GetAttribute("MRAbility") or ""
+ mutationAbility.Text=active~="" and ("ACTIVE MUTATION: "..active.." (18s BOOST)") or "MUTATION: FIND A GATE!"
  raceRecord.Text=best>0 and ("BEST RACE: "..best.."s | BEAT YOUR TIME!") or "BEST RACE: -- | FINISH TO SET A RECORD!"
  quest.Text="WORLD QUEST: "..(player:GetAttribute("MRQuest") or 0).."/3 ACTIVITIES = 150 COINS"
  objective.Text=stage>=12 and "REACH THE GREEN FINISH!" or
   "COLLECT ORBS + DODGE LASERS | NEXT "..(stage+1).."/12"
 end
-for _,key in ipairs({"MRStage","MRSpeed","MRCoins","MRMutations","MRQuest","MRBestTime"}) do
+for _,key in ipairs({"MRStage","MRSpeed","MRCoins","MRMutations","MRQuest","MRBestTime","MRAbility"}) do
  player:GetAttributeChangedSignal(key):Connect(update)
 end
 update()

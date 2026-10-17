@@ -4,7 +4,7 @@ local ReplicatedStorage=game:GetService("ReplicatedStorage")
 local Lighting=game:GetService("Lighting")
 local RunService=game:GetService("RunService")
 local world=Instance.new("Folder"); world.Name="HyperMutationRushWorld"; world.Parent=workspace
-world:SetAttribute("Version","0.2.0")
+world:SetAttribute("Version","0.3.0")
 local palette={Color3.fromRGB(255,82,164),Color3.fromRGB(65,235,255),Color3.fromRGB(255,222,62),Color3.fromRGB(157,92,255),Color3.fromRGB(83,250,134)}
 local function part(name,size,pos,color,kind)
  local p=Instance.new("Part"); p.Name=name; p.Anchored=true; p.Size=size; p.Position=pos
@@ -49,10 +49,12 @@ for i=1,12 do
   part("JumpLaser",Vector3.new(31,2,2),Vector3.new(0,2,z-4),palette[1],"Hazard")
   sign("JUMP THE LASER!",Vector3.new(0,9,z+2),palette[1])
  end
- if i==4 or i==8 then
+ if i==4 or i==8 or i==12 then
   local gate=part("MutationGate",Vector3.new(18,12,2),Vector3.new(0,6,z-10),palette[4],"Mutation")
   gate.Transparency=.55
-  sign("FREE MUTATION +3 SPEED",Vector3.new(0,15,z-10),palette[4])
+  local ability=({[4]="BOUNCE",[8]="SHIELD",[12]="TURBO"})[i]
+  gate:SetAttribute("Ability",ability)
+  sign(ability.." MUTATION! 18 SECONDS",Vector3.new(0,15,z-10),palette[4])
  end
 end
 local finish=part("FinishPortal",Vector3.new(32,12,2),Vector3.new(0,6,-380),palette[5],"Finish")
@@ -173,6 +175,8 @@ local function sync(p)
  p:SetAttribute("MRWins",s.wins)
  p:SetAttribute("MRQuest",s.quest)
  p:SetAttribute("MRBestTime",s.bestTime or 0)
+ p:SetAttribute("MRAbility",s.ability or "")
+ p:SetAttribute("MRAbilityEnd",s.abilityEnd or 0)
  p:SetAttribute("MRRaceStarted",s.raceStarted~=nil)
  local leaderstats=p:FindFirstChild("leaderstats")
  if leaderstats then
@@ -182,7 +186,10 @@ local function sync(p)
   if coins then coins.Value=s.coins end
  end
  local h=p.Character and p.Character:FindFirstChildOfClass("Humanoid")
- if h then h.WalkSpeed=s.speed; h.UseJumpPower=true; h.JumpPower=58 end
+ if h then
+  h.WalkSpeed=s.speed+((s.ability=="TURBO") and 10 or 0)
+  h.UseJumpPower=true; h.JumpPower=(s.ability=="BOUNCE") and 96 or 58
+ end
 end
 local function warp(p)
  if p.Character then p.Character:PivotTo(CFrame.new(0,5,50)) end
@@ -191,7 +198,7 @@ local function init(p)
  local leaderstats=Instance.new("Folder"); leaderstats.Name="leaderstats"; leaderstats.Parent=p
  local wins=Instance.new("IntValue"); wins.Name="Wins"; wins.Parent=leaderstats
  local coins=Instance.new("IntValue"); coins.Name="Coins"; coins.Parent=leaderstats
- sessions[p]={stage=0,speed=18,coins=0,mutations=0,wins=0,used={},lastHit=-10,lastFinish=-10,activityTimes={},deliveryAt=nil,festivalStep=0,domeStart=nil,quest=0,questKinds={},pet=nil,bestTime=nil,raceStarted=nil}
+ sessions[p]={stage=0,speed=18,coins=0,mutations=0,wins=0,used={},lastHit=-10,lastFinish=-10,activityTimes={},deliveryAt=nil,festivalStep=0,domeStart=nil,quest=0,questKinds={},pet=nil,bestTime=nil,raceStarted=nil,ability=nil,abilityEnd=0,abilityToken=0}
  sync(p); p.CharacterAdded:Connect(function() task.wait(.2); sync(p) end)
 end
 Players.PlayerAdded:Connect(init)
@@ -242,6 +249,35 @@ RunService.Heartbeat:Connect(function(dt)
   end
  end
 end)
+-- Three timed, server-owned mutations with visual feedback and automatic cleanup.
+local function grantAbility(p,ability)
+ local s=sessions[p]; if not s then return end
+ if ability~="BOUNCE" and ability~="SHIELD" and ability~="TURBO" then return end
+ s.abilityToken+=1
+ local token=s.abilityToken
+ s.ability=ability; s.abilityEnd=os.clock()+18
+ local character=p.Character
+ if character then
+  local old=character:FindFirstChild("MutationShield")
+  if old then old:Destroy() end
+  if ability=="SHIELD" then
+   local shield=Instance.new("ForceField"); shield.Name="MutationShield"
+   shield.Visible=true; shield.Parent=character
+  end
+ end
+ sync(p)
+ tell(p,ability.." ACTIVE! 18 SECONDS!")
+ task.delay(18,function()
+  if sessions[p]~=s or s.abilityToken~=token then return end
+  s.ability=nil; s.abilityEnd=0
+  local current=p.Character
+  if current then
+   local shield=current:FindFirstChild("MutationShield")
+   if shield then shield:Destroy() end
+  end
+  sync(p); tell(p,ability.." EXPIRED!")
+ end)
+end
 local function touched(obj,hit)
  local char=hit:FindFirstAncestorOfClass("Model")
  local p=char and Players:GetPlayerFromCharacter(char)
@@ -322,6 +358,7 @@ local function touched(obj,hit)
    end
   end)
  elseif kind=="DomeLaser" then
+  if s.ability=="SHIELD" then return end
   if not s.domeStart or now-s.lastHit<1.4 then return end
   s.lastHit=now; s.domeStart=nil
   tell(p,"DOME LASER HIT! CHALLENGE FAILED!")
@@ -330,8 +367,12 @@ local function touched(obj,hit)
   s.used[obj]=true; s.mutations+=1; s.speed=math.min(48,s.speed+3)
   local glow=char:FindFirstChild("MutationAura") or Instance.new("Highlight")
   glow.Name="MutationAura"; glow.FillTransparency=.85; glow.OutlineColor=palette[s.mutations%5+1]; glow.Parent=char
+  grantAbility(p,obj:GetAttribute("Ability"))
   tell(p,"MUTATION "..s.mutations.."! +3 SPEED!")
  elseif kind=="Hazard" then
+  if s.ability=="SHIELD" then
+   tell(p,"SHIELD BLOCKED THE LASER!"); return
+  end
   if now-s.lastHit<2 then return end
   s.lastHit=now; s.speed=math.max(16,s.speed-3); tell(p,"LASER HIT! -3 SPEED")
  elseif kind=="Finish" then
@@ -379,4 +420,4 @@ action.OnServerEvent:Connect(function(p,kind,...)
  s.coins-=cost; s.speed=math.min(48,s.speed+2); sync(p)
  tell(p,"UPGRADE! +2 SPEED")
 end)
-print("SF_MUTATION_SERVER_READY v0.2.0")
+print("SF_MUTATION_SERVER_READY v0.3.0")
