@@ -142,6 +142,83 @@ if not waitFor(function() return flySeat.Occupant==flyHum end,3) then fail("flyi
 local beforeAltitude=flyer:GetPivot().Position.Y
 if not waitFor(function() return flyer:GetPivot().Position.Y>beforeAltitude+3 end,3) then fail("flyingcar_did_not_lift") return end
 print("SF_RIFT_MP_CHECK flyingcar_lift PASS")
+local activities=require(ServerScriptService:WaitForChild("WorldActivities"))
+local function atStation(player,id)
+ local anchor=activities.GetStation(id)
+ if not anchor then fail("missing_station_"..id); return false end
+ player.Character:PivotTo(CFrame.new(anchor.Position+Vector3.new(0,5,0)))
+ task.wait(.2)
+ return true
+end
+if not atStation(a,"craft_toolkit") then return end
+if activities.Perform(a,"craft_toolkit") then fail("free_toolkit") return end
+if not atStation(a,"gather_wood") then return end
+if not activities.Perform(a,"gather_wood") then fail("wood_gather_failed") return end
+if a:GetAttribute("RRWood")~=2 or b:GetAttribute("RRWood")~=0 then fail("wood_not_isolated") return end
+if activities.Perform(a,"gather_wood") then fail("wood_cooldown_bypass") return end
+if not atStation(a,"gather_metal") then return end
+if not activities.Perform(a,"gather_metal") then fail("metal_gather_failed") return end
+if not atStation(a,"gather_metal_alt") then return end
+if not activities.Perform(a,"gather_metal_alt") then fail("metal_overflow_failed") return end
+if not atStation(a,"craft_toolkit") then return end
+if not activities.Perform(a,"craft_toolkit") then fail("toolkit_craft_failed") return end
+if a:GetAttribute("RRToolkits")~=1 or a:GetAttribute("RRWood")~=0 or
+ a:GetAttribute("RRMetal")~=1 or b:GetAttribute("RRToolkits")~=0 then
+ fail("crafting_inventory_incorrect") return
+end
+if not a:GetAttribute("RRPlot") or not b:GetAttribute("RRPlot") or
+ a:GetAttribute("RRPlot")==b:GetAttribute("RRPlot") then fail("housing_plot_collision") return end
+print("SF_RIFT_MP_CHECK housing_plots_isolated PASS")
+print("SF_RIFT_MP_CHECK resources_crafting_isolation PASS")
+if not atStation(b,"bank_heist") then return end
+if activities.Perform(b,"bank_heist") then fail("free_bank_heist") return end
+if not atStation(b,"build_house") then return end
+if activities.Perform(b,"build_house") then fail("free_house") return end
+if not atStation(a,"soccer") then return end
+if not activities.Start(a,"soccer") then fail("soccer_start_failed") return end
+if activities.Hit(b,"soccer") then fail("stolen_soccer_score") return end
+task.wait(2.3)
+if not activities.Hit(a,"soccer") then fail("soccer_skill_failed") return end
+if a:GetAttribute("RRSportsWins")~=1 or b:GetAttribute("RRSportsWins")~=0 then
+ fail("soccer_not_isolated") return
+end
+print("SF_RIFT_MP_CHECK sports_timing_isolation PASS")
+if not atStation(a,"fishing") then return end
+if not activities.Start(a,"fishing") then fail("fishing_start_failed") return end
+task.wait(2.3)
+if not activities.Hit(a,"fishing") then fail("fishing_skill_failed") return end
+if a:GetAttribute("RRFish")~=2 or b:GetAttribute("RRFish")~=0 then
+ fail("fish_not_isolated") return
+end
+if not atStation(a,"sell_fish") then return end
+if not activities.Perform(a,"sell_fish") then fail("fish_sale_failed") return end
+if a:GetAttribute("RRFish")~=0 then fail("fish_not_consumed") return end
+print("SF_RIFT_MP_CHECK fishing_and_market PASS")
+if not atStation(a,"football") then return end
+if not activities.Start(a,"football") then fail("football_start_failed") return end
+task.wait(2.3)
+if not activities.Hit(a,"football") then fail("football_skill_failed") return end
+if (a:GetAttribute("RRLevel") or 0)<2 then fail("housing_level_not_reached") return end
+for i=2,5 do
+ if not atStation(a,"gather_wood_"..i) then return end
+ if not activities.Perform(a,"gather_wood_"..i) then fail("wood_gather_extra_"..i) return end
+end
+for _,id in ipairs({"gather_metal_alt2","gather_metal_alt3","gather_metal_alt4"}) do
+ if not atStation(a,id) then return end
+ if not activities.Perform(a,id) then fail("metal_gather_house_"..id) return end
+end
+if not atStation(a,"build_house") then return end
+if not activities.Perform(a,"build_house") then fail("house_build_failed") return end
+if a:GetAttribute("RRHouseOwned")~=true or b:GetAttribute("RRHouseOwned")==true then
+ fail("house_not_isolated") return
+end
+local house=world:FindFirstChild("Player Home "..a.UserId,true)
+if not house or house:GetAttribute("OwnerUserId")~=a.UserId then
+ fail("built_house_missing") return
+end
+if activities.Perform(a,"build_house") then fail("double_house_build") return end
+print("SF_RIFT_MP_CHECK housing_construction PASS")
+
 print("SF_RIFT_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:rift_multiplayer")
 ]==]

@@ -10,9 +10,10 @@ local Debris=game:GetService("Debris")
 local ServerScriptService=game:GetService("ServerScriptService")
 local WorldKit=require(ServerScriptService:WaitForChild("WorldKit"))
 local WorldExpansion=require(ServerScriptService:WaitForChild("WorldExpansion"))
+local WorldActivities=require(ServerScriptService:WaitForChild("WorldActivities"))
 local Vehicles=require(ServerScriptService:WaitForChild("VehicleService"))
 local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
-world:SetAttribute("Version","0.3.0")
+world:SetAttribute("Version","0.4.0")
 world:SetAttribute("Phase","CALM")
 world:SetAttribute("SecondsLeft",75)
 local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
@@ -158,6 +159,7 @@ local summit=part("Cloud Summit",Vector3.new(13,3,13),
 sign("SUMMIT BONUS +80 COINS",summit.Position+Vector3.new(0,7,0),palette[4])
 local event=Instance.new("RemoteEvent"); event.Name="RiftRaidersEvent"; event.Parent=ReplicatedStorage
 local action=Instance.new("RemoteEvent"); action.Name="RiftRaidersAction"; action.Parent=ReplicatedStorage
+local activitySignal=Instance.new("RemoteEvent"); activitySignal.Name="RiftActivitiesSignal"; activitySignal.Parent=ReplicatedStorage
 -- Two reusable first-person/third-person sci-fi weapons. The server decides hits.
 local ServerStorage=game:GetService("ServerStorage")
 local function makeWeapon(name,color,length)
@@ -205,6 +207,14 @@ local function sync(p)
  p:SetAttribute("RRQuestShards",s.quest.shards)
  p:SetAttribute("RRQuestDrones",s.quest.drones)
  p:SetAttribute("RRQuestSeals",s.quest.seals)
+ local r=s.resources or {}
+ p:SetAttribute("RRWood",r.wood or 0); p:SetAttribute("RRMetal",r.metal or 0)
+ p:SetAttribute("RRFish",r.fish or 0); p:SetAttribute("RRHide",r.hide or 0)
+ p:SetAttribute("RRToolkits",r.toolkit or 0)
+ p:SetAttribute("RRHeat",s.heat or 0)
+ p:SetAttribute("RRSportsWins",(s.jobs and s.jobs.sports) or 0)
+ p:SetAttribute("RRHeists",(s.jobs and s.jobs.heists) or 0)
+ p:SetAttribute("RRHouseOwned",(s.jobs and s.jobs.houseOwned) or false)
  local ls=p:FindFirstChild("leaderstats")
  if ls then
   ls.Level.Value=s.level; ls.Coins.Value=s.coins; ls.Rifts.Value=s.seals
@@ -225,6 +235,11 @@ local function reward(p,coins,xp,shards)
 end
 -- Seven terrain-based regions, interactive landmarks and server-owned portals.
 local newDestinations=WorldExpansion.Build(world,WorldKit,reward,tell,Vehicles.Spawn)
+local activityDestinations=WorldActivities.Build(world,{
+ getProfile=function(p) return profiles[p] end,
+ reward=reward,sync=sync,tell=tell,signal=activitySignal,
+ spawnVehicle=Vehicles.Spawn,hasVehicle=Vehicles.HasActive
+})
 local function quest(p,kind,n)
  local s=profiles[p]; if not s then return end
  s.quest[kind]=math.min(({shards=8,drones=3,seals=1})[kind],s.quest[kind]+(n or 1))
@@ -237,15 +252,26 @@ end
 local function save(p)
  local s=profiles[p]
  if not store or not s or not s.loaded then return end
- local payload={version=1,coins=s.coins,shards=s.shards,level=s.level,xp=s.xp,
+ local payload={version=2,coins=s.coins,shards=s.shards,level=s.level,xp=s.xp,
   blaster=s.blaster,shieldOwned=s.shieldOwned,petOwned=s.petOwned,
-  scatterOwned=s.scatterOwned,seals=s.seals}
+  scatterOwned=s.scatterOwned,seals=s.seals,
+  resources={
+   wood=cleanInt(s.resources.wood,9999),metal=cleanInt(s.resources.metal,9999),
+   fish=cleanInt(s.resources.fish,9999),hide=cleanInt(s.resources.hide,9999),
+   toolkit=cleanInt(s.resources.toolkit,9999)
+  },
+  jobs={
+   sports=cleanInt(s.jobs.sports,100000),heists=cleanInt(s.jobs.heists,100000),
+   bankCooldownUntil=cleanInt(s.jobs.bankCooldownUntil,9999999999),
+   carCooldownUntil=cleanInt(s.jobs.carCooldownUntil,9999999999),
+   houseOwned=s.jobs.houseOwned==true
+  }}
  local key="Player_"..p.UserId
  local ok,err=pcall(function()
   store:UpdateAsync(key,function(previous)
    local value=type(previous)=="table" and previous or {}
    -- Never regress an existing account to an older schema.
-   if type(value.version)=="number" and value.version>1 then return nil end
+   if type(value.version)=="number" and value.version>2 then return nil end
    return payload
   end)
  end)
@@ -255,17 +281,32 @@ local function init(p)
  local s={coins=0,shards=0,level=1,xp=0,blaster=1,shieldOwned=false,
   petOwned=false,scatterOwned=false,seals=0,quest={shards=0,drones=0,seals=0},
   shardTimes={},beaconTimes={},summitAt=0,lastBlast=0,lastDash=0,lastShield=0,
-  shieldUntil=0,travelAt=0,lastShoot=0,loaded=false,pet=nil}
+  shieldUntil=0,travelAt=0,lastShoot=0,loaded=false,pet=nil,
+  resources={wood=0,metal=0,fish=0,hide=0,toolkit=0},
+  jobs={sports=0,heists=0,bankCooldownUntil=0,carCooldownUntil=0,
+   houseOwned=false},heat=0}
  if store then
   local ok,data=pcall(function() return store:GetAsync("Player_"..p.UserId) end)
   if ok then
-   if type(data)=="table" and (data.version==nil or data.version==1) then
+   if type(data)=="table" and (data.version==nil or data.version==1 or data.version==2) then
     s.coins=cleanInt(data.coins,1000000); s.shards=cleanInt(data.shards,100000)
     s.level=math.max(1,cleanInt(data.level,100)); s.xp=cleanInt(data.xp,100000)
     s.blaster=math.clamp(cleanInt(data.blaster,4),1,4)
     s.shieldOwned=data.shieldOwned==true; s.petOwned=data.petOwned==true
     s.scatterOwned=data.scatterOwned==true
     s.seals=cleanInt(data.seals,1000000)
+    if type(data.resources)=="table" then
+     for _,key in ipairs({"wood","metal","fish","hide","toolkit"}) do
+      s.resources[key]=cleanInt(data.resources[key],9999)
+     end
+    end
+    if type(data.jobs)=="table" then
+     s.jobs.sports=cleanInt(data.jobs.sports,100000)
+     s.jobs.heists=cleanInt(data.jobs.heists,100000)
+     s.jobs.bankCooldownUntil=cleanInt(data.jobs.bankCooldownUntil,9999999999)
+     s.jobs.carCooldownUntil=cleanInt(data.jobs.carCooldownUntil,9999999999)
+     s.jobs.houseOwned=data.jobs.houseOwned==true
+    end
    end
    s.loaded=true
   else
@@ -274,6 +315,7 @@ local function init(p)
  end
  if not p.Parent then return end
  profiles[p]=s
+ WorldActivities.PlayerJoined(p)
  local ls=Instance.new("Folder"); ls.Name="leaderstats"; ls.Parent=p
  for _,name in ipairs({"Level","Coins","Rifts"}) do
   local v=Instance.new("IntValue"); v.Name=name; v.Parent=ls
@@ -295,6 +337,7 @@ local function init(p)
 end
 Players.PlayerAdded:Connect(init)
 Players.PlayerRemoving:Connect(function(p)
+ WorldActivities.PlayerRemoving(p)
  save(p)
  local s=profiles[p]; if s and s.pet then s.pet:Destroy() end
  profiles[p]=nil
@@ -326,6 +369,7 @@ end
 local destinations={HUB=Vector3.new(0,6,0)}
 for _,b in ipairs(biomes) do destinations[b.id]=b.center+Vector3.new(0,6,0) end
 for id,pos in pairs(newDestinations) do destinations[id]=pos end
+for id,pos in pairs(activityDestinations) do destinations[id]=pos end
 local function blast(p)
  local s=profiles[p]; local root=rootFor(p)
  if not s or not root then return end
@@ -497,6 +541,10 @@ action.OnServerEvent:Connect(function(p,kind,arg,extra)
  local s=profiles[p]; local root=rootFor(p)
  if not s or not root or type(kind)~="string" then return end
  local now=os.clock()
+ if kind=="ActivityHit" then
+  if type(arg)=="string" and #arg<32 then WorldActivities.Hit(p,arg) end
+  return
+ end
  if kind=="Blast" then blast(p); return end
  if kind=="Shoot" then shoot(p,arg,extra); return end
  if kind=="SpawnCar" or kind=="SpawnSnowmobile" or kind=="SpawnFlyingCar" then
@@ -639,4 +687,4 @@ task.spawn(function()
   Lighting.Ambient=Color3.fromRGB(120,132,179)
  end
 end)
-print("SF_RIFT_RAIDERS_SERVER_READY v0.2.0")
+print("SF_RIFT_RAIDERS_SERVER_READY v0.4.0")

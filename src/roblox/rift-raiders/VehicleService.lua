@@ -32,7 +32,7 @@ function Cars.Spawn(world,player,kind)
  if kind=="snowmobile" and (root.Position-Vector3.new(0,root.Position.Y,-520)).Magnitude>75 then
   return false,"SNOWMOBILES ARE AVAILABLE IN SNOWBOUND NORTH!"
  end
- if kind~="car" and kind~="snowmobile" and kind~="flyingcar" then
+ if kind~="car" and kind~="snowmobile" and kind~="flyingcar" and kind~="stolen" then
   return false,"UNKNOWN VEHICLE"
  end
  cooldown[player]=now
@@ -48,7 +48,9 @@ function Cars.Spawn(world,player,kind)
   m,seat=Expansion.Prefabs.Snowmobile(world,Vector3.new(spot.X,2,spot.Z),true)
  else
   m,seat=Kit.Car(world,cf,
-   kind=="flyingcar" and Color3.fromRGB(196,94,252) or Color3.fromRGB(74,215,245),true)
+   kind=="flyingcar" and Color3.fromRGB(196,94,252) or
+   kind=="stolen" and Color3.fromRGB(48,54,69) or Color3.fromRGB(74,215,245),true)
+  if kind=="stolen" then m.Name="Mission Getaway Car" end
   if kind=="flyingcar" then
    m.Name="Player Flying Car"
    for _,x in ipairs({-3.5,3.5}) do
@@ -63,8 +65,14 @@ function Cars.Spawn(world,player,kind)
  m:SetAttribute("OwnerUserId",player.UserId)
  active[player]={model=m,seat=seat,owner=player,lastOccupied=now,speed=0,kind=kind}
  return true,(kind=="snowmobile" and "SNOWMOBILE" or
-  kind=="flyingcar" and "FLYING CAR" or "HOVERCAR")..
+  kind=="flyingcar" and "FLYING CAR" or
+  kind=="stolen" and "MISSION GETAWAY CAR" or "HOVERCAR")..
   " SPAWNED! SIT IN THE DRIVER SEAT TO DRIVE."
+end
+function Cars.HasActive(player,kind)
+ local car=active[player]
+ return car~=nil and car.kind==kind and car.model~=nil and car.model.Parent~=nil
+  and car.model:GetPivot().Position or nil
 end
 local elapsed=0
 RunService.Heartbeat:Connect(function(dt)

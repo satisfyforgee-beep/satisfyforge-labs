@@ -1,9 +1,11 @@
 -- Rift Raiders responsive HUD; no Robux purchase prompts in the prototype.
 local Players=game:GetService("Players")
 local ReplicatedStorage=game:GetService("ReplicatedStorage")
+local TweenService=game:GetService("TweenService")
 local player=Players.LocalPlayer
 local action=ReplicatedStorage:WaitForChild("RiftRaidersAction")
 local event=ReplicatedStorage:WaitForChild("RiftRaidersEvent")
+local activitySignal=ReplicatedStorage:WaitForChild("RiftActivitiesSignal")
 local world=workspace:WaitForChild("RiftRaidersWorld")
 local gui=Instance.new("ScreenGui"); gui.Name="RiftRaidersHUD"
 gui.ResetOnSpawn=false; gui.IgnoreGuiInset=false; gui.Parent=player:WaitForChild("PlayerGui")
@@ -40,6 +42,9 @@ local missions=text("Missions","MISSIONS: SHARDS 0/8 | DRONES 0/3 | RIFTS 0/1",
  UDim2.new(.96,0,0,34),UDim2.new(.02,0,0,130),Color3.fromRGB(255,221,119))
 local hint=text("Hint","EXPLORE PORTALS • DRIVE CARS • HARVEST CROPS • VISIT JAPAN & CASTLES",
  UDim2.new(.96,0,0,32),UDim2.new(.02,0,0,169),Color3.fromRGB(228,239,255))
+local resourcesHud=text("ResourceHud","WOOD 0 • METAL 0 • FISH 0 • TOOLKITS 0 • HEAT 0",
+ UDim2.new(.64,0,0,31),UDim2.new(.02,0,1,-85),Color3.fromRGB(225,237,214))
+resourcesHud.TextSize=12
 local toast=text("Toast","",UDim2.new(.82,0,0,55),UDim2.new(.09,0,.68,0),Color3.fromRGB(255,222,99))
 toast.Visible=false
 local blast=button("Blast","⚡ BLAST",UDim2.fromOffset(112,62),
@@ -65,6 +70,8 @@ local shopButton=button("ShopToggle","SHOP",UDim2.fromOffset(98,47),
  UDim2.new(.02,0,1,-145),Color3.fromRGB(90,194,128))
 local mapButton=button("MapToggle","WORLD",UDim2.fromOffset(98,47),
  UDim2.new(.02,107,1,-145),Color3.fromRGB(87,149,229))
+local packButton=button("PackToggle","PACK",UDim2.fromOffset(98,47),
+ UDim2.new(.02,0,1,-202),Color3.fromRGB(144,117,86))
 blast.Activated:Connect(function() action:FireServer("Blast") end)
 dash.Activated:Connect(function() action:FireServer("Dash") end)
 shield.Activated:Connect(function() action:FireServer("Shield") end)
@@ -130,7 +137,8 @@ local function panel(name,heading)
  return f,scroll
 end
 local shop,shopList=panel("ShopPanel","EARNED COIN SHOP")
-local map,mapList=panel("MapPanel","EXPLORE 12 WORLD LOCATIONS")
+local map,mapList=panel("MapPanel","EXPLORE 14 WORLD LOCATIONS")
+local pack,packList=panel("PackPanel","YOUR RESOURCES & PROGRESS")
 local function item(parent,name,content,color,fn)
  local b=button(name,content,UDim2.new(1,-12,0,53),UDim2.fromOffset(0,0),color,parent)
  b.Activated:Connect(fn)
@@ -150,7 +158,7 @@ local places={
  {"CASTLE","CASTLE KINGDOM"},{"FARM","HARVEST VALLEY"},
  {"JAPAN","SAKURA JAPAN"},{"ARCTIC","SNOWBOUND NORTH"},
  {"MARINA","OCEAN MARINA"},{"SAFARI","WILDLIFE SAFARI"},
- {"AIRPORT","INTERNATIONAL AIRPORT"},
+ {"AIRPORT","INTERNATIONAL AIRPORT"},{"SPORTS","WORLD SPORTS COMPLEX"},{"HOMES","HOUSING MEADOWS"},
 }
 for i,entry in ipairs(places) do
  item(mapList,"Map"..entry[1],entry[2],
@@ -160,10 +168,81 @@ for i,entry in ipairs(places) do
   end)
 end
 shopButton.Activated:Connect(function()
- map.Visible=false; shop.Visible=not shop.Visible
+ map.Visible=false; pack.Visible=false; shop.Visible=not shop.Visible
 end)
 mapButton.Activated:Connect(function()
- shop.Visible=false; map.Visible=not map.Visible
+ shop.Visible=false; pack.Visible=false; map.Visible=not map.Visible
+end)
+packButton.Activated:Connect(function()
+ shop.Visible=false; map.Visible=false; pack.Visible=not pack.Visible
+end)
+local packSummary=item(packList,"PackSummary","RESOURCE INVENTORY",
+ Color3.fromRGB(66,93,124),function() end)
+packSummary.Active=false
+local packGuide=item(packList,"PackGuide",
+ "WOOD AT FARM + METAL IN CITY • BUILD HOME IN HOUSING MEADOWS",
+ Color3.fromRGB(80,105,135),function() end)
+packGuide.Active=false
+local packJobs=item(packList,"PackJobs",
+ "SPORTS IN SPORTS WORLD • FISH AT MARINA • HUNT/TRACK AT SAFARI",
+ Color3.fromRGB(80,105,135),function() end)
+packJobs.Active=false
+local packCrime=item(packList,"PackCrime",
+ "LEVEL 2: NPC CAR JOB • LEVEL 3: BANK VAULT • HEAT COOLS DOWN",
+ Color3.fromRGB(113,81,109),function() end)
+packCrime.Active=false
+local skill=Instance.new("Frame")
+skill.Name="SkillChallenge"; skill.AnchorPoint=Vector2.new(.5,.5)
+skill.Size=UDim2.new(.84,0,0,145); skill.Position=UDim2.new(.5,0,.43,0)
+skill.BackgroundColor3=Color3.fromRGB(17,31,51); skill.BorderSizePixel=0
+skill.Visible=false; skill.Parent=gui; round(skill,16)
+local skillTitle=Instance.new("TextLabel"); skillTitle.Name="ChallengeTitle"
+skillTitle.Size=UDim2.new(1,-20,0,34); skillTitle.Position=UDim2.fromOffset(10,5)
+skillTitle.BackgroundTransparency=1; skillTitle.Font=Enum.Font.GothamBlack
+skillTitle.TextSize=18; skillTitle.TextColor3=Color3.fromRGB(250,235,185)
+skillTitle.Text="TIME YOUR ACTION"; skillTitle.Parent=skill
+local meter=Instance.new("Frame"); meter.Name="TimingMeter"
+meter.Size=UDim2.new(1,-40,0,23); meter.Position=UDim2.fromOffset(20,45)
+meter.BackgroundColor3=Color3.fromRGB(66,85,110); meter.BorderSizePixel=0
+meter.Parent=skill; round(meter,5)
+local target=Instance.new("Frame"); target.Name="SuccessZone"
+target.Size=UDim2.new(.11,0,1,0); target.BackgroundColor3=Color3.fromRGB(99,243,149)
+target.BorderSizePixel=0; target.Parent=meter
+local marker=Instance.new("Frame"); marker.Name="MovingMarker"
+marker.Size=UDim2.fromOffset(6,28); marker.Position=UDim2.new(0,0,0,-2)
+marker.BackgroundColor3=Color3.fromRGB(255,241,163)
+marker.BorderSizePixel=0; marker.Parent=meter
+local skillHit=button("SkillHit","HIT / KICK / CAST",UDim2.new(.85,0,0,53),
+ UDim2.new(.075,0,0,79),Color3.fromRGB(54,158,198),skill)
+local currentSkill=nil
+local challengeSeq=0
+local activeTween=nil
+activitySignal.OnClientEvent:Connect(function(payload)
+ if type(payload)~="table" or payload.kind~="skill" or type(payload.id)~="string" then return end
+ challengeSeq+=1
+ local seq=challengeSeq
+ currentSkill=payload.id
+ skillTitle.Text=tostring(payload.title or "SKILL CHALLENGE")
+ skillHit.Text="TAP WHEN MARKER REACHES GREEN!"
+ skill.Visible=true
+ local duration=math.clamp(tonumber(payload.duration) or 3.5,2,5)
+ local delay=math.clamp(tonumber(payload.delay) or 2,0,duration)
+ target.Position=UDim2.new(math.clamp(delay/duration-.055,0,.89),0,0,0)
+ marker.Position=UDim2.new(0,0,0,-2)
+ if activeTween then activeTween:Cancel() end
+ activeTween=TweenService:Create(marker,TweenInfo.new(duration,Enum.EasingStyle.Linear),
+  {Position=UDim2.new(1,-6,0,-2)})
+ activeTween:Play()
+ task.delay(duration+.3,function()
+  if challengeSeq==seq then skill.Visible=false; currentSkill=nil end
+ end)
+end)
+skillHit.Activated:Connect(function()
+ if not currentSkill then return end
+ local id=currentSkill
+ currentSkill=nil; skill.Visible=false
+ if activeTween then activeTween:Cancel() end
+ action:FireServer("ActivityHit",id)
 end)
 local seq=0
 event.OnClientEvent:Connect(function(message)
@@ -183,6 +262,19 @@ local function update()
  local blasterLevel=player:GetAttribute("RRBlaster") or 1
  local seals=player:GetAttribute("RRSeals") or 0
  stats.Text="LEVEL "..level.."  |  "..coins.." COINS  |  "..shards.." SHARDS"
+ resourcesHud.Text="WOOD "..(player:GetAttribute("RRWood") or 0)..
+  " • METAL "..(player:GetAttribute("RRMetal") or 0)..
+  " • FISH "..(player:GetAttribute("RRFish") or 0)..
+  " • TOOLS "..(player:GetAttribute("RRToolkits") or 0)..
+  " • HEAT "..(player:GetAttribute("RRHeat") or 0)
+ packSummary.Text="WOOD "..(player:GetAttribute("RRWood") or 0)..
+  " • METAL "..(player:GetAttribute("RRMetal") or 0)..
+  " • FISH "..(player:GetAttribute("RRFish") or 0)..
+  " • HIDES "..(player:GetAttribute("RRHide") or 0)..
+  " • TOOLKITS "..(player:GetAttribute("RRToolkits") or 0)..
+  " • SPORTS WINS "..(player:GetAttribute("RRSportsWins") or 0)..
+  " • HEISTS "..(player:GetAttribute("RRHeists") or 0)..
+  " • HOME "..(player:GetAttribute("RRHouseOwned") and "BUILT" or "NOT BUILT")
  progression.Text="BLASTER "..blasterLevel.."  |  RIFTS "..seals.."  |  XP "..xp
  missions.Text="MISSIONS: SHARDS "..(player:GetAttribute("RRQuestShards") or 0)..
   "/8  •  DRONES "..(player:GetAttribute("RRQuestDrones") or 0)..
@@ -197,7 +289,8 @@ local function update()
   "ADOPT RIFTLING PET • 250 COINS"
 end
 for _,name in ipairs({"RRCoins","RRShards","RRLevel","RRXP","RRBlaster",
- "RRShield","RRPet","RRScatter","RRSeals","RRDeliveryTarget","RRQuestShards","RRQuestDrones","RRQuestSeals"}) do
+ "RRShield","RRPet","RRScatter","RRSeals","RRDeliveryTarget","RRQuestShards",
+ "RRWood","RRMetal","RRFish","RRHide","RRToolkits","RRHeat","RRSportsWins","RRHeists","RRHouseOwned","RRQuestDrones","RRQuestSeals"}) do
  player:GetAttributeChangedSignal(name):Connect(update)
 end
 local function phaseUpdate()

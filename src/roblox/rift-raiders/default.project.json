@@ -15,6 +15,9 @@
       },
       "WorldExpansion": {
         "$path": "WorldExpansion.lua"
+      },
+      "WorldActivities": {
+        "$path": "WorldActivities.lua"
       }
     },
     "StarterPlayer": {

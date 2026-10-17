@@ -1,9 +1,10 @@
 local RunService=game:GetService("RunService")
 RunService:Run()
 task.wait(3)
+local success,problem=pcall(function()
 local world=workspace:WaitForChild("RiftRaidersWorld",20)
 assert(world,"missing world")
-assert(world:GetAttribute("Version")=="0.3.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.4.0","version mismatch")
 local function count(name)
  local n=0
  for _,v in ipairs(world:GetDescendants()) do if v.Name==name then n+=1 end end
@@ -40,6 +41,29 @@ assert(count("Marina Dock")==1,"marina missing")
 assert(count("City Bank")==1,"bank missing")
 assert(count("Passenger Jet Display")==1,"airport jet missing")
 assert(count("Animal Body")>=6,"animals missing")
+assert(count("Sports and Life Activities")==1,"activity world missing")
+assert(count("Sports Plaza")==1,"sports district missing")
+assert(count("Player Housing Neighborhood")==1,"housing district missing")
+assert(count("Home Floor")==0,"unowned houses should not spawn in smoke")
+assert(count("Housing Construction Office")==1,"housing office missing")
+assert(count("Soccer Pitch")==1,"soccer pitch missing")
+assert(count("Football Field")==1,"football field missing")
+assert(count("Baseball Diamond")==1,"baseball diamond missing")
+assert(count("Stadium Floodlight")==4,"sports floodlights missing")
+for _,id in ipairs({
+ "football","baseball","soccer","fishing","hunting",
+ "gather_wood","gather_wood_2","gather_wood_3","gather_wood_4","gather_wood_5",
+ "gather_metal","gather_metal_alt","gather_metal_alt2","gather_metal_alt3","gather_metal_alt4","craft_toolkit","sell_fish",
+ "bank_heist","steal_car","chop_shop","build_house"
+}) do
+ local found=false
+ for _,node in ipairs(world:GetDescendants()) do
+  if node:GetAttribute("ActivityId")==id then found=true; break end
+ end
+ assert(found,"activity missing: "..id)
+end
+assert(game:GetService("ReplicatedStorage"):FindFirstChild("RiftActivitiesSignal"),
+ "activity challenge signal missing")
 local terrainMaterials,terrainOccupancy=workspace.Terrain:ReadVoxels(
  Region3.new(Vector3.new(520,-8,-8),Vector3.new(528,0,0)):ExpandToGrid(4),4)
 assert(terrainOccupancy[1][1][1]>.1,"castle terrain not filled")
@@ -47,5 +71,6 @@ assert(terrainMaterials[1][1][1]==Enum.Material.Grass,"castle terrain material w
 assert(game:GetService("ServerScriptService"):FindFirstChild("VehicleService"),"vehicle service missing")
 assert(game:GetService("ReplicatedStorage"):FindFirstChild("RiftRaidersAction"),"action missing")
 assert(game:GetService("ReplicatedStorage"):FindFirstChild("RiftRaidersEvent"),"event missing")
-print("SF_RIFT_SMOKE_PASS")
+end)
+if success then print("SF_RIFT_SMOKE_PASS") else warn("SF_RIFT_SMOKE_FAIL "..tostring(problem)) end
 RunService:Stop()

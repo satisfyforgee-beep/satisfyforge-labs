@@ -2,11 +2,22 @@
 
 An original multiplayer Roblox game, created separately from all existing SatisfyForge games.
 
-## Playable loop (v0.3 prototype)
+## Playable loop (v0.4 prototype)
 
-Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach Neon Metropolis, Prism Wilds, Magma Outpost, or Cloud Kingdom. Collect 36 scattered shards, BLAST 12 roaming drones, spend 12 shards to seal one of four rifts, level up, earn coins, and unlock upgrades. Complete repeatable missions for bonus coins. During a periodic 25-second Rift Surge, eligible coin rewards double. Cloud Kingdom includes a five-platform summit challenge. Version 0.2 added reusable scenery, arcade hovercars and two aimable sci-fi guns. Version 0.3 expands the map with seven new terrain worlds, a dozen reusable new prefabs, portal travel, activity rewards, snowmobiles, a limited jetpack boost and flying cars.
+Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach Neon Metropolis, Prism Wilds, Magma Outpost, or Cloud Kingdom. Collect 36 scattered shards, BLAST 12 roaming drones, spend 12 shards to seal one of four rifts, level up, earn coins, and unlock upgrades. Complete repeatable missions for bonus coins. During a periodic 25-second Rift Surge, eligible coin rewards double. Cloud Kingdom includes a five-platform summit challenge. Version 0.2 added reusable scenery, arcade hovercars and two aimable sci-fi guns. Version 0.3 expanded the map with seven terrain worlds, reusable prefabs, portals, snowmobiles, jetpacks and flying cars. Version 0.4 adds a sports complex, housing neighborhood, resource gathering, crafting, fishing and wildlife minigames, fictional heists and vehicle jobs, plus player-profile schema v2.
 
 ## Implemented
+
+- Football field-goal, baseball batting and soccer penalty timing minigames with animated shot visuals.
+- Marina fishing with fish inventory/market sales; non-graphic safari wildlife tracking.
+- Farm wood and city scrap metal gathering; toolkit crafting at hub workshop.
+- Fictional bank-vault heist (level 3), NPC car theft/delivery (level 2), cooldowns and wanted heat.
+- Housing Meadows: twelve plots, craftable furnished houses at level 2, ownership persisted across sessions.
+- Server-owned resources, job progress, sports wins and house ownership added to DataStore v2 with v1 migration.
+- PACK inventory and mobile timing HUD, SPORTS and HOMES destinations.
+- Durable reusable open-world idea library at src/roblox/OPEN_WORLD_CREATOR_TOOLKIT.md and game-specific GAME_DESIGN_BIBLE.md.
+
+
 
 - Seven additional portal-connected worlds: Castle Kingdom, Harvest Valley, Sakura Japan, Snowbound North, Ocean Marina, Wildlife Safari and International Airport.
 - Roblox terrain grass, sand, snow and ocean water; castles, barns, crops, Japan-style pagoda and torii, runway and airplane, dock and boats, animal models, jetpack station and bank.
