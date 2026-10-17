@@ -25,6 +25,53 @@ local corner=Instance.new("UICorner"); corner.CornerRadius=UDim.new(0,12); corne
 upgrade.Activated:Connect(function()
  ReplicatedStorage:WaitForChild("MutationRushAction"):FireServer("BuySpeed")
 end)
+-- Teleport menu: big world, short time to the fun. Server validates every destination.
+local travel=Instance.new("TextButton"); travel.Name="WorldMapButton"
+travel.Size=UDim2.fromOffset(142,48); travel.AnchorPoint=Vector2.new(0,1)
+travel.Position=UDim2.new(.03,0,.91,0); travel.Text="WORLD MAP"
+travel.Font=Enum.Font.GothamBlack; travel.TextSize=16
+travel.TextColor3=Color3.new(1,1,1); travel.BackgroundColor3=Color3.fromRGB(69,194,245)
+travel.Parent=gui
+local travelCorner=Instance.new("UICorner"); travelCorner.CornerRadius=UDim.new(0,12); travelCorner.Parent=travel
+local map=Instance.new("ScrollingFrame"); map.Name="WorldMap"
+map.Size=UDim2.new(.9,0,.54,0); map.Position=UDim2.new(.05,0,.23,0)
+map.BackgroundColor3=Color3.fromRGB(27,35,69); map.BackgroundTransparency=.05
+map.BorderSizePixel=0; map.ScrollBarThickness=6; map.Visible=false; map.Parent=gui
+local mapCorner=Instance.new("UICorner"); mapCorner.CornerRadius=UDim.new(0,16); mapCorner.Parent=map
+local list=Instance.new("UIListLayout"); list.Padding=UDim.new(0,7); list.Parent=map
+local mapPad=Instance.new("UIPadding"); mapPad.PaddingTop=UDim.new(0,10)
+mapPad.PaddingLeft=UDim.new(0,10); mapPad.PaddingRight=UDim.new(0,10); mapPad.Parent=map
+local locations={
+ {"RACE","SPEED RACE + LASERS"},{"CITY","CITY DELIVERY"},{"CAVES","CRYSTAL HUNT"},
+ {"SKY","SKY PARKOUR"},{"DOME","SURVIVAL DOME"},
+ {"TREASURE","TREASURE ISLAND"},{"FESTIVAL","COLOR CHALLENGE"},
+}
+for i,entry in ipairs(locations) do
+ local b=Instance.new("TextButton"); b.Name="Travel"..entry[1]
+ b.Size=UDim2.new(1,-10,0,47); b.Text=entry[2]
+ b.Font=Enum.Font.GothamBlack; b.TextSize=15; b.TextColor3=Color3.new(1,1,1)
+ b.BackgroundColor3=({Color3.fromRGB(255,82,164),Color3.fromRGB(65,185,235),Color3.fromRGB(157,92,255)})[(i-1)%3+1]
+ b.Parent=map
+ local round=Instance.new("UICorner"); round.CornerRadius=UDim.new(0,10); round.Parent=b
+ b.Activated:Connect(function()
+  ReplicatedStorage:WaitForChild("MutationRushAction"):FireServer("Travel",entry[1])
+  map.Visible=false
+ end)
+end
+map.CanvasSize=UDim2.fromOffset(0,#locations*54+18)
+travel.Activated:Connect(function() map.Visible=not map.Visible end)
+local petButton=Instance.new("TextButton"); petButton.Name="FreePet"
+petButton.Size=UDim2.fromOffset(142,42); petButton.AnchorPoint=Vector2.new(1,1)
+petButton.Position=UDim2.new(.97,0,.79,0); petButton.Text="PET: 120 COINS"
+petButton.Font=Enum.Font.GothamBlack; petButton.TextSize=13
+petButton.TextColor3=Color3.new(1,1,1); petButton.BackgroundColor3=Color3.fromRGB(150,83,244)
+petButton.Parent=gui
+local petCorner=Instance.new("UICorner"); petCorner.CornerRadius=UDim.new(0,12); petCorner.Parent=petButton
+petButton.Activated:Connect(function()
+ ReplicatedStorage:WaitForChild("MutationRushAction"):FireServer("BuyPet")
+end)
+local quest=label("WorldQuest","WORLD QUEST: 0/3 ACTIVITIES = 150 COINS",
+ UDim2.new(.9,0,0,29),UDim2.new(.05,0,0,164),Color3.fromRGB(255,225,69))
 local toast=label("Toast","",UDim2.new(.85,0,0,50),UDim2.new(.075,0,.7,0),Color3.fromRGB(255,223,66))
 toast.Visible=false
 local seq=0
@@ -37,10 +84,11 @@ local function update()
  local stage=player:GetAttribute("MRStage") or 0
  status.Text="STAGE "..stage.."/12 | SPEED "..(player:GetAttribute("MRSpeed") or 18)
  coins.Text=(player:GetAttribute("MRCoins") or 0).." COINS | "..(player:GetAttribute("MRMutations") or 0).." MUTATIONS"
+ quest.Text="WORLD QUEST: "..(player:GetAttribute("MRQuest") or 0).."/3 ACTIVITIES = 150 COINS"
  objective.Text=stage>=12 and "REACH THE GREEN FINISH!" or
   "COLLECT ORBS + DODGE LASERS | NEXT "..(stage+1).."/12"
 end
-for _,key in ipairs({"MRStage","MRSpeed","MRCoins","MRMutations"}) do
+for _,key in ipairs({"MRStage","MRSpeed","MRCoins","MRMutations","MRQuest"}) do
  player:GetAttributeChangedSignal(key):Connect(update)
 end
 update()
