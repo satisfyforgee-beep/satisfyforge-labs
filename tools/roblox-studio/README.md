@@ -27,6 +27,17 @@ python3 tools/roblox-studio/run_smoke.py \
   --game brainrot-rush
 ```
 
+## Multiplayer regression gates
+
+```bash
+python3 tools/roblox-studio/run_multiplayer.py
+python3 tools/roblox-studio/run_tile_multiplayer.py
+python3 tools/roblox-studio/run_snack_multiplayer.py
+python3 tools/roblox-studio/release_preflight.py
+```
+
+The Snackquake two-client Studio test checks independent player profiles, upgrades for each client, denial of unowned creature equip/fusion, and rejection of an upgrade without enough Fizz. It also confirms that Studio sessions do not write live DataStore data. These are **simulated Studio clients**, not a substitute for live save/rejoin, full rescue-loop playtesting, or physical mobile-device testing.
+
 ## Existing-place publishing helper
 
 `publish_place.py` prepares the final Open Cloud upload step without storing credentials. It is a dry run unless `--confirm-publish` is supplied.

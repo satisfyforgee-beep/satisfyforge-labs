@@ -23,7 +23,7 @@ end
 local players = waitFor(function()
  local list = Players:GetPlayers()
  if #list >= 2 then return list end
-end, 20)
+end, 40)
 if not players then fail("missing_two_clients") return end
 local a,b = players[1],players[2]
 local function root(p)

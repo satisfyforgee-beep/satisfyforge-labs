@@ -20,6 +20,12 @@ Separate Roblox survival-game prototype extracted from the verified root archive
 - Automated runner: `python3 tools/roblox-studio/run_tile_multiplayer.py`.
 - These checks do not establish full 18-wave payout correctness, mobile controls, live DataStore saving, performance on low-end phones, or public-launch readiness.
 
+## October 17, 2026 payout hardening
+
+- The final survivor payout now rechecks each contestant's live character, health and arena bounds immediately before granting Wins/Coins. This closes the short gap between the last 0.2-second elimination sample and the payout loop.
+- The Studio multiplayer test's startup wait was extended to accommodate slow two-client launches; this does not waive any assertion.
+- Full 18-wave payout correctness still requires a dedicated end-to-end test; the source change is not proof of that gate.
+
 ## Source
 
 - `ServerScriptService/Game.server.lua`

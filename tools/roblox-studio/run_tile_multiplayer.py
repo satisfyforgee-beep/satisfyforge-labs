@@ -16,7 +16,7 @@ MARKER = "SF_TILE_MP_RESULT ok=true result=PASS:tile_panic_boundary"
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--timeout", type=int, default=70)
+    ap.add_argument("--timeout", type=int, default=95)
     ap.add_argument("--keep-artifacts", action="store_true")
     args = ap.parse_args()
     studio = Path(os.environ.get("ROBLOX_STUDIO", "/Applications/RobloxStudio.app/Contents/MacOS/RobloxStudio"))
@@ -45,9 +45,16 @@ def main() -> int:
             time.sleep(.4)
     finally:
         if proc.poll() is None:
-            os.killpg(proc.pid, signal.SIGTERM)
+            try: os.killpg(proc.pid, signal.SIGTERM)
+            except (PermissionError, ProcessLookupError):
+                try: proc.terminate()
+                except (PermissionError, ProcessLookupError): pass
             try: proc.wait(timeout=4)
-            except subprocess.TimeoutExpired: os.killpg(proc.pid, signal.SIGKILL)
+            except subprocess.TimeoutExpired:
+                try: os.killpg(proc.pid, signal.SIGKILL)
+                except (PermissionError, ProcessLookupError):
+                    try: proc.kill()
+                    except (PermissionError, ProcessLookupError): pass
     data = log.read_text(encoding="utf-8", errors="replace")
     lines = [line for line in data.splitlines() if "SF_TILE_MP" in line or "[FLog::CreatorError]" in line]
     print("\n".join(lines[-70:]), flush=True)

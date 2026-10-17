@@ -85,24 +85,30 @@ def main() -> int:
     multiplayer = run([sys.executable, "tools/roblox-studio/run_multiplayer.py"])
     mobile = run([sys.executable, "tools/roblox-studio/run_mobile.py"])
     tile_multiplayer = run([sys.executable, "tools/roblox-studio/run_tile_multiplayer.py"])
+    snackquake_multiplayer = run([sys.executable, "tools/roblox-studio/run_snack_multiplayer.py"])
     snackquake_unit = run([sys.executable, "src/roblox/snackquake/tests/run_tests.py"])
     targets = load_json(TARGETS)
     target_saved = all(
         targets.get(name, {}).get("universe_id") and targets.get(name, {}).get("place_id")
         for name in ("snackquake", "brainrot_rush_qa")
     )
+    tile_target_saved = bool(targets.get("tile_panic", {}).get("universe_id") and targets.get("tile_panic", {}).get("place_id"))
     creator_auth = creator_dashboard_authenticated()
     persistence = validate_live_persistence(targets)
     blockers=[]
     automation_warnings=[]
     if not target_saved:
-        blockers.append("Verified Roblox universe/place IDs are missing from the repository.")
+        blockers.append("Verified Snackquake/Brainrot Rush QA universe/place IDs are missing from the repository.")
+    if not tile_target_saved:
+        blockers.append("Tile Panic has no verified private Roblox universe/place target; uploads remain blocked.")
     if not creator_auth:
         automation_warnings.append("Creator Dashboard browser session is not authenticated; Studio remains the current authenticated QA path.")
     if multiplayer["returncode"] != 0:
         blockers.append("Automated Brainrot Rush two-client multiplayer behavior gate is not passing reliably.")
     if tile_multiplayer["returncode"] != 0:
         blockers.append("Automated Tile Panic two-client lobby-escape regression is not passing.")
+    if snackquake_multiplayer["returncode"] != 0:
+        blockers.append("Automated Snackquake two-client action isolation gate is not passing.")
     if snackquake_unit["returncode"] != 0:
         blockers.append("Snackquake pure-rules or persistence regression suite is not passing.")
     if not persistence["passed"]:
@@ -111,6 +117,8 @@ def main() -> int:
         blockers.append("Automated iPhone/Galaxy portrait+landscape HUD bounds pass, but real-device touch-control comfort and physical Android/iPhone UX are not yet verified.")
     else:
         blockers.append("Automated phone-shaped portrait/landscape HUD regression gate is not passing.")
+    blockers.append("Snackquake: live save/rejoin, full rescue-loop, physical mobile UX and performance gates remain unverified.")
+    blockers.append("Tile Panic: full 18-wave reward/persistence flow, physical mobile UX and performance gates remain unverified.")
     blockers.append("Owner review of public metadata/content questionnaire is still required before public launch.")
     report = {
         "generated_at": now,
@@ -119,11 +127,13 @@ def main() -> int:
         "brainrot_multiplayer_behavior": {"passed": multiplayer["returncode"] == 0, **multiplayer},
         "brainrot_mobile_viewport": {"passed": mobile["returncode"] == 0, **mobile},
         "tile_panic_multiplayer_boundary": {"passed": tile_multiplayer["returncode"] == 0, **tile_multiplayer},
+        "snackquake_multiplayer_actions": {"passed": snackquake_multiplayer["returncode"] == 0, **snackquake_multiplayer},
         "snackquake_unit_regressions": {"passed": snackquake_unit["returncode"] == 0, **snackquake_unit},
         "brainrot_live_persistence": persistence,
         "roblox_open_cloud_key_in_keychain": keychain_present(),
         "creator_dashboard_authenticated": creator_auth,
         "publish_target_ids_saved": target_saved,
+        "tile_panic_publish_target_saved": tile_target_saved,
         "publish_targets": targets,
         "automation_warnings": automation_warnings,
         "release_blockers": blockers,
@@ -136,11 +146,13 @@ def main() -> int:
     print(f"BRAINROT_MULTIPLAYER_BEHAVIOR={'PASS' if report['brainrot_multiplayer_behavior']['passed'] else 'FAIL'}")
     print(f"BRAINROT_MOBILE_VIEWPORT={'PASS' if report['brainrot_mobile_viewport']['passed'] else 'FAIL'}")
     print(f"TILE_PANIC_MULTIPLAYER={'PASS' if report['tile_panic_multiplayer_boundary']['passed'] else 'FAIL'}")
+    print(f"SNACKQUAKE_MULTIPLAYER={'PASS' if report['snackquake_multiplayer_actions']['passed'] else 'FAIL'}")
     print(f"SNACKQUAKE_UNIT={'PASS' if report['snackquake_unit_regressions']['passed'] else 'FAIL'}")
     print(f"BRAINROT_LIVE_PERSISTENCE={'PASS' if persistence['passed'] else 'FAIL'}")
     print(f"ROBLOX_KEYCHAIN={'PRESENT' if report['roblox_open_cloud_key_in_keychain'] else 'MISSING'}")
     print(f"CREATOR_DASHBOARD={'AUTHENTICATED' if creator_auth else 'NOT_AUTHENTICATED'}")
     print(f"PUBLISH_TARGET_IDS={'PRESENT' if target_saved else 'MISSING'}")
+    print(f"TILE_PANIC_PUBLISH_TARGET={'PRESENT' if tile_target_saved else 'MISSING'}")
     print(f"AUTOMATION_WARNINGS={len(automation_warnings)}")
     print(f"BLOCKERS={len(blockers)}")
     return 0 if all((
@@ -149,6 +161,7 @@ def main() -> int:
         report['brainrot_multiplayer_behavior']['passed'],
         report['brainrot_mobile_viewport']['passed'],
         report['tile_panic_multiplayer_boundary']['passed'],
+        report['snackquake_multiplayer_actions']['passed'],
         report['snackquake_unit_regressions']['passed'],
         persistence['passed'],
     )) else 1

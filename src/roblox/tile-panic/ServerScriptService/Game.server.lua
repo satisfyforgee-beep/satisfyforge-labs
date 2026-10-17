@@ -104,13 +104,24 @@ while true do
    end
    task.wait(.8)
   end
-  inRound=false
-  local winners=aliveCount()
+  -- Recheck eligibility at payout; a player falling or escaping during the
+  -- last 0.2-second boundary sample must never receive a survivor reward.
+  local winners=0
   for p in pairs(active) do
-   if p.Parent==Players and p:FindFirstChild('leaderstats') then
+   local char=p.Character
+   local root=char and char:FindFirstChild('HumanoidRootPart')
+   local hum=char and char:FindFirstChildOfClass('Humanoid')
+   local pos=root and root.Position
+   if p.Parent==Players and p:FindFirstChild('leaderstats') and hum and hum.Health>0
+      and pos and pos.Y>=-4 and pos.Y<=60
+      and math.abs(pos.X)<=34 and math.abs(pos.Z)<=34 then
     p.leaderstats.Wins.Value+=1;p.leaderstats.Coins.Value+=50
+    winners+=1
+   else
+    active[p]=nil
    end
   end
+  inRound=false
   status('Round over! '..winners..' survivor(s). Winners earn 50 coins!')
   task.wait(5)
   inRound=false

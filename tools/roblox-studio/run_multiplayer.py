@@ -34,11 +34,17 @@ def stop_group(proc: subprocess.Popen) -> None:
     if proc.poll() is not None: return
     try: os.killpg(proc.pid, signal.SIGTERM)
     except ProcessLookupError: return
+    except PermissionError:
+        try: proc.terminate()
+        except (ProcessLookupError, PermissionError): return
     deadline=time.monotonic()+4
     while proc.poll() is None and time.monotonic()<deadline: time.sleep(0.1)
     if proc.poll() is None:
         try: os.killpg(proc.pid, signal.SIGKILL)
         except ProcessLookupError: pass
+        except PermissionError:
+            try: proc.kill()
+            except (ProcessLookupError, PermissionError): pass
 
 
 def one_attempt(studio: Path, place: Path, log: Path, timeout: int) -> tuple[bool,str]:
