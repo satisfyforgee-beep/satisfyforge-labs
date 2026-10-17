@@ -55,3 +55,6 @@ This is a **genuine visual improvement**, but not a completed GTA/Sims-scale wor
 - No Robux transactions or public publishing were activated.
 
 **Source is stored in GitHub** for reproducibility. Don't replace the official detailed city with generated cubes again.
+
+## v0.9 gameplay attachment
+The imported district now also serves as the life-simulation map. `Life.AttachDowntown()` adds small storefront plaques and invisible proximity anchors after `ModernCityIntegration` moves the official model to its runtime position. The original city meshes remain untouched. All 20 careers and six shopping categories can be used in this district, and the original procedural Life City is preserved as a fallback/secondary area.

@@ -7,6 +7,8 @@ assert(world,"missing world")
 local imported=workspace:FindFirstChild("OfficialModernCityDistrict")
 assert(imported and imported:IsA("Model"),"official modern city missing")
 assert(imported:GetAttribute("ImportedScriptsRemoved")==true,"imported script safety missing")
+assert(imported:GetAttribute("LifeSimulationIntegrated")==true,"downtown life integration missing")
+assert(imported:GetAttribute("DowntownCareerCount")==20,"downtown career count mismatch")
 local meshCount=0
 for _,obj in ipairs(imported:GetDescendants()) do
  if obj:IsA("MeshPart") then meshCount+=1 end
@@ -39,13 +41,21 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.8.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.9.0","version mismatch")
 local function count(name)
  local n=0
  for _,v in ipairs(world:GetDescendants()) do if v.Name==name then n+=1 end end
  return n
 end
 assert(count("Life City Simulation")==1,"life city missing")
+assert(count("Modern Downtown Life Services")==1,"downtown life services missing")
+assert(count("Downtown Employment Center")==1,"downtown employment office missing")
+assert(count("Downtown Store TECH")==1,"downtown technology storefront missing")
+assert(count("Downtown Store BUSINESS")==1,"downtown commerce storefront missing")
+assert(count("Downtown Worksite RETAIL")==1,"downtown retail worksite missing")
+assert(count("Downtown Worksite POLICE")==1,"downtown police worksite missing")
+assert(count("Downtown Worksite PILOT")==1,"downtown pilot worksite missing")
+assert(count("Downtown Job Task BARISTA 1")==1,"downtown job tasks missing")
 assert(count("Career and Employment Center")==1,"career center missing")
 assert(count("Creator Technology Store")==1,"technology store missing")
 assert(count("Clothing Boutique")==1,"apparel store missing")
@@ -67,7 +77,11 @@ assert(count("AI Police Officer 1")==1,"police AI missing")
 assert(count("Media Recording Studio")==1,"creator studio missing")
 local life=require(game:GetService("ReplicatedStorage"):WaitForChild("LifeCatalog"))
 assert(#life.Careers==20,"careers missing")
-assert(#life.Items>=28,"life catalog too small")
+assert(#life.Items>=48,"expanded real-world catalog too small")
+assert(life.ById.TABLET and life.ById.COUCH and life.ById.CONDO,
+ "expanded everyday shopping catalog missing")
+assert(life.BusinessPayouts.RESTAURANT_BUSINESS==230,
+ "expanded business income missing")
 assert(life.ById.YACHT.price==35000,"yacht pricing missing")
 assert(life.ById.MANSION.level==30,"mansion level gate missing")
 assert(life.SanitizeOwned({PHONE=true,HACKED=true}).HACKED==nil,

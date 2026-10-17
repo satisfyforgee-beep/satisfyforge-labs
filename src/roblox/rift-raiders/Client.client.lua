@@ -184,7 +184,8 @@ local function panel(name,heading)
  scroll.Size=UDim2.new(1,-24,1,-64); scroll.Position=UDim2.fromOffset(12,55)
  scroll.BackgroundTransparency=1; scroll.ScrollBarThickness=5
  scroll.BorderSizePixel=0; scroll.Parent=f
- local layout=Instance.new("UIListLayout"); layout.Padding=UDim.new(0,8); layout.Parent=scroll
+ local layout=Instance.new("UIListLayout"); layout.Padding=UDim.new(0,8)
+ layout.SortOrder=Enum.SortOrder.LayoutOrder; layout.Parent=scroll
  layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
   scroll.CanvasSize=UDim2.fromOffset(0,layout.AbsoluteContentSize.Y+12)
  end)
@@ -193,9 +194,12 @@ end
 local shop,shopList=panel("ShopPanel","EARNED COIN SHOP + PRESTIGE")
 local map,mapList=panel("MapPanel","EXPLORE 16 WORLD LOCATIONS")
 local pack,packList=panel("PackPanel","YOUR RESOURCES & PROGRESS")
-local lifePanel,lifeList=panel("LifePanel","LIFE CITY • CAREERS & SHOPPING")
+local lifePanel,lifeList=panel("LifePanel","RIFTLIFE • DOWNTOWN CAREERS & SHOPPING")
+local itemOrder=setmetatable({}, {__mode="k"})
 local function item(parent,name,content,color,fn)
  local b=button(name,content,UDim2.new(1,-12,0,53),UDim2.fromOffset(0,0),color,parent)
+ itemOrder[parent]=(itemOrder[parent] or 0)+1
+ b.LayoutOrder=itemOrder[parent]
  b.Activated:Connect(fn)
  return b
 end
@@ -222,39 +226,87 @@ local lifeSummary=item(lifeList,"LifeSummary","CAREER • FOLLOWERS • FINES",
  Color3.fromRGB(67,102,118),function() end)
 lifeSummary.Active=false
 local lifeHelp=item(lifeList,"LifeHelp",
- "GO TO LIFE CITY • APPLY AT CAREER CENTER • WORK AT YOUR JOB • BUY AT STORES",
+ "DOWNTOWN: EMPLOYMENT CENTER • REAL STOREFRONTS • WORKPLACES • BUSINESSES",
  Color3.fromRGB(70,89,116),function() end)
 lifeHelp.Active=false
 local lifeTask=item(lifeList,"LifeTask","NO ACTIVE SHIFT",
  Color3.fromRGB(79,119,101),function() end)
 lifeTask.Active=false
+local lifeMode="CAREERS"
+local careerControls={}
+local shopControls={}
+local updateLifeView
+local careerViewButton=item(lifeList,"CareerView","CAREERS • APPLY & WORK",
+ Color3.fromRGB(69,112,137),function()
+  lifeMode="CAREERS"; updateLifeView()
+ end)
+local shoppingViewButton=item(lifeList,"ShoppingView","SHOPPING • REAL-WORLD CATALOG",
+ Color3.fromRGB(104,94,128),function()
+  lifeMode="SHOP"; updateLifeView()
+ end)
 local careerHeading=item(lifeList,"CareerHeading","AVAILABLE REAL-WORLD CAREERS",
  Color3.fromRGB(83,112,145),function() end)
-careerHeading.Active=false
+careerHeading.Active=false; table.insert(careerControls,careerHeading)
 for _,career in ipairs(LifeCatalog.Careers) do
  local listing=item(lifeList,"Career_"..career.id,
-  career.name.." • "..career.wage.." COINS/SHIFT • LEVEL "..career.level,
-  Color3.fromRGB(60,83,107),function() end)
- listing.Active=false
+  career.name.." • "..career.wage.." COINS/SHIFT • LEVEL "..career.level..
+  " • APPLY AT EMPLOYMENT CENTER",
+  Color3.fromRGB(60,83,107),function()
+   action:FireServer("LifeAction","Career",career.id)
+  end)
+ table.insert(careerControls,listing)
 end
 local creatorButton=item(lifeList,"CreatorPublish",
  "RECORD CONTENT • CREATOR CAREER + PHONE + EQUIPPED CAMERA",
  Color3.fromRGB(127,80,141),function()
   action:FireServer("LifeAction","Publish")
  end)
+table.insert(careerControls,creatorButton)
 local collectButton=item(lifeList,"BusinessCollect",
- "COLLECT BUSINESS INCOME • VISIT LICENSING OFFICE",
+ "COLLECT BUSINESS INCOME • VISIT CITY COMMERCE",
  Color3.fromRGB(86,131,93),function()
   action:FireServer("LifeAction","BusinessCollect")
  end)
+table.insert(shopControls,collectButton)
+local shopCategories={"ALL","APPAREL","TECH","HOME","VEHICLE","PROPERTY","BUSINESS"}
+local shopCategoryIndex=1
+local categoryButton
+categoryButton=item(lifeList,"LifeCategory","CATEGORY: ALL • TAP TO FILTER",
+ Color3.fromRGB(81,92,122),function()
+  shopCategoryIndex=shopCategoryIndex%#shopCategories+1
+  updateLifeView()
+ end)
+table.insert(shopControls,categoryButton)
+-- Keep the category filter at the top of Shopping, ahead of revenue collection.
+local collectOrder=collectButton.LayoutOrder
+collectButton.LayoutOrder=categoryButton.LayoutOrder
+categoryButton.LayoutOrder=collectOrder
 local lifeItems={}
 for _,entry in ipairs(LifeCatalog.Items) do
- lifeItems[entry.id]=item(lifeList,"LifeItem_"..entry.id,
+ local control=item(lifeList,"LifeItem_"..entry.id,
   entry.name.." | "..entry.price.." coins | Level "..entry.level,
   Color3.fromRGB(88,105,129),function()
    action:FireServer("LifeAction","Buy",entry.id)
   end)
+ lifeItems[entry.id]=control
+ table.insert(shopControls,control)
 end
+updateLifeView=function()
+ local careers=lifeMode=="CAREERS"
+ for _,control in ipairs(careerControls) do control.Visible=careers end
+ local category=shopCategories[shopCategoryIndex]
+ collectButton.Visible=not careers
+ categoryButton.Visible=not careers
+ categoryButton.Text="CATEGORY: "..category.." • TAP TO FILTER"
+ for _,entry in ipairs(LifeCatalog.Items) do
+  local control=lifeItems[entry.id]
+  control.Visible=not careers and (category=="ALL" or entry.category==category)
+ end
+ careerViewButton.BackgroundColor3=careers and Color3.fromRGB(49,124,112) or Color3.fromRGB(69,88,102)
+ shoppingViewButton.BackgroundColor3=not careers and Color3.fromRGB(104,94,128) or Color3.fromRGB(69,88,102)
+ lifeList.CanvasPosition=Vector2.zero
+end
+updateLifeView()
 local places={
  {"MODERN","MODERN DOWNTOWN • REAL 3D CITY"},
  {"HUB","CENTRAL HUB"},{"CYBER","NEON METROPOLIS"},{"CRYSTAL","PRISM WILDS"},
@@ -371,7 +423,7 @@ local function update()
  lifeTask.Text=shift~="" and
   ("WORK SHIFT: "..shift.." • TASK "..(player:GetAttribute("RRLifeTaskStep") or 0)..
   "/2 • "..(player:GetAttribute("RRLifeTaskName") or "")) or
-  "FIND A JOB AT THE CAREER CENTER IN LIFE CITY"
+  "FIND A JOB AT THE DOWNTOWN EMPLOYMENT CENTER"
  lifeSummary.Text="CAREER: "..career..
   " • FOLLOWERS: "..(player:GetAttribute("RRLifeFollowers") or 0)..
   " • POSTS: "..(player:GetAttribute("RRLifeUploads") or 0)..

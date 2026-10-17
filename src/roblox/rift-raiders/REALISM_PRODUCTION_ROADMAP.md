@@ -1,3 +1,15 @@
+
+## v0.9 — Make the detailed city actually work
+- Modern Downtown is now the main life-simulation district instead of a decorative imported block.
+- Six storefronts are attached to the detailed buildings: apparel, technology, home goods, vehicle/marine, real estate and business licensing.
+- One downtown employment office validates applications for all 20 careers; each career has a real-world shift location and nearby task prompts distributed around the city block.
+- 19 non-creator careers use two-step work tasks; Content Creator keeps the camera/phone recording loop.
+- Added downtown court payments, food pantry/rest services and two additional law-enforcement patrols.
+- Expanded the life catalog to 48 in-game items and nine business types.
+- Split the LIFE UI into Careers and Shopping, with category filters.
+- Server proximity, level, ownership, cooldown and currency validation remain authoritative.
+- Next realism priorities: replace procedural people with rigged NPCs and animations, integrate richer interiors, add realistic traffic/pathfinding and improve vehicle handling.
+
 # Visual realism, behavior and performance production roadmap
 
 ## Current (v0.8): official mesh-based city art, real code

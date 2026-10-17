@@ -343,6 +343,27 @@ if (aPack and aPack:FindFirstChild("Pulse Rifle")) or
 end
 print("SF_RIFT_MP_CHECK official_modern_city_travel PASS")
 print("SF_RIFT_MP_CHECK realistic_city_weapon_rules PASS")
+local employment=world:FindFirstChild("Downtown Employment Center",true)
+if not employment then fail("downtown_employment_missing") return end
+a.Character:PivotTo(CFrame.new(employment.Position+Vector3.new(0,3,0)))
+task.wait(.4)
+if not request(a,"downtown_hire","LifeAction","Career","BARISTA") then
+ fail("downtown_hire_ack") return
+end
+if not waitFor(function() return a:GetAttribute("RRLifeCareer")=="BARISTA" end,3) then
+ fail("downtown_career_application") return
+end
+local downtownCafe=world:FindFirstChild("Downtown Worksite BARISTA",true)
+if not downtownCafe then fail("downtown_cafe_worksite_missing") return end
+a.Character:PivotTo(CFrame.new(downtownCafe.Position+Vector3.new(0,3,0)))
+task.wait(.4)
+if not request(a,"downtown_shift","LifeAction","Work","BARISTA") then
+ fail("downtown_shift_ack") return
+end
+if not waitFor(function() return a:GetAttribute("RRLifeShift")=="BARISTA" end,3) then
+ fail("downtown_shift_start") return
+end
+print("SF_RIFT_MP_CHECK detailed_downtown_career_loop PASS")
 
 print("SF_RIFT_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:rift_multiplayer")

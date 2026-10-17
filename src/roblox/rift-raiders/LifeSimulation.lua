@@ -10,6 +10,15 @@ local stores={}
 local workSites={}
 local careerSites={}
 local taskSites={}
+-- v0.9: alternate interaction anchors embedded around the imported detailed
+-- Modern Downtown. The original Life City remains fully functional.
+local downtownStores={}
+local downtownWorkSites={}
+local downtownCareerSites={}
+local downtownTaskSites={}
+local downtownFineCounter=nil
+local downtownFoodCounter=nil
+local downtownRestCounter=nil
 local policeUnits={}
 local lastAction={}
 local fineCounter=nil
@@ -56,6 +65,9 @@ end
 local function nearby(player,anchor,distance)
  local r=root(player)
  return r and anchor and (r.Position-anchor.Position).Magnitude<=(distance or 20)
+end
+local function nearbyEither(player,a,b,distance)
+ return nearby(player,a,distance) or nearby(player,b,distance)
 end
 local function profile(player)
  return context and context.getProfile(player)
@@ -340,6 +352,159 @@ function Life.Build(targetWorld,options)
  officer(folder,2,townCenter+Vector3.new(113,7,23))
  return townCenter+Vector3.new(0,7,0)
 end
+-- Connect the life simulation to the imported official Modern City art.
+-- These are intentionally tiny/invisible interaction anchors around real mesh
+-- buildings; we do not build another fake city out of primitive cubes.
+function Life.AttachDowntown(cityModel)
+ if not folder or not cityModel or not cityModel.Parent then return false end
+ local old=folder:FindFirstChild("Modern Downtown Life Services")
+ if old then old:Destroy() end
+ local services=Instance.new("Folder")
+ services.Name="Modern Downtown Life Services"
+ services.Parent=folder
+ local function anchor(name,pos,visible)
+  local node=part(services,name,Vector3.new(4.5,3,.5),pos,
+   Color3.fromRGB(37,47,56),Enum.Material.Metal,false)
+  node.Transparency=visible and .08 or 1
+  node.CanQuery=true
+  return node
+ end
+ local function plaque(name,pos,title,subtitle,color)
+  local node=anchor(name,pos,true)
+  node.Size=Vector3.new(7,4,.45)
+  node.Color=color or Color3.fromRGB(39,54,64)
+  local gui=Instance.new("SurfaceGui")
+  gui.Name="Downtown Business Sign"
+  gui.Face=Enum.NormalId.Front
+  gui.CanvasSize=Vector2.new(700,400)
+  gui.LightInfluence=.25
+  gui.Parent=node
+  local main=Instance.new("TextLabel")
+  main.Size=UDim2.new(.94,0,.55,0); main.Position=UDim2.new(.03,0,.04,0)
+  main.BackgroundTransparency=1; main.Text=title; main.TextWrapped=true
+  main.TextScaled=true; main.Font=Enum.Font.GothamBold
+  main.TextColor3=Color3.fromRGB(244,237,213); main.Parent=gui
+  local sub=Instance.new("TextLabel")
+  sub.Size=UDim2.new(.94,0,.27,0); sub.Position=UDim2.new(.03,0,.66,0)
+  sub.BackgroundTransparency=1; sub.Text=subtitle; sub.TextWrapped=true
+  sub.TextScaled=true; sub.Font=Enum.Font.Gotham
+  sub.TextColor3=Color3.fromRGB(151,208,220); sub.Parent=gui
+  return node
+ end
+ -- One clean employment office replaces 20 giant floating career boards.
+ local employment=plaque("Downtown Employment Center",Vector3.new(-73,5,2247),
+  "CITY EMPLOYMENT","20 CAREERS • APPLY IN LIFE MENU",Color3.fromRGB(47,78,82))
+ prompt(employment,"BROWSE JOBS","Downtown Employment Center",function(player)
+  tell(player,"OPEN LIFE • CHOOSE ANY CAREER YOU QUALIFY FOR • APPLY HERE")
+ end)
+ for _,career in ipairs(Catalog.Careers) do downtownCareerSites[career.id]=employment end
+ -- Real storefront row. Shopping stays server-validated and paid with earned coins.
+ local storefronts={
+  {"APPAREL",-50,"THREADS","CLOTHING & FOOTWEAR"},
+  {"TECH",-28,"CITY TECH","PHONES • COMPUTERS • CREATOR GEAR"},
+  {"HOME",-6,"HOME & MORE","FURNITURE • TOOLS • GROCERIES"},
+  {"VEHICLE",18,"MOTOR ROW","CARS • BIKES • BOATS"},
+  {"PROPERTY",42,"METRO REALTY","APARTMENTS • HOMES • LAND"},
+  {"BUSINESS",68,"CITY COMMERCE","BUY & RUN BUSINESSES"},
+ }
+ for _,entry in ipairs(storefronts) do
+  local category,x,title,subtitle=unpack(entry)
+  local node=plaque("Downtown Store "..category,Vector3.new(x,5,2247),
+   title,subtitle,Color3.fromRGB(50,61,72))
+  downtownStores[category]=node
+  prompt(node,"SHOP",title,function(player)
+   tell(player,"OPEN LIFE SHOP • "..title.." • PURCHASES USE EARNED IN-GAME COINS")
+  end)
+ end
+ prompt(downtownStores.BUSINESS,"COLLECT REVENUE","Your Downtown Businesses",function(player)
+  Life.Process(player,"BusinessCollect")
+ end)
+ -- Workplaces are spread around the actual imported city block. Invisible
+ -- anchors preserve the official mesh art; prompts identify the real activity.
+ local jobPositions={
+  RETAIL=Vector3.new(-72,3,2263), BARISTA=Vector3.new(-36,3,2263),
+  CREATOR=Vector3.new(0,3,2263), COURIER=Vector3.new(36,3,2263),
+  MECHANIC=Vector3.new(72,3,2263),
+  PARAMEDIC=Vector3.new(-100,3,2300), FIREFIGHTER=Vector3.new(-100,3,2340),
+  CHEF=Vector3.new(-100,3,2380), FARMER=Vector3.new(-100,3,2420),
+  CONSTRUCTION=Vector3.new(-100,3,2460),
+  POLICE=Vector3.new(100,3,2300), TEACHER=Vector3.new(100,3,2340),
+  SANITATION=Vector3.new(100,3,2380), ELECTRICIAN=Vector3.new(100,3,2420),
+  PLUMBER=Vector3.new(100,3,2460),
+  VETERINARIAN=Vector3.new(-70,3,2480), REAL_ESTATE_AGENT=Vector3.new(-35,3,2480),
+  PHOTOGRAPHER=Vector3.new(0,3,2480), PILOT=Vector3.new(35,3,2480),
+  MUSICIAN=Vector3.new(70,3,2480),
+ }
+ local taskLabels={
+  RETAIL={"SCAN CUSTOMER ITEMS","STOCK DISPLAY SHELF"},
+  COURIER={"PICK UP PARCEL","DELIVER TO CUSTOMER"},
+  BARISTA={"PREPARE COFFEE ORDER","SERVE CUSTOMER"},
+  MECHANIC={"INSPECT ENGINE","REPLACE WORN PART"},
+  CONSTRUCTION={"MEASURE BUILD SITE","INSTALL BUILDING MATERIAL"},
+  POLICE={"CHECK INCIDENT REPORT","INTERVIEW WITNESS"},
+  PARAMEDIC={"CHECK PATIENT VITALS","APPLY FIRST AID"},
+  FIREFIGHTER={"CHECK FIRE HOSE","EXTINGUISH TRAINING FIRE"},
+  CHEF={"PREPARE INGREDIENTS","PLATE THE MEAL"},
+  FARMER={"PLANT SEEDLINGS","HARVEST CROPS"},
+  TEACHER={"PREPARE LESSON","TEACH CLASS"},
+  SANITATION={"COLLECT RECYCLABLES","SORT WASTE"},
+  ELECTRICIAN={"INSPECT CIRCUIT","RESTORE POWER"},
+  PLUMBER={"INSPECT LEAK","REPAIR PIPE"},
+  VETERINARIAN={"EXAMINE PET","ADMINISTER CARE"},
+  REAL_ESTATE_AGENT={"STAGE PROPERTY","SHOW HOME TO CLIENT"},
+  PHOTOGRAPHER={"SET UP LIGHTS","TAKE PORTRAIT"},
+  PILOT={"RUN PRE-FLIGHT CHECK","CONFIRM LANDING PROCEDURE"},
+  MUSICIAN={"TUNE INSTRUMENT","PERFORM ON STAGE"},
+ }
+ for _,career in ipairs(Catalog.Careers) do
+  local pos=jobPositions[career.id]
+  if pos then
+   local site=anchor("Downtown Worksite "..career.id,pos,false)
+   site:SetAttribute("CareerSite",career.id)
+   downtownWorkSites[career.id]=site
+   prompt(site,career.id=="CREATOR" and "RECORD VIDEO" or "WORK SHIFT",
+    career.name,function(player)
+     Life.Process(player,career.id=="CREATOR" and "Publish" or "Work",career.id)
+    end)
+   if career.id~="CREATOR" then
+    downtownTaskSites[career.id]={}
+    local labels=taskLabels[career.id]
+    local tangent=(math.abs(pos.X)>90) and Vector3.new(0,0,8) or Vector3.new(8,0,0)
+    for step=1,2 do
+     local taskPos=pos+tangent*(step==1 and -1 or 1)
+     local target=anchor("Downtown Job Task "..career.id.." "..step,taskPos,false)
+     target:SetAttribute("Job",career.id); target:SetAttribute("Step",step)
+     target:SetAttribute("TaskLabel",labels[step])
+     downtownTaskSites[career.id][step]=target
+     prompt(target,labels[step],career.name,function(player)
+      Life.Process(player,"Task",career.id,step)
+     end)
+    end
+   end
+  end
+ end
+ -- Civic services integrated into the same walkable downtown block.
+ downtownFineCounter=plaque("Downtown Court Payments",Vector3.new(88,5,2282),
+  "CITY COURT","PAY FINES",Color3.fromRGB(66,76,91))
+ prompt(downtownFineCounter,"PAY FINE","Downtown Court",function(player)
+  Life.Process(player,"PayFine")
+ end)
+ downtownFoodCounter=anchor("Downtown Community Meal",Vector3.new(-88,3,2282),false)
+ prompt(downtownFoodCounter,"EAT MEAL","Community Food Pantry",function(player)
+  Life.Process(player,"Eat","COMMUNITY")
+ end)
+ downtownRestCounter=anchor("Downtown Public Rest",Vector3.new(0,3,2228),false)
+ prompt(downtownRestCounter,"REST","Downtown Public Bench",function(player)
+  Life.Process(player,"Rest","PUBLIC")
+ end)
+ -- Two additional officers make the detailed district participate in the law system.
+ officer(services,3,Vector3.new(-92,7,2295))
+ officer(services,4,Vector3.new(92,7,2395))
+ cityModel:SetAttribute("LifeSimulationIntegrated",true)
+ cityModel:SetAttribute("DowntownCareerCount",#Catalog.Careers)
+ return true
+end
+
 function Life.RefreshProperty(player)
  local s=profile(player)
  if not s or not s.life then return end
@@ -579,7 +744,7 @@ function Life.Process(player,kind,arg,step)
  lastAction[player]=now
  if kind=="Career" then
   local career=type(arg)=="string" and Catalog.CareerById[arg]
-  if not career or not nearby(player,careerSites[arg],17) then return false end
+  if not career or not nearbyEither(player,careerSites[arg],downtownCareerSites[arg],17) then return false end
   if s.level<career.level then
    tell(player,"REACH LEVEL "..career.level.." TO APPLY."); return false
   end
@@ -590,7 +755,7 @@ function Life.Process(player,kind,arg,step)
  elseif kind=="Work" then
   local career=type(arg)=="string" and Catalog.CareerById[arg]
   if not career or arg=="CREATOR" or life.career~=arg or
-   not nearby(player,workSites[arg],18) then return false end
+   not nearbyEither(player,workSites[arg],downtownWorkSites[arg],18) then return false end
   if life.needs.energy<10 or life.needs.hunger<10 then
    tell(player,"TOO TIRED OR HUNGRY TO WORK • REST OR EAT AT THE COMMUNITY KITCHEN.")
    return false
@@ -626,7 +791,9 @@ function Life.Process(player,kind,arg,step)
    not shift or shift.id~=arg or life.career~=arg then return false end
   local expected=shift.progress+1
   if type(step)~="number" or step~=expected or step>2 or
-   not taskSites[arg] or not nearby(player,taskSites[arg][step],15) then
+   (not taskSites[arg] and not downtownTaskSites[arg]) or
+   not nearbyEither(player,taskSites[arg] and taskSites[arg][step],
+    downtownTaskSites[arg] and downtownTaskSites[arg][step],15) then
    tell(player,"FOLLOW YOUR ASSIGNED WORK TASKS IN ORDER.")
    return false
   end
@@ -649,7 +816,7 @@ function Life.Process(player,kind,arg,step)
   Life.Sync(player)
   return true
  elseif kind=="Eat" then
-  if arg~="COMMUNITY" or not nearby(player,foodCounter,17) then return false end
+  if arg~="COMMUNITY" or not nearbyEither(player,foodCounter,downtownFoodCounter,17) then return false end
   if now-(publicMealCooldown[player] or -1000)<45 then
    tell(player,"THE KITCHEN IS PREPARING MORE MEALS • COME BACK SOON.")
    return false
@@ -658,12 +825,12 @@ function Life.Process(player,kind,arg,step)
   life.needs.hunger=math.min(100,life.needs.hunger+50)
   tell(player,"ATE A FREE COMMUNITY MEAL • HUNGER RESTORED!")
  elseif kind=="Rest" then
-  if arg~="PUBLIC" or not nearby(player,restCounter,17) then return false end
+  if arg~="PUBLIC" or not nearbyEither(player,restCounter,downtownRestCounter,17) then return false end
   life.needs.energy=math.min(100,life.needs.energy+25)
   tell(player,"RESTED AT THE PARK • ENERGY RESTORED!")
  elseif kind=="Buy" then
   local item=type(arg)=="string" and Catalog.ById[arg]
-  if not item or not nearby(player,stores[item.category],24) then
+  if not item or not nearbyEither(player,stores[item.category],downtownStores[item.category],24) then
    tell(player,"VISIT THE CORRECT LIFE CITY STORE TO PURCHASE."); return false
   end
   if life.owned[item.id] then tell(player,"YOU ALREADY OWN THIS ITEM."); return false end
@@ -679,7 +846,8 @@ function Life.Process(player,kind,arg,step)
   if item.category=="PROPERTY" then Life.RefreshProperty(player) end
   tell(player,"PURCHASED: "..item.name.."! THIS IS AN IN-GAME ITEM.")
  elseif kind=="Publish" then
-  if life.career~="CREATOR" or not nearby(player,workSites.CREATOR,18) then
+  if life.career~="CREATOR" or
+   not nearbyEither(player,workSites.CREATOR,downtownWorkSites.CREATOR,18) then
    tell(player,"BECOME A CREATOR AND VISIT THE RECORDING STUDIO."); return false
   end
   if not life.owned.PHONE or not life.owned.CAMERA then
@@ -702,7 +870,7 @@ function Life.Process(player,kind,arg,step)
   context.reward(player,revenue,20+production*4,0)
   tell(player,"VIDEO POSTED! +"..newFollowers.." FOLLOWERS • +"..revenue.." COINS")
  elseif kind=="BusinessCollect" then
-  if not nearby(player,stores.BUSINESS,24) then return false end
+  if not nearbyEither(player,stores.BUSINESS,downtownStores.BUSINESS,24) then return false end
   if now-life.lastBusiness<90 then
    tell(player,"YOUR BUSINESSES NEED TIME TO SERVE CUSTOMERS."); return false
   end
@@ -715,7 +883,7 @@ function Life.Process(player,kind,arg,step)
   context.reward(player,revenue,10,0)
   tell(player,"COLLECTED "..revenue.." COINS FROM YOUR BUSINESSES!")
  elseif kind=="PayFine" then
-  if not nearby(player,fineCounter,20) then return false end
+  if not nearbyEither(player,fineCounter,downtownFineCounter,20) then return false end
   if life.fines<=0 then tell(player,"NO UNPAID FINES."); return false end
   local amount=math.min(s.coins,life.fines)
   s.coins-=amount; life.fines-=amount

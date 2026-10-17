@@ -72,3 +72,6 @@ Original reusable service: WorldActivities.lua. Profile DataStore migrated from 
 - Realistic-looking official sedan shell replaces the player car's visible cube geometry, while retaining server-controlled arcade driving.
 - Compact HUD, 16 destinations, Workspace streaming enabled for mobile.
 - Imported asset scripts removed; monetization remains inactive.
+
+## v0.9 — Detailed downtown gameplay
+The official Modern City art is no longer presentation-only. The district now contains server-validated employment, shopping, 20 careers, two-step job activities, creator work, business income collection, civic services and police presence. Storefront interaction anchors are kept small or invisible so the imported architecture remains the visual layer instead of being covered by new block-built venues. The catalog expanded to 48 earnable purchases across apparel, tech, home, vehicles, property and business ownership.
