@@ -148,10 +148,15 @@ Use old production packets/performance only as research/reference; do not recrea
   - TikTok: https://www.tiktok.com/@satisfyforge14/video/7696648328284507406
   - YouTube used one Buffer recovery after Metricool's terminal account-limit failure; TikTok used one Wix recovery after the same failure. Do not create or retry another copy on any of the four platforms.
 
-### Next prepared original story
-- Great Molasses Flood v5 is rendered and passed technical/motion QA at 1080×1920, 30 fps, 33.248 seconds, with readable captions and no freeze interval of 2 seconds or longer.
+### Latest completed original story
+- Great Molasses Flood v5 passed technical/motion QA at 1080×1920, 30 fps, 33.248 seconds, with readable captions and no freeze interval of 2 seconds or longer.
 - SHA-256: `e11411f868d4c3d92011c4ffe5d66b0d5a909b822fdb2519068b1ca85aaa7588`.
-- It is **not scheduled or published**. Recheck all live queues and platform timing before using it.
+- Live reconciliation on 2026-10-17 confirmed terminal publication on all four platforms:
+  - Instagram: https://www.instagram.com/reel/DekkJpfjY_q/ (Buffer post `6ad29b18c34368e4b095422a`, status `sent`)
+  - YouTube: https://www.youtube.com/shorts/7_nSwY1VUI0 (Buffer post `6ad29b31c34368e4b0954d5f`, status `sent`)
+  - Facebook: https://www.facebook.com/reel/1631187935716798/ (Buffer post `6ad29b4452adf2bfae62a3a2`, status `sent`)
+  - TikTok: https://www.tiktok.com/@satisfyforge14/video/7697390843207978253 (Wix item `8bfd16e2-2043-45e8-9f0f-08f89c22d898`, status `PUBLISHED`)
+- `publisher/history.json` records `great-molasses-flood` and the exact media hash as completed. Never schedule, publish, retry, or recreate this asset on those four platforms.
 - The separate 65–80 second deeper-story experiment remains unrendered and should only be produced when it adds genuine platform value.
 
 ## Product building
