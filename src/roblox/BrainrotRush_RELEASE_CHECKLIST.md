@@ -138,3 +138,9 @@ Only mark Brainrot Rush as live/public when all of these are true:
 - [ ] public experience URL is confirmed
 
 Until then, describe it as a prototype / repository build.
+
+### Automated accelerated event/cleanup gate — 2026-10-17
+- [x] QA-only accelerated Roblox Studio two-player test confirmed MAX_ORBS cap, forced cleanup/replenishment, Snackquake start and end.
+- [x] Production server source SHA-256 remained unchanged (`1e14de882e85...`); previously verified live DataStore evidence was not invalidated.
+- [ ] **Still required:** unaccelerated 15-minute play session, 90-second normal cadence and 20-second event timing, physical mobile performance, and public-launch owner review.
+- Re-run: `python3 tools/roblox-studio/run_brainrot_event.py --keep-artifacts`. Runner builds a **temporary** QA-only place with faster timers and a 12-orb cap; it never uploads or edits production source.
