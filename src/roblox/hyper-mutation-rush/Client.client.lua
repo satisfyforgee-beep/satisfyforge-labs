@@ -70,8 +70,21 @@ local petCorner=Instance.new("UICorner"); petCorner.CornerRadius=UDim.new(0,12);
 petButton.Activated:Connect(function()
  ReplicatedStorage:WaitForChild("MutationRushAction"):FireServer("BuyPet")
 end)
+local raceRecord=label("RaceRecord","BEST RACE: -- | BEAT YOUR TIME!",
+ UDim2.new(.9,0,0,29),UDim2.new(.05,0,0,199),Color3.fromRGB(125,255,255))
 local quest=label("WorldQuest","WORLD QUEST: 0/3 ACTIVITIES = 150 COINS",
  UDim2.new(.9,0,0,29),UDim2.new(.05,0,0,164),Color3.fromRGB(255,225,69))
+-- First-session call to action: get the player racing immediately.
+local raceNow=Instance.new("TextButton"); raceNow.Name="RaceNow"
+raceNow.Size=UDim2.fromOffset(148,48); raceNow.AnchorPoint=Vector2.new(.5,1)
+raceNow.Position=UDim2.new(.5,0,.92,0); raceNow.Text="RACE NOW!"
+raceNow.Font=Enum.Font.GothamBlack; raceNow.TextSize=17
+raceNow.TextColor3=Color3.new(1,1,1); raceNow.BackgroundColor3=Color3.fromRGB(48,202,120)
+raceNow.Parent=gui
+local raceCorner=Instance.new("UICorner"); raceCorner.CornerRadius=UDim.new(0,12); raceCorner.Parent=raceNow
+raceNow.Activated:Connect(function()
+ ReplicatedStorage:WaitForChild("MutationRushAction"):FireServer("Travel","RACE")
+end)
 local toast=label("Toast","",UDim2.new(.85,0,0,50),UDim2.new(.075,0,.7,0),Color3.fromRGB(255,223,66))
 toast.Visible=false
 local seq=0
@@ -84,11 +97,13 @@ local function update()
  local stage=player:GetAttribute("MRStage") or 0
  status.Text="STAGE "..stage.."/12 | SPEED "..(player:GetAttribute("MRSpeed") or 18)
  coins.Text=(player:GetAttribute("MRCoins") or 0).." COINS | "..(player:GetAttribute("MRMutations") or 0).." MUTATIONS"
+ local best=player:GetAttribute("MRBestTime") or 0
+ raceRecord.Text=best>0 and ("BEST RACE: "..best.."s | BEAT YOUR TIME!") or "BEST RACE: -- | FINISH TO SET A RECORD!"
  quest.Text="WORLD QUEST: "..(player:GetAttribute("MRQuest") or 0).."/3 ACTIVITIES = 150 COINS"
  objective.Text=stage>=12 and "REACH THE GREEN FINISH!" or
   "COLLECT ORBS + DODGE LASERS | NEXT "..(stage+1).."/12"
 end
-for _,key in ipairs({"MRStage","MRSpeed","MRCoins","MRMutations","MRQuest"}) do
+for _,key in ipairs({"MRStage","MRSpeed","MRCoins","MRMutations","MRQuest","MRBestTime"}) do
  player:GetAttributeChangedSignal(key):Connect(update)
 end
 update()

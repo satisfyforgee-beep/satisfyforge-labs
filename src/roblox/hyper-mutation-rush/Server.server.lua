@@ -172,6 +172,8 @@ local function sync(p)
  p:SetAttribute("MRCoins",s.coins); p:SetAttribute("MRMutations",s.mutations)
  p:SetAttribute("MRWins",s.wins)
  p:SetAttribute("MRQuest",s.quest)
+ p:SetAttribute("MRBestTime",s.bestTime or 0)
+ p:SetAttribute("MRRaceStarted",s.raceStarted~=nil)
  local leaderstats=p:FindFirstChild("leaderstats")
  if leaderstats then
   local wins=leaderstats:FindFirstChild("Wins")
@@ -189,7 +191,7 @@ local function init(p)
  local leaderstats=Instance.new("Folder"); leaderstats.Name="leaderstats"; leaderstats.Parent=p
  local wins=Instance.new("IntValue"); wins.Name="Wins"; wins.Parent=leaderstats
  local coins=Instance.new("IntValue"); coins.Name="Coins"; coins.Parent=leaderstats
- sessions[p]={stage=0,speed=18,coins=0,mutations=0,wins=0,used={},lastHit=-10,lastFinish=-10,activityTimes={},deliveryAt=nil,festivalStep=0,domeStart=nil,quest=0,questKinds={},pet=nil}
+ sessions[p]={stage=0,speed=18,coins=0,mutations=0,wins=0,used={},lastHit=-10,lastFinish=-10,activityTimes={},deliveryAt=nil,festivalStep=0,domeStart=nil,quest=0,questKinds={},pet=nil,bestTime=nil,raceStarted=nil}
  sync(p); p.CharacterAdded:Connect(function() task.wait(.2); sync(p) end)
 end
 Players.PlayerAdded:Connect(init)
@@ -250,6 +252,7 @@ local function touched(obj,hit)
  if kind=="Checkpoint" then
   local stage=obj:GetAttribute("Stage")
   if stage~=s.stage+1 then return end
+  if stage==1 and not s.raceStarted then s.raceStarted=os.clock() end
   s.stage=stage; s.coins=math.min(100000,s.coins+5)
   tell(p,"CHECKPOINT "..stage.."/12! +5 COINS")
  elseif kind=="Orb" then
@@ -334,6 +337,12 @@ local function touched(obj,hit)
  elseif kind=="Finish" then
   if s.stage<12 or now-s.lastFinish<5 then return end
   s.lastFinish=now; s.wins+=1; s.coins=math.min(100000,s.coins+100)
+  local elapsed=s.raceStarted and math.floor((now-s.raceStarted)*10+.5)/10
+  if elapsed and (not s.bestTime or elapsed<s.bestTime) then
+   s.bestTime=elapsed
+   tell(p,"NEW PERSONAL BEST! "..elapsed.." SECONDS!")
+  end
+  s.raceStarted=nil
   s.stage=0; s.used={}; tell(p,"YOU WON! +100 COINS! RUN AGAIN!")
   warp(p)
  elseif kind=="Fall" then warp(p) end
@@ -353,6 +362,11 @@ action.OnServerEvent:Connect(function(p,kind,...)
   local now=os.clock()
   if s.lastTravel and now-s.lastTravel<1.5 then return end
   s.lastTravel=now
+  if destination=="RACE" and s.stage>0 then
+   -- Returning to the start abandons the run; prevents timer exploits.
+   s.stage=0; s.raceStarted=nil; s.used={}
+   sync(p)
+  end
   if p.Character then p.Character:PivotTo(CFrame.new(destinations[destination])) end
   tell(p,"ARRIVED: "..destination.."!")
   return
