@@ -9,9 +9,10 @@ local HttpService=game:GetService("HttpService")
 local Debris=game:GetService("Debris")
 local ServerScriptService=game:GetService("ServerScriptService")
 local WorldKit=require(ServerScriptService:WaitForChild("WorldKit"))
+local WorldExpansion=require(ServerScriptService:WaitForChild("WorldExpansion"))
 local Vehicles=require(ServerScriptService:WaitForChild("VehicleService"))
 local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
-world:SetAttribute("Version","0.2.0")
+world:SetAttribute("Version","0.3.0")
 world:SetAttribute("Phase","CALM")
 world:SetAttribute("SecondsLeft",75)
 local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
@@ -222,6 +223,8 @@ local function reward(p,coins,xp,shards)
  end
  sync(p)
 end
+-- Seven terrain-based regions, interactive landmarks and server-owned portals.
+local newDestinations=WorldExpansion.Build(world,WorldKit,reward,tell,Vehicles.Spawn)
 local function quest(p,kind,n)
  local s=profiles[p]; if not s then return end
  s.quest[kind]=math.min(({shards=8,drones=3,seals=1})[kind],s.quest[kind]+(n or 1))
@@ -322,6 +325,7 @@ local function spawnPet(p)
 end
 local destinations={HUB=Vector3.new(0,6,0)}
 for _,b in ipairs(biomes) do destinations[b.id]=b.center+Vector3.new(0,6,0) end
+for id,pos in pairs(newDestinations) do destinations[id]=pos end
 local function blast(p)
  local s=profiles[p]; local root=rootFor(p)
  if not s or not root then return end
@@ -495,8 +499,10 @@ action.OnServerEvent:Connect(function(p,kind,arg,extra)
  local now=os.clock()
  if kind=="Blast" then blast(p); return end
  if kind=="Shoot" then shoot(p,arg,extra); return end
- if kind=="SpawnCar" then
-  local ok,message=Vehicles.Spawn(world,p)
+ if kind=="SpawnCar" or kind=="SpawnSnowmobile" or kind=="SpawnFlyingCar" then
+  local vehicleKind=kind=="SpawnSnowmobile" and "snowmobile" or
+   kind=="SpawnFlyingCar" and "flyingcar" or "car"
+  local ok,message=Vehicles.Spawn(world,p,vehicleKind)
   tell(p,message)
   return
  end

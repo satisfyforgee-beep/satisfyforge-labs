@@ -12,6 +12,9 @@
       },
       "VehicleService": {
         "$path": "VehicleService.lua"
+      },
+      "WorldExpansion": {
+        "$path": "WorldExpansion.lua"
       }
     },
     "StarterPlayer": {

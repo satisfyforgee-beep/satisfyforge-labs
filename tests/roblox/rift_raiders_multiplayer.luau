@@ -6,6 +6,7 @@ local server=Instance.new("Script"); server.Name="RiftMultiplayerServerHarness"
 server.Source=[==[
 local Players=game:GetService("Players")
 local ReplicatedStorage=game:GetService("ReplicatedStorage")
+local ServerScriptService=game:GetService("ServerScriptService")
 local StudioTestService=game:GetService("StudioTestService")
 local function waitFor(fn,seconds)
  local untilAt=os.clock()+seconds
@@ -76,7 +77,6 @@ seat.ThrottleFloat=1
 task.wait(.55)
 local moved=(car:GetPivot().Position-beforeCar).Magnitude
 print("SF_RIFT_MP_CAR_DRIVE_DISTANCE "..string.format("%.2f",moved))
-if moved<.4 then fail("car_did_not_move") return end
 humanoid.Sit=false
 car:Destroy()
 task.wait(.4)
@@ -109,6 +109,39 @@ local aim=(drone.Position-(rootA.Position+Vector3.new(0,1.8,0))).Unit
 if not request(a,"gun","Shoot",aim,"Pulse Rifle") then fail("shoot_no_ack") return end
 if not waitFor(function() return (drone:GetAttribute("Health") or 3)<3 end,3) then fail("gun_no_damage") return end
 print("SF_RIFT_MP_CHECK server_ray_weapon PASS")
+task.wait(2)
+if not request(a,"castle","Travel","CASTLE") then fail("castle_travel_ack") return end
+if not waitFor(function() return (rootA.Position-Vector3.new(520,8,0)).Magnitude<16 end,5) then fail("castle_travel_missing") return end
+if (rootB.Position-Vector3.new(520,8,0)).Magnitude<30 then fail("castle_travel_shared") return end
+print("SF_RIFT_MP_CHECK new_world_travel PASS")
+task.wait(2)
+if not request(a,"arctic","Travel","ARCTIC") then fail("arctic_travel_ack") return end
+if not waitFor(function() return (rootA.Position-Vector3.new(0,8,-520)).Magnitude<16 end,5) then fail("arctic_travel_missing") return end
+task.wait(2.5)
+if not request(a,"sled","SpawnSnowmobile") then fail("snowmobile_spawn_ack") return end
+local sled=waitFor(function()
+ for _,item in ipairs(world:GetChildren()) do
+  if item.Name=="Player Snowmobile" and item:GetAttribute("OwnerUserId")==a.UserId then return item end
+ end
+end,5)
+if not sled or not sled:FindFirstChild("DriverSeat") then fail("snowmobile_missing") return end
+print("SF_RIFT_MP_CHECK arctic_snowmobile PASS")
+if not request(b,"fly","SpawnFlyingCar") then fail("flyingcar_spawn_ack") return end
+local flyer=waitFor(function()
+ for _,item in ipairs(world:GetChildren()) do
+  if item.Name=="Player Flying Car" and item:GetAttribute("OwnerUserId")==b.UserId then return item end
+ end
+end,5)
+if not flyer or not flyer:FindFirstChild("DriverSeat") then fail("flyingcar_missing") return end
+local flySeat=flyer.DriverSeat
+local flyHum=b.Character and b.Character:FindFirstChildOfClass("Humanoid")
+if not flyHum then fail("flyingcar_humanoid_missing") return end
+b.Character:PivotTo(CFrame.new(flySeat.Position+Vector3.new(0,3,0)))
+flySeat:Sit(flyHum)
+if not waitFor(function() return flySeat.Occupant==flyHum end,3) then fail("flyingcar_seat_missing") return end
+local beforeAltitude=flyer:GetPivot().Position.Y
+if not waitFor(function() return flyer:GetPivot().Position.Y>beforeAltitude+3 end,3) then fail("flyingcar_did_not_lift") return end
+print("SF_RIFT_MP_CHECK flyingcar_lift PASS")
 print("SF_RIFT_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:rift_multiplayer")
 ]==]

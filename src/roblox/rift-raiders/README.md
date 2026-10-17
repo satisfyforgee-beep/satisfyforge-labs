@@ -2,11 +2,18 @@
 
 An original multiplayer Roblox game, created separately from all existing SatisfyForge games.
 
-## Playable loop (v0.2 prototype)
+## Playable loop (v0.3 prototype)
 
-Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach Neon Metropolis, Prism Wilds, Magma Outpost, or Cloud Kingdom. Collect 36 scattered shards, BLAST 12 roaming drones, spend 12 shards to seal one of four rifts, level up, earn coins, and unlock upgrades. Complete repeatable missions for bonus coins. During a periodic 25-second Rift Surge, eligible coin rewards double. Cloud Kingdom includes a five-platform summit challenge. Version 0.2 adds a reusable scenery library, free drivable arcade hovercars, and two aimable sci-fi guns.
+Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach Neon Metropolis, Prism Wilds, Magma Outpost, or Cloud Kingdom. Collect 36 scattered shards, BLAST 12 roaming drones, spend 12 shards to seal one of four rifts, level up, earn coins, and unlock upgrades. Complete repeatable missions for bonus coins. During a periodic 25-second Rift Surge, eligible coin rewards double. Cloud Kingdom includes a five-platform summit challenge. Version 0.2 added reusable scenery, arcade hovercars and two aimable sci-fi guns. Version 0.3 expands the map with seven new terrain worlds, a dozen reusable new prefabs, portal travel, activity rewards, snowmobiles, a limited jetpack boost and flying cars.
 
 ## Implemented
+
+- Seven additional portal-connected worlds: Castle Kingdom, Harvest Valley, Sakura Japan, Snowbound North, Ocean Marina, Wildlife Safari and International Airport.
+- Roblox terrain grass, sand, snow and ocean water; castles, barns, crops, Japan-style pagoda and torii, runway and airplane, dock and boats, animal models, jetpack station and bank.
+- Server-controlled portal/World-menu travel and cooldown-protected farming, feeding, fishing, luggage, lantern, castle relic and ATM activities, plus a repeatable cross-world courier job.
+- Arcade snowmobile spawns, limited 3-second jetpack lift and flying car lift; full flight physics and mobile controls still require development.
+- Read WORLD_EXPANSION.md for exactly what is interactive versus decorative, and for reuse in other maps.
+
 
 - Procedural asset library with grass, trees, rocks, roads, parked cars, houses, fences, bushes, flowers, benches, crates, streetlights and a decorative pond.
 - Free server-controlled hovercar spawner using VehicleSeat (seat usage tested; driving feel requires Android QA).
@@ -16,7 +23,7 @@ Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach 
 
 - New original world, four themed islands, central hub and bridges, signs, basic custom geometry and lighting.
 - Server-owned shard pickups, per-player cooldowns, three-hit drones with movement and respawn, close-range blast attacks.
-- Server-validated rift sealing, coin rewards, experience/leveling, repeatable missions, and four-zone travel.
+- Server-validated rift sealing, coin rewards, experience/leveling, repeatable missions, and eleven-zone travel.
 - Mobile buttons for BLAST, DASH, SHIELD, WORLD and SHOP; mission tracker, event timer, notifications and leaderstats.
 - Earned-coin upgrades: blaster damage levels, six-second shield ability, and cosmetic following Riftling pet.
 - Versioned profile saving using Roblox DataStore in a published live experience only; Studio tests do not access or modify live player data.
@@ -26,7 +33,7 @@ Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach 
 
 - Not published and no live Roblox game link or public players.
 - Live DataStore save/rejoin testing, cross-server concurrency/session locking and rollback recovery have not been verified. Do not advertise persistence as production-safe until these are complete.
-- Full real-device Samsung QA, sound, custom meshes/animation, boss fights, polished art, multiplayer economy balance, and user-retention analytics remain.
+- Full real-device Samsung QA, sound, custom meshes/animation, polished art, multiplayer economy balance, mobile performance/streaming, and user-retention analytics remain.
 - No Robux sales, products, passes, payments, ads or marketing campaigns are enabled.
 - No claim that this game will be viral or profitable.
 
@@ -40,8 +47,8 @@ Open the generated place in Roblox Studio to inspect and play. The original game
 
 ## Automated testing
 
-- tests/roblox/rift_raiders_smoke.luau: Roblox Studio runtime world and systems smoke.
-- tests/roblox/rift_raiders_multiplayer.luau: Roblox Studio two-player test for isolated teleport, invalid travel rejection, free-purchase rejection, shard cooldown and player-isolated rewards.
+- tests/roblox/rift_raiders_smoke.luau: Roblox Studio runtime world, scenery and systems smoke.
+- tests/roblox/rift_raiders_multiplayer.luau: Roblox Studio two-player test for isolated teleport, invalid travel rejection, free-purchase rejection, shard cooldown, vehicles and raycast damage.
 - python3 tools/roblox-studio/run_rift_multiplayer.py: automated multiplayer runner.
 - Real-world playtesting and live saving remain separate gates.
 

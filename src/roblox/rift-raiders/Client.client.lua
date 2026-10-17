@@ -38,7 +38,7 @@ local phase=text("Surge","CALM | NEXT SURGE: 75s",
  UDim2.new(.32,0,0,34),UDim2.new(.66,0,0,8),Color3.fromRGB(255,154,210))
 local missions=text("Missions","MISSIONS: SHARDS 0/8 | DRONES 0/3 | RIFTS 0/1",
  UDim2.new(.96,0,0,34),UDim2.new(.02,0,0,130),Color3.fromRGB(255,221,119))
-local hint=text("Hint","FIRE PULSE RIFLE • DRIVE HOVERCAR • COLLECT SHARDS • SEAL RIFTS",
+local hint=text("Hint","EXPLORE PORTALS • DRIVE CARS • HARVEST CROPS • VISIT JAPAN & CASTLES",
  UDim2.new(.96,0,0,32),UDim2.new(.02,0,0,169),Color3.fromRGB(228,239,255))
 local toast=text("Toast","",UDim2.new(.82,0,0,55),UDim2.new(.09,0,.68,0),Color3.fromRGB(255,222,99))
 toast.Visible=false
@@ -53,6 +53,8 @@ local fireButton=button("Fire","FIRE",UDim2.fromOffset(108,56),
  UDim2.new(1,-126,1,-214),Color3.fromRGB(235,169,66))
 local carButton=button("Car","SPAWN CAR",UDim2.fromOffset(110,44),
  UDim2.new(1,-118,0,50),Color3.fromRGB(60,148,177))
+local flyingCarButton=button("FlyingCar","FLYING CAR",UDim2.fromOffset(110,44),
+ UDim2.new(1,-118,0,210),Color3.fromRGB(140,87,218))
 local crosshair=Instance.new("TextLabel"); crosshair.Name="Crosshair"
 crosshair.Size=UDim2.fromOffset(22,22)
 crosshair.Position=UDim2.new(.5,-11,.5,-11)
@@ -67,6 +69,7 @@ blast.Activated:Connect(function() action:FireServer("Blast") end)
 dash.Activated:Connect(function() action:FireServer("Dash") end)
 shield.Activated:Connect(function() action:FireServer("Shield") end)
 carButton.Activated:Connect(function() action:FireServer("SpawnCar") end)
+flyingCarButton.Activated:Connect(function() action:FireServer("SpawnFlyingCar") end)
 local function fireWeapon()
  local char=player.Character
  local root=char and char:FindFirstChild("HumanoidRootPart")
@@ -127,7 +130,7 @@ local function panel(name,heading)
  return f,scroll
 end
 local shop,shopList=panel("ShopPanel","EARNED COIN SHOP")
-local map,mapList=panel("MapPanel","CHOOSE AN ISLAND")
+local map,mapList=panel("MapPanel","EXPLORE 12 WORLD LOCATIONS")
 local function item(parent,name,content,color,fn)
  local b=button(name,content,UDim2.new(1,-12,0,53),UDim2.fromOffset(0,0),color,parent)
  b.Activated:Connect(fn)
@@ -144,6 +147,10 @@ local petItem=item(shopList,"PetUpgrade","ADOPT RIFTLING PET • 250 COINS",
 local places={
  {"HUB","CENTRAL HUB"},{"CYBER","NEON METROPOLIS"},{"CRYSTAL","PRISM WILDS"},
  {"VOLCANO","MAGMA OUTPOST"},{"SKY","CLOUD KINGDOM"},
+ {"CASTLE","CASTLE KINGDOM"},{"FARM","HARVEST VALLEY"},
+ {"JAPAN","SAKURA JAPAN"},{"ARCTIC","SNOWBOUND NORTH"},
+ {"MARINA","OCEAN MARINA"},{"SAFARI","WILDLIFE SAFARI"},
+ {"AIRPORT","INTERNATIONAL AIRPORT"},
 }
 for i,entry in ipairs(places) do
  item(mapList,"Map"..entry[1],entry[2],
@@ -165,6 +172,10 @@ event.OnClientEvent:Connect(function(message)
  task.delay(2.7,function() if current==seq then toast.Visible=false end end)
 end)
 local function update()
+ local target=player:GetAttribute("RRDeliveryTarget")
+ hint.Text=(type(target)=="string" and target~="" and
+  ("COURIER JOB: DELIVER TO "..target:upper()) or
+  "EXPLORE PORTALS • DRIVE CARS • HARVEST CROPS • VISIT JAPAN & CASTLES")
  local coins=player:GetAttribute("RRCoins") or 0
  local shards=player:GetAttribute("RRShards") or 0
  local level=player:GetAttribute("RRLevel") or 1
@@ -186,7 +197,7 @@ local function update()
   "ADOPT RIFTLING PET • 250 COINS"
 end
 for _,name in ipairs({"RRCoins","RRShards","RRLevel","RRXP","RRBlaster",
- "RRShield","RRPet","RRScatter","RRSeals","RRQuestShards","RRQuestDrones","RRQuestSeals"}) do
+ "RRShield","RRPet","RRScatter","RRSeals","RRDeliveryTarget","RRQuestShards","RRQuestDrones","RRQuestSeals"}) do
  player:GetAttributeChangedSignal(name):Connect(update)
 end
 local function phaseUpdate()
