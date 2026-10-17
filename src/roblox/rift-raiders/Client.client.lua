@@ -38,7 +38,7 @@ local phase=text("Surge","CALM | NEXT SURGE: 75s",
  UDim2.new(.32,0,0,34),UDim2.new(.66,0,0,8),Color3.fromRGB(255,154,210))
 local missions=text("Missions","MISSIONS: SHARDS 0/8 | DRONES 0/3 | RIFTS 0/1",
  UDim2.new(.96,0,0,34),UDim2.new(.02,0,0,130),Color3.fromRGB(255,221,119))
-local hint=text("Hint","BLAST DRONES • PICK UP SHARDS • SEAL RIFTS AT THE GLOWING CORE",
+local hint=text("Hint","FIRE PULSE RIFLE • DRIVE HOVERCAR • COLLECT SHARDS • SEAL RIFTS",
  UDim2.new(.96,0,0,32),UDim2.new(.02,0,0,169),Color3.fromRGB(228,239,255))
 local toast=text("Toast","",UDim2.new(.82,0,0,55),UDim2.new(.09,0,.68,0),Color3.fromRGB(255,222,99))
 toast.Visible=false
@@ -49,13 +49,61 @@ local dash=button("Dash","➤ DASH",UDim2.fromOffset(104,57),
  UDim2.new(1,-242,1,-85),Color3.fromRGB(56,178,239))
 local shield=button("Shield","⬡ SHIELD",UDim2.fromOffset(108,51),
  UDim2.new(1,-126,1,-150),Color3.fromRGB(145,85,231))
+local fireButton=button("Fire","FIRE",UDim2.fromOffset(108,56),
+ UDim2.new(1,-126,1,-214),Color3.fromRGB(235,169,66))
+local carButton=button("Car","SPAWN CAR",UDim2.fromOffset(110,44),
+ UDim2.new(1,-118,0,50),Color3.fromRGB(60,148,177))
+local crosshair=Instance.new("TextLabel"); crosshair.Name="Crosshair"
+crosshair.Size=UDim2.fromOffset(22,22)
+crosshair.Position=UDim2.new(.5,-11,.5,-11)
+crosshair.BackgroundTransparency=1; crosshair.Text="+"
+crosshair.TextSize=25; crosshair.Font=Enum.Font.GothamBlack
+crosshair.TextColor3=Color3.fromRGB(255,246,166); crosshair.Parent=gui
 local shopButton=button("ShopToggle","SHOP",UDim2.fromOffset(98,47),
- UDim2.new(.02,0,1,-75),Color3.fromRGB(90,194,128))
+ UDim2.new(.02,0,1,-145),Color3.fromRGB(90,194,128))
 local mapButton=button("MapToggle","WORLD",UDim2.fromOffset(98,47),
- UDim2.new(.02,107,1,-75),Color3.fromRGB(87,149,229))
+ UDim2.new(.02,107,1,-145),Color3.fromRGB(87,149,229))
 blast.Activated:Connect(function() action:FireServer("Blast") end)
 dash.Activated:Connect(function() action:FireServer("Dash") end)
 shield.Activated:Connect(function() action:FireServer("Shield") end)
+carButton.Activated:Connect(function() action:FireServer("SpawnCar") end)
+local function fireWeapon()
+ local char=player.Character
+ local root=char and char:FindFirstChild("HumanoidRootPart")
+ local camera=workspace.CurrentCamera
+ if not root or not camera then return end
+ local equipped=char:FindFirstChildOfClass("Tool")
+ local name=equipped and equipped.Name or "Pulse Rifle"
+ if name~="Pulse Rifle" and name~="Scatter Blaster" then name="Pulse Rifle" end
+ local viewport=camera.ViewportSize
+ local ray=camera:ViewportPointToRay(viewport.X*.5,viewport.Y*.5)
+ local params=RaycastParams.new()
+ params.FilterType=Enum.RaycastFilterType.Exclude
+ params.FilterDescendantsInstances={char}
+ local result=workspace:Raycast(ray.Origin,ray.Direction*250,params)
+ local target=result and result.Position or ray.Origin+ray.Direction*250
+ local origin=root.Position+Vector3.new(0,1.8,0)
+ local delta=target-origin
+ if delta.Magnitude>.1 then action:FireServer("Shoot",delta.Unit,name) end
+end
+fireButton.Activated:Connect(fireWeapon)
+local attached={}
+local function bindTool(child)
+ if not child:IsA("Tool") or attached[child] then return end
+ if child.Name~="Pulse Rifle" and child.Name~="Scatter Blaster" then return end
+ attached[child]=true
+ child.Activated:Connect(fireWeapon)
+ child.Destroying:Connect(function() attached[child]=nil end)
+end
+local backpack=player:WaitForChild("Backpack")
+backpack.ChildAdded:Connect(bindTool)
+for _,child in ipairs(backpack:GetChildren()) do bindTool(child) end
+local function bindCharacter(char)
+ char.ChildAdded:Connect(bindTool)
+ for _,child in ipairs(char:GetChildren()) do bindTool(child) end
+end
+player.CharacterAdded:Connect(bindCharacter)
+if player.Character then bindCharacter(player.Character) end
 local function panel(name,heading)
  local f=Instance.new("Frame"); f.Name=name
  f.Size=UDim2.new(.86,0,.49,0); f.Position=UDim2.new(.07,0,.28,0)
@@ -89,6 +137,8 @@ local blasterItem=item(shopList,"Blaster","BLASTER LEVEL UP • COST: 90+ COINS"
  Color3.fromRGB(224,77,133),function() action:FireServer("Buy","BLASTER") end)
 local shieldItem=item(shopList,"ShieldUpgrade","SHIELD ABILITY • 150 COINS",
  Color3.fromRGB(126,86,219),function() action:FireServer("Buy","SHIELD") end)
+local scatterItem=item(shopList,"ScatterUpgrade","SCATTER BLASTER • 175 COINS",
+ Color3.fromRGB(233,120,74),function() action:FireServer("Buy","SCATTER") end)
 local petItem=item(shopList,"PetUpgrade","ADOPT RIFTLING PET • 250 COINS",
  Color3.fromRGB(71,172,153),function() action:FireServer("Buy","PET") end)
 local places={
@@ -130,11 +180,13 @@ local function update()
   "BLASTER LEVEL "..(blasterLevel+1).." • "..(blasterLevel*90).." COINS"
  shieldItem.Text=player:GetAttribute("RRShield") and "SHIELD OWNED • USE SHIELD BUTTON" or
   "UNLOCK SHIELD • 150 COINS"
+ scatterItem.Text=player:GetAttribute("RRScatter") and "SCATTER BLASTER OWNED" or
+  "UNLOCK SCATTER BLASTER • 175 COINS"
  petItem.Text=player:GetAttribute("RRPet") and "RIFTLING PET OWNED" or
   "ADOPT RIFTLING PET • 250 COINS"
 end
 for _,name in ipairs({"RRCoins","RRShards","RRLevel","RRXP","RRBlaster",
- "RRShield","RRPet","RRSeals","RRQuestShards","RRQuestDrones","RRQuestSeals"}) do
+ "RRShield","RRPet","RRScatter","RRSeals","RRQuestShards","RRQuestDrones","RRQuestSeals"}) do
  player:GetAttributeChangedSignal(name):Connect(update)
 end
 local function phaseUpdate()

@@ -2,11 +2,17 @@
 
 An original multiplayer Roblox game, created separately from all existing SatisfyForge games.
 
-## Playable loop (v0.1 prototype)
+## Playable loop (v0.2 prototype)
 
-Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach Neon Metropolis, Prism Wilds, Magma Outpost, or Cloud Kingdom. Collect 36 scattered shards, BLAST 12 roaming drones, spend 12 shards to seal one of four rifts, level up, earn coins, and unlock upgrades. Complete repeatable missions for bonus coins. During a periodic 25-second Rift Surge, eligible coin rewards double. Cloud Kingdom includes a five-platform summit challenge.
+Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach Neon Metropolis, Prism Wilds, Magma Outpost, or Cloud Kingdom. Collect 36 scattered shards, BLAST 12 roaming drones, spend 12 shards to seal one of four rifts, level up, earn coins, and unlock upgrades. Complete repeatable missions for bonus coins. During a periodic 25-second Rift Surge, eligible coin rewards double. Cloud Kingdom includes a five-platform summit challenge. Version 0.2 adds a reusable scenery library, free drivable arcade hovercars, and two aimable sci-fi guns.
 
 ## Implemented
+
+- Procedural asset library with grass, trees, rocks, roads, parked cars, houses, fences, bushes, flowers, benches, crates, streetlights and a decorative pond.
+- Free server-controlled hovercar spawner using VehicleSeat (seat usage tested; driving feel requires Android QA).
+- Pulse Rifle with server raycast hit validation and an unlockable Scatter Blaster (175 earned coins). Both are in-game items, not Robux products.
+- Read WORLD_KIT.md for reuse in other Roblox maps.
+
 
 - New original world, four themed islands, central hub and bridges, signs, basic custom geometry and lighting.
 - Server-owned shard pickups, per-player cooldowns, three-hit drones with movement and respawn, close-range blast attacks.

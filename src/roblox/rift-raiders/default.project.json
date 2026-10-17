@@ -6,6 +6,12 @@
       "$className": "ServerScriptService",
       "RiftRaidersServer": {
         "$path": "Server.server.lua"
+      },
+      "WorldKit": {
+        "$path": "WorldKit.lua"
+      },
+      "VehicleService": {
+        "$path": "VehicleService.lua"
       }
     },
     "StarterPlayer": {

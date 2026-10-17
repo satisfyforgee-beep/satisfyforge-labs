@@ -6,8 +6,12 @@ local RunService=game:GetService("RunService")
 local Lighting=game:GetService("Lighting")
 local DataStoreService=game:GetService("DataStoreService")
 local HttpService=game:GetService("HttpService")
+local Debris=game:GetService("Debris")
+local ServerScriptService=game:GetService("ServerScriptService")
+local WorldKit=require(ServerScriptService:WaitForChild("WorldKit"))
+local Vehicles=require(ServerScriptService:WaitForChild("VehicleService"))
 local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
-world:SetAttribute("Version","0.1.0")
+world:SetAttribute("Version","0.2.0")
 world:SetAttribute("Phase","CALM")
 world:SetAttribute("SecondsLeft",75)
 local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
@@ -139,6 +143,8 @@ for index,biome in ipairs(biomes) do
   drones[drone]={home=spawnPos,health=3,alive=true,attackAt=0}
  end
 end
+-- Reusable hand-built asset kit populates the islands without external downloads.
+WorldKit.Populate(world,biomes)
 -- A small physical skill course with a real summit reward.
 local sky=biomes[4].center
 for i=1,5 do
@@ -151,6 +157,34 @@ local summit=part("Cloud Summit",Vector3.new(13,3,13),
 sign("SUMMIT BONUS +80 COINS",summit.Position+Vector3.new(0,7,0),palette[4])
 local event=Instance.new("RemoteEvent"); event.Name="RiftRaidersEvent"; event.Parent=ReplicatedStorage
 local action=Instance.new("RemoteEvent"); action.Name="RiftRaidersAction"; action.Parent=ReplicatedStorage
+-- Two reusable first-person/third-person sci-fi weapons. The server decides hits.
+local ServerStorage=game:GetService("ServerStorage")
+local function makeWeapon(name,color,length)
+ local tool=Instance.new("Tool"); tool.Name=name
+ tool.ToolTip="Aim with camera, tap or click to fire"
+ tool.RequiresHandle=true; tool.CanBeDropped=false
+ tool.Grip=CFrame.new(0,-.2,-.6)*CFrame.Angles(0,math.rad(90),0)
+ local handle=Instance.new("Part"); handle.Name="Handle"
+ handle.Size=Vector3.new(1,1.2,3.2); handle.Color=Color3.fromRGB(38,45,63)
+ handle.Material=Enum.Material.Metal; handle.CanCollide=false; handle.Massless=true
+ handle.Parent=tool
+ local barrel=Instance.new("Part"); barrel.Name="Glowing Barrel"
+ barrel.Size=Vector3.new(.7,.7,length); barrel.Material=Enum.Material.Neon
+ barrel.Color=color; barrel.CanCollide=false; barrel.Massless=true
+ barrel.CFrame=handle.CFrame*CFrame.new(0,0,-length*.45)
+ barrel.Parent=tool
+ local weld=Instance.new("WeldConstraint"); weld.Part0=handle; weld.Part1=barrel; weld.Parent=handle
+ tool.Parent=ServerStorage
+ return tool
+end
+local pulseTemplate=makeWeapon("Pulse Rifle",palette[1],4)
+local scatterTemplate=makeWeapon("Scatter Blaster",palette[2],2.5)
+local function grantWeapon(p,template)
+ local backpack=p:FindFirstChildOfClass("Backpack")
+ if not backpack then return end
+ if backpack:FindFirstChild(template.Name) or (p.Character and p.Character:FindFirstChild(template.Name)) then return end
+ template:Clone().Parent=backpack
+end
 local profiles={}
 local store=nil
 if not RunService:IsStudio() and game.GameId~=0 then
@@ -166,6 +200,7 @@ local function sync(p)
  p:SetAttribute("RRLevel",s.level); p:SetAttribute("RRXP",s.xp)
  p:SetAttribute("RRBlaster",s.blaster); p:SetAttribute("RRShield",s.shieldOwned)
  p:SetAttribute("RRPet",s.petOwned); p:SetAttribute("RRSeals",s.seals)
+ p:SetAttribute("RRScatter",s.scatterOwned)
  p:SetAttribute("RRQuestShards",s.quest.shards)
  p:SetAttribute("RRQuestDrones",s.quest.drones)
  p:SetAttribute("RRQuestSeals",s.quest.seals)
@@ -200,7 +235,8 @@ local function save(p)
  local s=profiles[p]
  if not store or not s or not s.loaded then return end
  local payload={version=1,coins=s.coins,shards=s.shards,level=s.level,xp=s.xp,
-  blaster=s.blaster,shieldOwned=s.shieldOwned,petOwned=s.petOwned,seals=s.seals}
+  blaster=s.blaster,shieldOwned=s.shieldOwned,petOwned=s.petOwned,
+  scatterOwned=s.scatterOwned,seals=s.seals}
  local key="Player_"..p.UserId
  local ok,err=pcall(function()
   store:UpdateAsync(key,function(previous)
@@ -214,9 +250,9 @@ local function save(p)
 end
 local function init(p)
  local s={coins=0,shards=0,level=1,xp=0,blaster=1,shieldOwned=false,
-  petOwned=false,seals=0,quest={shards=0,drones=0,seals=0},
+  petOwned=false,scatterOwned=false,seals=0,quest={shards=0,drones=0,seals=0},
   shardTimes={},beaconTimes={},summitAt=0,lastBlast=0,lastDash=0,lastShield=0,
-  shieldUntil=0,travelAt=0,loaded=false,pet=nil}
+  shieldUntil=0,travelAt=0,lastShoot=0,loaded=false,pet=nil}
  if store then
   local ok,data=pcall(function() return store:GetAsync("Player_"..p.UserId) end)
   if ok then
@@ -225,6 +261,7 @@ local function init(p)
     s.level=math.max(1,cleanInt(data.level,100)); s.xp=cleanInt(data.xp,100000)
     s.blaster=math.clamp(cleanInt(data.blaster,4),1,4)
     s.shieldOwned=data.shieldOwned==true; s.petOwned=data.petOwned==true
+    s.scatterOwned=data.scatterOwned==true
     s.seals=cleanInt(data.seals,1000000)
    end
    s.loaded=true
@@ -239,9 +276,17 @@ local function init(p)
   local v=Instance.new("IntValue"); v.Name=name; v.Parent=ls
  end
  sync(p)
+ task.defer(function()
+  grantWeapon(p,pulseTemplate)
+  if s.scatterOwned then grantWeapon(p,scatterTemplate) end
+ end)
  p.CharacterAdded:Connect(function()
   task.wait(.25)
-  if profiles[p] then sync(p) end
+  if profiles[p] then
+   sync(p)
+   grantWeapon(p,pulseTemplate)
+   if profiles[p].scatterOwned then grantWeapon(p,scatterTemplate) end
+  end
  end)
  tell(p,"WELCOME! COLLECT SHARDS, BLAST DRONES, SEAL RIFTS!")
 end
@@ -331,6 +376,79 @@ local function blast(p)
   end)
  end
 end
+-- Long-range pulse and scatter weapons: the client supplies aim, never a hit.
+local function shoot(p,aim,weaponName)
+ local s=profiles[p]; local root=rootFor(p)
+ if not s or not root or typeof(aim)~="Vector3" then return end
+ if aim.X~=aim.X or aim.Y~=aim.Y or aim.Z~=aim.Z then return end
+ if aim.Magnitude<.9 or aim.Magnitude>1.1 then return end
+ if weaponName~="Pulse Rifle" and weaponName~="Scatter Blaster" then return end
+ if weaponName=="Scatter Blaster" and not s.scatterOwned then return end
+ local backpack=p:FindFirstChildOfClass("Backpack")
+ if not ((p.Character and p.Character:FindFirstChild(weaponName)) or
+  (backpack and backpack:FindFirstChild(weaponName))) then return end
+ local now=os.clock()
+ local scatter=weaponName=="Scatter Blaster"
+ if now-s.lastShoot<(scatter and .85 or .22) then return end
+ s.lastShoot=now
+ local origin=root.Position+Vector3.new(0,1.8,0)
+ local params=RaycastParams.new()
+ params.FilterType=Enum.RaycastFilterType.Exclude
+ params.FilterDescendantsInstances={p.Character}
+ params.IgnoreWater=true
+ local count=scatter and 4 or 1
+ local maxDistance=scatter and 70 or 125
+ for i=1,count do
+  local spread=scatter and Vector3.new((i-2.5)*.045,((i%2)*2-1)*.035,0) or Vector3.zero
+  local direction=(aim+spread).Unit
+  local hit=workspace:Raycast(origin,direction*maxDistance,params)
+  local endpoint=hit and hit.Position or origin+direction*maxDistance
+  local length=(endpoint-origin).Magnitude
+  if length>.1 then
+   local tracer=Instance.new("Part"); tracer.Name="Pulse Tracer"
+   tracer.Size=Vector3.new(.17,.17,length)
+   tracer.CFrame=CFrame.lookAt((origin+endpoint)*.5,endpoint)
+   tracer.Material=Enum.Material.Neon
+   tracer.Color=scatter and palette[2] or palette[1]
+   tracer.CanCollide=false; tracer.CanTouch=false; tracer.CanQuery=false
+   tracer.Anchored=true; tracer.Parent=world
+   Debris:AddItem(tracer,.12)
+  end
+  local target=hit and hit.Instance
+  if target==boss and bossActive then
+   bossHP=math.max(0,bossHP-1)
+   boss:SetAttribute("Health",bossHP)
+   bossContributors[p]=true
+   world:SetAttribute("BossHealth",bossHP)
+   if bossHP==0 then
+    bossActive=false; boss.Transparency=1
+    for contributor in pairs(bossContributors) do
+     if profiles[contributor] then
+      reward(contributor,300,120,10)
+      tell(contributor,"TITAN DEFEATED! +300 COINS +10 SHARDS!")
+     end
+    end
+    bossContributors={}
+   end
+  elseif target and drones[target] and drones[target].alive then
+   local d=drones[target]
+   d.health-=1
+   target:SetAttribute("Health",math.max(0,d.health))
+   if d.health<=0 then
+    d.alive=false; target.Transparency=1; target.CanTouch=false
+    reward(p,30,25,2); quest(p,"drones",1)
+    tell(p,"DRONE DOWN! +30 COINS +2 SHARDS!")
+    task.delay(9,function()
+     if target.Parent then
+      d.alive=true; d.health=3; target.Position=d.home
+      target.Transparency=0; target.CanTouch=true
+      target:SetAttribute("Health",3)
+     end
+    end)
+   end
+  end
+ end
+end
 for _,shard in ipairs(shards) do
  shard.Touched:Connect(function(hit)
   local char=hit:FindFirstAncestorOfClass("Model")
@@ -371,11 +489,17 @@ summit.Touched:Connect(function(hit)
  reward(p,80,65,3)
  tell(p,"SKY SUMMIT! +80 COINS +3 SHARDS!")
 end)
-action.OnServerEvent:Connect(function(p,kind,arg)
+action.OnServerEvent:Connect(function(p,kind,arg,extra)
  local s=profiles[p]; local root=rootFor(p)
  if not s or not root or type(kind)~="string" then return end
  local now=os.clock()
  if kind=="Blast" then blast(p); return end
+ if kind=="Shoot" then shoot(p,arg,extra); return end
+ if kind=="SpawnCar" then
+  local ok,message=Vehicles.Spawn(world,p)
+  tell(p,message)
+  return
+ end
  if kind=="Dash" then
   if now-s.lastDash<6 then return end
   s.lastDash=now
@@ -413,6 +537,12 @@ action.OnServerEvent:Connect(function(p,kind,arg)
    if s.coins<150 then tell(p,"NEED 150 COINS!"); return end
    s.coins-=150; s.shieldOwned=true
    tell(p,"SHIELD UNLOCKED! PRESS SHIELD TO ACTIVATE!")
+  elseif arg=="SCATTER" then
+   if s.scatterOwned then tell(p,"SCATTER BLASTER ALREADY OWNED!"); return end
+   if s.coins<175 then tell(p,"NEED 175 COINS!"); return end
+   s.coins-=175; s.scatterOwned=true
+   grantWeapon(p,scatterTemplate)
+   tell(p,"SCATTER BLASTER UNLOCKED! EQUIP IT FROM BACKPACK!")
   elseif arg=="PET" then
    if s.petOwned then tell(p,"RIFTLING ALREADY OWNED!"); return end
    if s.coins<250 then tell(p,"NEED 250 COINS!"); return end
@@ -503,4 +633,4 @@ task.spawn(function()
   Lighting.Ambient=Color3.fromRGB(120,132,179)
  end
 end)
-print("SF_RIFT_RAIDERS_SERVER_READY v0.1.0")
+print("SF_RIFT_RAIDERS_SERVER_READY v0.2.0")

@@ -30,7 +30,10 @@ def main():
  for line in data.splitlines():
   if "[FLog::CreatorOutput] SF_RIFT_MP" in line or "[FLog::CreatorError]" in line:print(line[-800:])
  print("LOG",log)
- ok=("SF_RIFT_MP_PASS" in data and "SF_RIFT_MP_RESULT ok=true result=PASS:rift_multiplayer" in data and not _critical_creator_errors(data))
+ ok=("SF_RIFT_MP_PASS" in data and "SF_RIFT_MP_SERVER_PASS players=2" in data
+  and "SF_RIFT_MP_CHECK player_car_and_seat PASS" in data
+  and "SF_RIFT_MP_CHECK server_ray_weapon PASS" in data
+  and not _critical_creator_errors(data))
  print("RIFT_MULTIPLAYER_"+("PASS" if ok else "FAIL"))
  return 0 if ok else 1
 if __name__=="__main__":raise SystemExit(main())
