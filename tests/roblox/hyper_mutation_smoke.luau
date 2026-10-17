@@ -1,0 +1,12 @@
+local StudioTestService=game:GetService("StudioTestService")
+local world=workspace:WaitForChild("HyperMutationRushWorld",20)
+assert(world,"world missing")
+assert(world:GetAttribute("Version")=="0.1.0","version")
+local function count(n) local x=0 for _,p in ipairs(world:GetDescendants()) do if p.Name==n then x+=1 end end return x end
+assert(count("Checkpoint")==12,"12 checkpoints required")
+assert(count("SpeedOrb")==18,"18 orbs required")
+assert(count("JumpLaser")==6,"6 laser hazards required")
+assert(count("MutationGate")==2,"2 mutation gates required")
+assert(count("FinishPortal")==1,"finish missing")
+assert(game:GetService("ReplicatedStorage"):FindFirstChild("MutationRushAction"),"action remote missing")
+print("SF_MUTATION_SMOKE_PASS")
