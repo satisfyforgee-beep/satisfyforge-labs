@@ -88,6 +88,58 @@ Free sample: see the planning style before buying
 
 A short, no-obligation look at the structure and presentation used in the Creator Kit. The sample is provided so you can judge whether the workflow fits your content process before purchasing.
 
+## Desktop owner runbook: attach the free preview
+
+Use this only on the authenticated Payhip seller account. Do not share or store the password in GitHub, Drive, screenshots, or support messages.
+
+1. Open Payhip **Products** and choose **Edit** for `Strange True Story Shorts Creator Kit`.
+2. Before saving anything, confirm the listing shows the canonical title, the **$7.99** price, and the intended **250 KB ZIP**. Keep `https://payhip.com/b/MSLBK` open in a separate signed-out/incognito window for comparison.
+3. Expand **Advanced options** at the bottom of the edit page.
+4. Enable **Upload a preview file for your customers**.
+5. Upload only `SatisfyForge_Strange_True_Story_Shorts_Free_Sample.pdf`. Do **not** upload the full paid ZIP as the preview.
+6. Save the product.
+7. In the signed-out/incognito window, reload `https://payhip.com/b/MSLBK` and confirm the preview control appears.
+8. Download the public preview once, open it, and confirm it is the short sample rather than the paid package.
+
+Do not change visibility unless the edit page has been matched to the canonical public listing. If the title, price, ZIP size, or public slug does not match, stop without saving.
+
+Evidence to record:
+
+```text
+Verification date:
+Canonical URL matched:
+Displayed title:
+Displayed price:
+Seller-side ZIP filename and size:
+Preview filename:
+Public preview control visible:
+Downloaded preview opened:
+Notes:
+```
+
+Payhip's current help page confirms that the preview-file control is under **Advanced Options** on the edit-product page: https://help.payhip.com/article/222-upload-previews
+
+## Zero-cost fulfillment test — separate from payment testing
+
+Payhip's current checkout guidance supports a **100% off, one-use coupon** to test checkout and post-purchase delivery without making a real payment. This is the preferred first test because it costs $0 and does not alter the public $7.99 price.
+
+1. In Payhip, open **Marketing → Coupons → Add Coupon Code**.
+2. Apply the coupon to the **specific canonical Creator Kit product**, not the whole store.
+3. Set a **100% percentage discount** and limit it to **one total use**.
+4. Add an internal note such as `Owner fulfillment test — not a promotion`.
+5. In a signed-out/incognito browser, open only `https://payhip.com/b/MSLBK`, select **Buy Now**, enter the test email, apply the coupon, and complete the $0 order.
+6. Confirm the order appears in Payhip. Payhip warns that test orders appear on the Customers page and cannot be deleted.
+7. Confirm the receipt arrives, its download-page link works, the delivered ZIP downloads and opens, and the package matches the intended seller-side file.
+8. Disable or delete the one-use coupon after the evidence is captured.
+
+A passing $0 coupon test proves the checkout form and post-purchase delivery path worked for that test order. It does **not** prove PayPal/card payment processing works. A real payment test is a separate, spend-bearing action and requires explicit approval of the exact amount and payment method before execution.
+
+Official references:
+
+- https://help.payhip.com/article/107-testing-checkout-flow
+- https://help.payhip.com/article/88-coupons
+- https://help.payhip.com/article/59-adding-a-digital-product
+
 ## Pre-sale support replies
 
 ### “What exactly will this help me do?”
@@ -110,6 +162,13 @@ No. We do not promise views, monetization, revenue, or income. The kit is intend
 
 Run this only through the authenticated Payhip owner account and a deliberately approved test method. Do not change bank, payout, tax, identity, or legal settings.
 
+Use two distinct evidence levels:
+
+- **Level 1 — $0 coupon test:** verifies the checkout form, order record, receipt, download page, and delivered file for a zero-dollar order.
+- **Level 2 — real payment test:** verifies the actual payment-processor handoff as well. This spends money and must not be run without explicit approval of the exact transaction.
+
+Do not describe Level 1 as proof that paid processing works.
+
 ### Before the test
 
 - [ ] Confirm the seller account is the approved SatisfyForge business account.
@@ -125,8 +184,9 @@ Run this only through the authenticated Payhip owner account and a deliberately 
 - [ ] Start from a signed-out/incognito browser.
 - [ ] Open only https://payhip.com/b/MSLBK.
 - [ ] Confirm the title, price, buttons, description, and preview.
-- [ ] Use one controlled purchase only if the owner has explicitly approved the exact charge and payment method.
-- [ ] Record the checkout result without exposing payment details.
+- [ ] For the zero-cost test, use the one-use 100% coupon described above and confirm the total is $0 before completing.
+- [ ] For any real-payment test, proceed only after the owner explicitly approves the exact charge and payment method.
+- [ ] Record whether the result was a $0 coupon test or a real-payment test without exposing payment details.
 - [ ] Capture the Payhip order identifier and receipt timestamp.
 - [ ] Confirm whether the buyer receives an email and/or download page.
 - [ ] Download the delivered ZIP and verify it opens.
