@@ -1,9 +1,11 @@
 -- v0.22: Server-verified checkout-and-restock role at the downtown corner market.
 -- No client-selected orders, extra background loops or paid marketplace assets.
+local Characters=require(script.Parent:WaitForChild("VenueCharacters"))
 local Retail={}
 Retail.Products={"GROCERIES","ELECTRONICS","TOYS"}
 local checkout={}
 local shelves={}
+local attendants={}
 local handlers
 local function part(parent,name,size,cf,color,material,collides)
  local p=Instance.new("Part")
@@ -45,7 +47,7 @@ local function near(player,node,dist)
 end
 function Retail.Build(world,options)
  handlers=options
- table.clear(checkout);table.clear(shelves)
+ table.clear(checkout);table.clear(shelves);table.clear(attendants)
  local folder=Instance.new("Folder")
  folder.Name="Downtown Hands-On Corner Market";folder.Parent=world
  local base=CFrame.new(-72,3,2287)
@@ -93,6 +95,17 @@ function Retail.Build(world,options)
   interaction(shelf,"RESTOCK "..product,product,"RetailStock")
   shelves[product]=shelf
  end
+ attendants[1]=Characters.Create(folder,"Corner Market Cashier A",
+  base*CFrame.new(-15,0,-11),"MORGAN • CASHIER",
+  Color3.fromRGB(78,124,104),function(player)
+   if handlers and handlers.process then handlers.process(player,"RetailGuide") end
+  end)
+ attendants[2]=Characters.Create(folder,"Corner Market Cashier B",
+  base*CFrame.new(15,0,-11),"ALEX • CUSTOMER CARE",
+  Color3.fromRGB(68,106,142),function(player)
+   if handlers and handlers.process then handlers.process(player,"RetailGuide") end
+  end)
+ folder:SetAttribute("RetailNPCCount",#attendants)
  folder:SetAttribute("RetailSkuCount",#Retail.Products)
  folder:SetAttribute("ServerValidatedOrder",true)
  folder:SetAttribute("NoBackgroundLoops",true)
@@ -107,6 +120,23 @@ function Retail.Assign(shift)
  return scan,stock
 end
 function Retail.Process(player,kind,product,shift)
+ if kind=="RetailGuide" then
+  local closeToStaff=false
+  for _,staff in ipairs(attendants) do
+   local root=staff and staff.PrimaryPart
+   if root and near(player,root,8) then closeToStaff=true;break end
+  end
+  if not closeToStaff or not handlers then return false end
+  if shift and shift.id=="RETAIL" and shift.retailScanSku then
+   local message=shift.progress==0 and ("YOUR CUSTOMER NEEDS "..shift.retailScanSku..
+    ". SCAN IT AT THE MATCHING CHECKOUT.") or
+    shift.progress==1 and ("THANKS! RESTOCK "..shift.retailStockSku..
+    " ON ITS MATCHING SHELF.") or
+    "GREAT WORK! RETURN TO RETAIL FOR WAGES."
+   handlers.tell(player,message)
+  else handlers.tell(player,"APPLY FOR RETAIL AT CITY JOBS, START YOUR SHIFT, THEN SCAN AND RESTOCK MATCHING GOODS.") end
+  return true
+ end
  if not handlers or not shift or shift.id~="RETAIL" or
   type(shift.retailScanSku)~="string" then return false end
  local now=os.clock()

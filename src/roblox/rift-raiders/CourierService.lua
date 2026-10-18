@@ -1,10 +1,12 @@
 -- v0.23: Downtown courier route with real pickup bins and delivery addresses.
 -- Every job order, interaction radius and paid completion is server-validated.
+local Characters=require(script.Parent:WaitForChild("VenueCharacters"))
 local Courier={}
 Courier.Parcels={"DOCUMENTS","GROCERIES","ELECTRONICS"}
 Courier.Destinations={"APARTMENTS","OFFICES","WATERFRONT"}
 local bins={}
 local destinations={}
+local guides={}
 local handlers
 local function create(folder,name,size,cf,color,material,collides)
  local p=Instance.new("Part")
@@ -38,6 +40,66 @@ local function prompt(node,verb,displayName,kind,arg)
   if handlers and handlers.process then handlers.process(player,kind,arg) end
  end)
 end
+local function clearPackage(player)
+ local char=player.Character
+ local prop=char and char:FindFirstChild("Courier Carry Package")
+ if prop then prop:Destroy() end
+end
+function Courier.Clear(player) clearPackage(player) end
+function Courier.HasPackage(player,shift)
+ local char=player.Character
+ local prop=char and char:FindFirstChild("Courier Carry Package")
+ return prop~=nil and shift and shift.courierProp==prop and
+  prop:GetAttribute("ParcelType")==shift.courierPackage and
+  prop:GetAttribute("OwnerUserId")==player.UserId and
+  prop:FindFirstChild("Package Body")~=nil
+end
+local function giveParcel(player,shift,product)
+ local char=player.Character
+ local grip=char and (char:FindFirstChild("RightHand") or
+  char:FindFirstChild("Right Arm"))
+ local humanoid=char and char:FindFirstChildOfClass("Humanoid")
+ if not grip or not humanoid or humanoid.Health<=0 then return false end
+ clearPackage(player)
+ local prop=Instance.new("Model")
+ prop.Name="Courier Carry Package"
+ prop:SetAttribute("ParcelType",product)
+ prop:SetAttribute("OwnerUserId",player.UserId)
+ local box=Instance.new("Part")
+ box.Name="Package Body";box.Size=Vector3.new(1.5,1.15,1.1)
+ box.Color=product=="GROCERIES" and Color3.fromRGB(126,166,119) or
+  product=="DOCUMENTS" and Color3.fromRGB(209,185,135) or
+  Color3.fromRGB(105,155,199)
+ box.Material=Enum.Material.Wood
+ box.Anchored=false;box.Massless=true
+ box.CanCollide=false;box.CanTouch=false;box.CanQuery=false
+ box.CFrame=grip.CFrame*CFrame.new(0,-.38,-.77)
+ box.Parent=prop;prop.PrimaryPart=box
+ local tag=Instance.new("BillboardGui")
+ tag.Name="Assigned Package Label";tag.Size=UDim2.fromOffset(130,30)
+ tag.StudsOffsetWorldSpace=Vector3.new(0,1,0)
+ tag.MaxDistance=28;tag.Parent=box
+ local text=Instance.new("TextLabel")
+ text.Size=UDim2.fromScale(1,1)
+ text.BackgroundColor3=Color3.fromRGB(34,50,69)
+ text.TextColor3=Color3.fromRGB(240,232,202)
+ text.TextSize=13;text.Font=Enum.Font.GothamBold
+ text.Text=product;text.Parent=tag
+ prop.Parent=char
+ local weld=Instance.new("WeldConstraint")
+ weld.Name="Held Package Joint";weld.Part0=grip;weld.Part1=box
+ weld.Parent=box
+ shift.courierProp=prop
+ return true
+end
+function Courier.ResetAfterRespawn(shift)
+ if shift and shift.id=="COURIER" and shift.progress==1 then
+  shift.progress=0;shift.courierPickedUp=false;shift.courierProp=nil
+  shift.taskAt=0
+  return true
+ end
+ return false
+end
 local function close(player,node,distance)
  local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
  return root and node and node.Parent and
@@ -45,7 +107,7 @@ local function close(player,node,distance)
 end
 function Courier.Build(world,options)
  handlers=options
- table.clear(bins);table.clear(destinations)
+ table.clear(bins);table.clear(destinations);table.clear(guides)
  local folder=Instance.new("Folder")
  folder.Name="Downtown Hands-On Delivery Depot";folder.Parent=world
  local base=CFrame.new(36,3,2291)
@@ -94,6 +156,19 @@ function Courier.Build(world,options)
   prompt(doorstep,"DELIVER TO "..place,place.." DELIVERY","CourierDeliver",place)
   destinations[place]=doorstep
  end
+ guides[1]=Characters.Create(folder,"Rift Express Dispatcher",
+  base*CFrame.new(15,0,-13),"JORDAN • DISPATCH",
+  Color3.fromRGB(71,107,149),function(player)
+   if handlers and handlers.process then handlers.process(player,"CourierGuide") end
+  end)
+ for i,place in ipairs(Courier.Destinations) do
+  guides[i+1]=Characters.Create(folder,"Courier Resident "..place,
+   base*CFrame.new((i-2)*28+6,0,52),
+   place.." • RECEIVER",Color3.fromRGB(125,92,111),function(player)
+    if handlers and handlers.process then handlers.process(player,"CourierGuide") end
+   end)
+ end
+ folder:SetAttribute("CourierNPCCount",#guides)
  folder:SetAttribute("CourierParcelTypes",#Courier.Parcels)
  folder:SetAttribute("CourierDestinationTypes",#Courier.Destinations)
  folder:SetAttribute("ServerValidatedDelivery",true)
@@ -109,15 +184,38 @@ function Courier.Assign(shift)
  return parcel,destination
 end
 function Courier.Process(player,kind,arg,shift)
+ if kind=="CourierGuide" then
+  local closeToGuide=false
+  for _,guide in ipairs(guides) do
+   if guide and guide.PrimaryPart and close(player,guide.PrimaryPart,8) then
+    closeToGuide=true;break end
+  end
+  if not closeToGuide or not handlers then return false end
+  if shift and shift.id=="COURIER" and shift.courierPackage then
+   local words=shift.progress==0 and ("PICK UP "..shift.courierPackage..
+    " AT THE DISPATCH DEPOT.") or shift.progress==1 and
+    ("BRING "..shift.courierPackage.." TO "..shift.courierDestination..
+    ". KEEP YOUR PACKAGE VISIBLE.") or
+    "DELIVERY RECEIVED! RETURN TO YOUR WORKPLACE FOR PAY."
+   handlers.tell(player,words)
+  else handlers.tell(player,"BECOME A COURIER AT CITY JOBS, START A SHIFT, PICK UP A PARCEL, THEN DELIVER IT.") end
+  return true
+ end
  if not handlers or not shift or shift.id~="COURIER" or
   type(shift.courierPackage)~="string" then return false end
  local now=os.clock()
  if kind=="CourierPickup" then
   if type(arg)~="string" or not bins[arg] or
-   not close(player,bins[arg],8) or shift.progress~=0 or
+   not close(player,bins[arg],8) or
+   (shift.progress~=0 and not (shift.progress==1 and
+    shift.courierPickedUp and not Courier.HasPackage(player,shift))) or
    now-shift.started<1.5 then return false end
   if arg~=shift.courierPackage then
    handlers.tell(player,"WRONG PACKAGE. DISPATCH REQUESTS "..shift.courierPackage..".")
+   return false
+  end
+  if not giveParcel(player,shift,arg) then
+   handlers.tell(player,"YOUR CHARACTER MUST BE READY TO HOLD THE PACKAGE.")
    return false
   end
   shift.progress=1;shift.taskAt=now;shift.courierPickedUp=true
@@ -127,6 +225,10 @@ function Courier.Process(player,kind,arg,shift)
   if type(arg)~="string" or not destinations[arg] or
    not close(player,destinations[arg],8) or shift.progress~=1 or
    not shift.courierPickedUp then return false end
+  if not Courier.HasPackage(player,shift) then
+   handlers.tell(player,"YOUR PACKAGE IS MISSING! RETURN TO DISPATCH TO PICK IT UP AGAIN.")
+   return false
+  end
   if now-shift.taskAt<1.5 then
    handlers.tell(player,"SECURE THE PACKAGE BEFORE DELIVERY.")
    return false
@@ -136,6 +238,7 @@ function Courier.Process(player,kind,arg,shift)
    return false
   end
   shift.progress=2;shift.taskAt=now
+  clearPackage(player);shift.courierProp=nil
   handlers.reward(player,10,4,0)
   handlers.tell(player,"PACKAGE DELIVERED • +10 COIN TIP! RETURN TO THE COURIER WORKPLACE FOR WAGES.")
  else return false end

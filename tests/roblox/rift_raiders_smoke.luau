@@ -237,7 +237,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.23.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.24.0","version mismatch")
 assert(world:GetAttribute("StudioSavesIsolated")==true,
  "Studio must never write a production profile data store")
 local function count(name)
@@ -391,6 +391,25 @@ for _,destination in ipairs(courier.Destinations) do
  local stop=courierDepot:FindFirstChild("Courier Dropoff "..destination)
  assert(stop and stop:FindFirstChildOfClass("ProximityPrompt"),
   "delivery door missing "..destination)
+end
+assert(courierDepot:GetAttribute("CourierNPCCount")==4,
+ "courier receivers and depot dispatcher missing")
+assert(market:GetAttribute("RetailNPCCount")==2,
+ "retail cashier and customer helper missing")
+for _,folder in ipairs({market,courierDepot}) do
+ local count=0
+ for _,npc in ipairs(folder:GetChildren()) do
+  if npc:IsA("Model") and npc:GetAttribute("NPCType")=="StaticWorkplaceGuide" then
+   count+=1
+   assert(npc.PrimaryPart and npc.PrimaryPart:FindFirstChildOfClass("ProximityPrompt"),
+    "customer directions cannot be requested")
+   for _,node in ipairs(npc:GetDescendants()) do
+    assert(not node:IsA("LuaSourceContainer"),"untrusted marketplace NPC code")
+   end
+  end
+ end
+ assert(count==folder:GetAttribute(folder==market and "RetailNPCCount" or
+  "CourierNPCCount"),"NPC count mismatch")
 end
 local sampleCourier={id="COURIER",started=os.clock()-5,progress=0,taskAt=0}
 local parcel,address=courier.Assign(sampleCourier)

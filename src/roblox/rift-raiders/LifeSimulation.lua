@@ -915,7 +915,16 @@ function Life.PlayerJoined(player)
  Life.RefreshProperty(player)
  Garden.PlayerJoined(player)
 end
+function Life.CharacterRespawned(player)
+ local s=profile(player)
+ if s and s.life and Courier.ResetAfterRespawn(s.life.activeShift) then
+  Courier.Clear(player)
+  tell(player,"DELIVERY RESET AFTER RESPAWN. COLLECT YOUR PACKAGE AGAIN AT RIFT EXPRESS.")
+  Life.Sync(player)
+ end
+end
 function Life.PlayerRemoving(player)
+ Courier.Clear(player)
  local slot=playerSlots[player]
  if slot then propertySlots[slot]=nil end
  playerSlots[player]=nil
@@ -975,6 +984,7 @@ function Life.Process(player,kind,arg,step)
    tell(player,"REACH LEVEL "..career.level.." TO APPLY."); return false
   end
   if s.heat>0 then tell(player,"CLEAR YOUR WANTED HEAT BEFORE APPLYING."); return false end
+  Courier.Clear(player)
   life.career=arg
   life.activeShift=nil
   tell(player,"HIRED: "..career.name.."! FIND YOUR WORKPLACE.")
@@ -1033,6 +1043,10 @@ function Life.Process(player,kind,arg,step)
   return Mechanic.Process(player,kind,arg,life.activeShift)
  elseif kind=="RetailScan" or kind=="RetailStock" then
   return Retail.Process(player,kind,arg,life.activeShift)
+ elseif kind=="RetailGuide" then
+  return Retail.Process(player,kind,arg,life.activeShift)
+ elseif kind=="CourierGuide" then
+  return Courier.Process(player,kind,arg,life.activeShift)
  elseif kind=="CourierPickup" or kind=="CourierDeliver" then
   return Courier.Process(player,kind,arg,life.activeShift)
  elseif kind=="Task" then

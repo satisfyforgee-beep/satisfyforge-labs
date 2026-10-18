@@ -982,12 +982,39 @@ end
 if (b:GetAttribute("RRLifeRetailOrder") or "")~="" then
  fail("other_player_retail_order_leaked") return
 end
+-- Player must be near a person to get retail hints; dialogue cannot pay coins.
+local cashier=store:FindFirstChild("Corner Market Cashier A")
+if not cashier or not cashier.PrimaryPart or
+ not cashier.PrimaryPart:FindFirstChildOfClass("ProximityPrompt") then
+ fail("retail_character_missing") return
+end
+a.Character:PivotTo(CFrame.new(cityRetail.Position+Vector3.new(0,4,0)))
+task.wait(.5)
+if lifeService.Process(a,"RetailGuide") then
+ fail("retail_remote_npc_dialogue") return
+end
+a.Character:PivotTo(CFrame.new(cashier.PrimaryPart.Position+Vector3.new(0,4,0)))
+task.wait(.5)
+local retailGuideCoins=a:GetAttribute("RRCoins") or 0
+if not lifeService.Process(a,"RetailGuide") or
+ (a:GetAttribute("RRCoins") or 0)~=retailGuideCoins then
+ fail("retail_local_character_guide_missing_or_rewards") return
+end
+print("SF_RIFT_MP_CHECK retail_static_npc_guidance_proximity PASS")
 print("SF_RIFT_MP_CHECK physical_retail_checkout_stock_pay_no_duplicates PASS")
 -- Downtown courier adds a real dispatch / destination job without changing
 -- the generic suburban entry-level career and independent delivery activities.
 local depot=world:FindFirstChild("Downtown Hands-On Delivery Depot")
 local courierApi=require(ServerScriptService:WaitForChild("CourierService"))
 if not depot or #courierApi.Parcels~=3 then fail("physical_courier_depot_missing") return end
+if a.Character:FindFirstChild("Courier Carry Package") then
+ fail("parcel_appeared_without_pickup") return
+end
+local dispatcher=depot:FindFirstChild("Rift Express Dispatcher")
+if not dispatcher or not dispatcher.PrimaryPart or
+ not dispatcher.PrimaryPart:FindFirstChildOfClass("ProximityPrompt") then
+ fail("courier_dispatch_character_missing") return
+end
 if lifeService.Process(a,"CourierPickup","DOCUMENTS") then
  fail("courier_pickup_without_shift") return
 end
@@ -1031,6 +1058,19 @@ if not lifeService.Process(a,"CourierPickup",parcel) or
  a:GetAttribute("RRLifeTaskStep")~=1 then
  fail("courier_actual_pickup_rejected") return
 end
+local held=a.Character:FindFirstChild("Courier Carry Package")
+local body=held and held:FindFirstChild("Package Body")
+if not body or not body:IsA("BasePart") or body.Anchored or
+ body.CanCollide or not body.Massless or
+ not body:FindFirstChild("Held Package Joint") or
+ held:GetAttribute("OwnerUserId")~=a.UserId or
+ held:GetAttribute("ParcelType")~=parcel then
+ fail("courier_real_welded_held_package_missing") return
+end
+if b.Character:FindFirstChild("Courier Carry Package") then
+ fail("courier_package_leaked_to_other_player") return
+end
+print("SF_RIFT_MP_CHECK real_noncolliding_welded_courier_package PASS")
 local address=string.match(a:GetAttribute("RRLifeTaskName") or "",
  "DELIVER PARCEL TO (%u+)")
 local correctDoor=address and depot:FindFirstChild("Courier Dropoff "..address)
@@ -1049,10 +1089,27 @@ task.wait(.45)
 if lifeService.Process(a,"CourierDeliver",wrongAddress) then
  fail("courier_wrong_destination_accepted") return
 end
+-- A visibly lost package cannot become a remote free delivery; player
+-- can recover the same issued parcel at its original dispatch bin.
+held:Destroy()
 a.Character:PivotTo(CFrame.new(correctDoor.Position+Vector3.new(0,4,0)))
 task.wait(.6)
+local beforeLostAttempt=a:GetAttribute("RRCoins") or 0
+if lifeService.Process(a,"CourierDeliver",address) or
+ (a:GetAttribute("RRCoins") or 0)~=beforeLostAttempt then
+ fail("courier_missing_physical_package_still_paid") return
+end
+a.Character:PivotTo(CFrame.new(correctBin.Position+Vector3.new(0,4,0)))
+task.wait(.5)
+if not lifeService.Process(a,"CourierPickup",parcel) or
+ not a.Character:FindFirstChild("Courier Carry Package") then
+ fail("courier_lost_parcel_recovery_missing") return
+end
+a.Character:PivotTo(CFrame.new(correctDoor.Position+Vector3.new(0,4,0)))
+task.wait(1.7)
 local beforeCourierTip=a:GetAttribute("RRCoins") or 0
 if not lifeService.Process(a,"CourierDeliver",address) or
+ a.Character:FindFirstChild("Courier Carry Package") or
  a:GetAttribute("RRLifeTaskStep")~=2 or
  (a:GetAttribute("RRCoins") or 0)<=beforeCourierTip then
  fail("courier_legitimate_delivery_tip_missing") return
@@ -1073,6 +1130,15 @@ end
 if (b:GetAttribute("RRLifeCourierPackage") or "")~="" then
  fail("courier_other_player_private_order_leaked") return
 end
+-- Talking to staffed resident / dispatcher displays navigation only.
+a.Character:PivotTo(CFrame.new(dispatcher.PrimaryPart.Position+Vector3.new(0,4,0)))
+task.wait(.5)
+local guideCoins=a:GetAttribute("RRCoins") or 0
+if not lifeService.Process(a,"CourierGuide") or
+ (a:GetAttribute("RRCoins") or 0)~=guideCoins then
+ fail("courier_attendant_dialogue_rejected_or_paid") return
+end
+print("SF_RIFT_MP_CHECK courier_visible_staff_and_package_recovery PASS")
 print("SF_RIFT_MP_CHECK physical_courier_pickup_route_pay_no_duplicates PASS")
 print("SF_RIFT_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:rift_multiplayer")

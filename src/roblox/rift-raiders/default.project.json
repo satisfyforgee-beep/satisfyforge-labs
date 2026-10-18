@@ -78,6 +78,9 @@
       },
       "CourierService": {
         "$path": "CourierService.lua"
+      },
+      "VenueCharacters": {
+        "$path": "VenueCharacters.lua"
       }
     },
     "StarterPlayer": {
