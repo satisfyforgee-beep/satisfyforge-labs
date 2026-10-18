@@ -479,6 +479,21 @@ end,3) then fail("downtown_traffic_not_moving") return end
 if not waitFor(function()
  return (citizen:GetPivot().Position-beforeCitizen).Magnitude>2
 end,4) then fail("downtown_citizen_not_walking") return end
+if citizen:GetAttribute("RecoveryMode")~="RerouteWithoutTeleport" then
+ fail("npc_teleport_recovery_still_enabled") return
+end
+local sampleStart=traffic:GetPivot().Position
+task.wait(.6)
+local deltaTravel=traffic:GetPivot().Position-sampleStart
+local front=traffic:FindFirstChild("bumper_front",true)
+local back=traffic:FindFirstChild("bumper_back",true)
+if not front or not back or deltaTravel.Magnitude<2 or
+ deltaTravel.Unit:Dot((front.Position-back.Position).Unit)<.57 or
+ traffic:GetAttribute("DynamicFacingChecked")~=true then
+ fail("traffic_dynamic_forward_facing_after_driving") return
+end
+print("SF_RIFT_MP_CHECK traffic_moves_towards_headlights_after_spawn PASS")
+print("SF_RIFT_MP_CHECK npc_no_visible_waypoint_teleport PASS")
 print("SF_RIFT_MP_CHECK living_downtown_population PASS")
 
 -- Test server authority for the new garden, including plot isolation and

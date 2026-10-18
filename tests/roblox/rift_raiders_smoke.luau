@@ -353,7 +353,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.26.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.27.0","version mismatch")
 assert(world:GetAttribute("StudioSavesIsolated")==true,
  "Studio must never write a production profile data store")
 local function count(name)
@@ -423,12 +423,26 @@ for i=1,8 do
  local talk=citizen and citizen:FindFirstChild("Talk to Citizen",true)
  assert(talk and talk:IsA("ProximityPrompt"),"downtown citizen talk prompt missing")
  assert(type(citizen:GetAttribute("CitizenName"))=="string","citizen name missing")
+ assert(citizen:GetAttribute("RecoveryMode")=="RerouteWithoutTeleport",
+  "NPC still snaps to its next waypoint instead of naturally rerouting")
 end
 assert(world:GetAttribute("DowntownConversations")==0,"conversation counter initialization missing")
 assert((world:GetAttribute("DowntownTrafficDistance") or 0)>0,
  "downtown traffic did not move")
 assert((world:FindFirstChild("Downtown Traffic Sedan 1",true):GetAttribute("DistanceTravelled") or 0)>0,
  "detailed traffic distance attribute missing")
+for i=1,4 do
+ local car=world:FindFirstChild("Downtown Traffic Sedan "..i,true)
+ local front=car and car:FindFirstChild("bumper_front",true)
+ local back=car and car:FindFirstChild("bumper_back",true)
+ assert(car and front and back and
+  car:GetAttribute("DynamicFacingChecked")==true and
+  car:GetAttribute("SteeringMode")=="ProgressiveYaw" and
+  (front.Position-back.Position):Dot(car:GetPivot().LookVector)>5 and
+  (car:GetAttribute("ForwardTravelHeadingDot") or -1)>.55,
+  "driving sedan is reversing after spawning: "..i)
+end
+print("SF_RIFT_CHECK traffic_dynamic_facing_all_four_and_progressive_turns PASS")
 assert(count("Downtown Employment Center")==1,"downtown employment office missing")
 assert(count("Downtown Store GARDEN")==1,"downtown nursery store missing")
 assert(count("Downtown Worksite GARDENER")==1,"new gardener worksite missing")

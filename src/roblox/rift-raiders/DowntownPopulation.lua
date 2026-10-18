@@ -82,6 +82,8 @@ local function citizen(parent,index,start,route,tellPlayer,world)
  model:SetAttribute("NPCType","R15Citizen")
  model:SetAttribute("CitizenName",names[(index-1)%#names+1])
  model:SetAttribute("Behavior","Walking")
+ model:SetAttribute("RecoveryMode","RerouteWithoutTeleport")
+ model:SetAttribute("WaypointRecoveryCount",0)
  model.Parent=parent
  local humanoid=model:FindFirstChildOfClass("Humanoid")
  local root=model:FindFirstChild("HumanoidRootPart")
@@ -118,8 +120,11 @@ local function citizen(parent,index,start,route,tellPlayer,world)
    humanoid:MoveTo(target)
    local reached=humanoid.MoveToFinished:Wait()
    if model.Parent and humanoid.Health>0 then
+    -- Physically teleporting a visible NPC to its next route point looked
+    -- like broken physics. Reroute after a stall; never snap through walls.
     if not reached and (root.Position-target).Magnitude>24 then
-     model:PivotTo(CFrame.new(target+Vector3.new(0,3.2,0)))
+     model:SetAttribute("WaypointRecoveryCount",
+      (model:GetAttribute("WaypointRecoveryCount") or 0)+1)
     end
     state.index=state.index%#route+1
     task.wait(.35+(index%3)*.2)
@@ -160,8 +165,10 @@ local function makeTrafficSedan(parent,index,startIndex,route)
  m:PivotTo(CFrame.lookAt(grounded,grounded+direction))
  m:SetAttribute("GroundedRoadHeight",1.1)
  m:SetAttribute("ForwardFacingTraffic",true)
- local state={model=m,position=grounded,route=route,index=nextIndex,
-  speed=18+index*1.5,distance=0,lastAttribute=0}
+ m:SetAttribute("SteeringMode","ProgressiveYaw")
+ m:SetAttribute("DynamicFacingChecked",false)
+ local state={model=m,position=grounded,heading=direction,route=route,
+  index=nextIndex,speed=18+index*1.5,distance=0,lastAttribute=0}
  table.insert(traffic,state)
  return m
 end
@@ -240,14 +247,25 @@ function Population.Build(world,cityModel,options)
     end
     if delta.Magnitude>.01 then
      local direction=delta.Unit
-     local amount=math.min(delta.Magnitude,car.speed*step)
+     -- Ease off the throttle while approaching an intersection corner,
+     -- then blend the visual car yaw toward the new street direction.
+     local cornerSlow=math.clamp(delta.Magnitude/18,.55,1)
+     local amount=math.min(delta.Magnitude,car.speed*step*cornerSlow)
      car.position+=direction*amount
      car.distance+=amount
-     local cf=CFrame.lookAt(car.position,car.position+direction)*CFrame.Angles(0,math.pi,0)
+     local eased=car.heading:Lerp(direction,math.clamp(step*3.6,0,1))
+     car.heading=eased.Magnitude>.01 and eased.Unit or direction
+     -- CRITICAL: the sedan headlights are at local -Z. The old movement
+     -- update mistakenly added CFrame.Angles(0,math.pi,0), reversing every
+     -- sedan after spawn even though the initial orientation was correct.
+     local cf=CFrame.lookAt(car.position,car.position+car.heading)
      m:PivotTo(cf)
      if car.distance-car.lastAttribute>=6 then
       car.lastAttribute=car.distance
       m:SetAttribute("DistanceTravelled",math.floor(car.distance))
+      m:SetAttribute("DynamicFacingChecked",true)
+      m:SetAttribute("ForwardTravelHeadingDot",
+       math.floor(car.heading:Dot(direction)*100)/100)
      end
     end
     totalDistance+=car.distance

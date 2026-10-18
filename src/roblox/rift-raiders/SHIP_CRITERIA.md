@@ -1,6 +1,6 @@
 # Rift Raiders — Finish Line / Public Launch Quality Gates
 
-**Status as of v0.26 (2026-10-18): PROTOTYPE / PRIVATE.** Do not report the game as fully completed until all gates below have objective evidence. No public publishing, paid imports, licensing violations, or Robux activation without owner authorization.
+**Status as of v0.27 (2026-10-18): PROTOTYPE / PRIVATE.** Do not report the game as fully completed until all gates below have objective evidence. No public publishing, paid imports, licensing violations, or Robux activation without owner authorization.
 
 ## 1. Player fun — core experience
 - [x] Clear first-time objective in under 30 seconds, with one-tap access to first interesting region.
@@ -17,7 +17,7 @@
 - [ ] Replace yachts, speedboats, jet skis with materially different 3D mesh hulls/details and driving/occupancy appropriate to each size.
 - [ ] Verify human walk-through and gameplay in at least two original furnished, imported Suburban interiors. v0.26 restores six doors across two houses, the imported market and garage; source geometry is original, and proximity-secured door animation passes automated tests, but physical navigation with an actual player still requires inspection.
 - [ ] Verify all developer-owned or officially reusable audio/material/mesh permissions on the actual owner account; eliminate noncompliant third-party asset loads.
-- [ ] Improve lighting, sound effects, scenery transitions and visible/interactable NPCs; verify readability under LOW graphics.
+- [ ] Improve lighting, sound effects, scenery transitions and visible/interactable NPCs; verify readability under LOW graphics. (v0.27 corrects reverse-facing *moving* traffic and removes emergency NPC position snapping; cinematic/realistic street behavior, light/audio and mobile rendering remain unverified.)
 
 ## 3. Economy and gameplay correctness
 - [x] Server validates earned-currency shopping, valid career actions/wages, personal car ownership, boat ownership, gardening and collectible claim radius/replay.

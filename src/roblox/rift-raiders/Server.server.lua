@@ -26,7 +26,7 @@ local Persistence=require(ServerScriptService:WaitForChild("DataPersistence"))
 local Goals=require(ServerScriptService:WaitForChild("ProgressionGoals"))
 local Discovery=require(ServerScriptService:WaitForChild("SuburbanDiscovery"))
 local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
-world:SetAttribute("Version","0.26.0")
+world:SetAttribute("Version","0.27.0")
 world:SetAttribute("Phase","CALM")
 world:SetAttribute("SecondsLeft",75)
 local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
@@ -858,4 +858,4 @@ task.spawn(function()
   Lighting.Ambient=Color3.fromRGB(120,132,179)
  end
 end)
-print("SF_RIFT_RAIDERS_SERVER_READY v0.26.0")
+print("SF_RIFT_RAIDERS_SERVER_READY v0.27.0")
