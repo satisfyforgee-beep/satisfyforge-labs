@@ -10,6 +10,8 @@ Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach 
 
 ## Implemented
 
+- **v0.22 Hands-On Downtown Retail:** The Corner Market has three real checkout counters and matching restock shelves for groceries, electronics and toys. Each downtown Retail shift assigns a server-side customer product and shelf category; completing the correct sequence earns one tip and normal Retail wages. Incorrect, distant and replayed actions are denied, while the earlier simple Suburban and Life City retail workplaces remain available. See [V0_22_RELEASE_NOTES.md](V0_22_RELEASE_NOTES.md). This remains a private prototype, not a finished retail simulator.
+
 - **v0.21 Detailed Pit Stop & True Mechanic Shifts:** The career now uses a physical, customer-car service bay with an official 29-MeshPart Roblox Racing demo vehicle, visible scanner and three distinct brake, battery and tire repair stations. The game assigns one random hidden vehicle fault per shift; the player must diagnose it and use the correct bench to earn one tip before taking their normal mechanic wages. Incorrect, remote or repeat repair requests are rejected by the server. The prior v0.20 city graphics, transit, imported assets and all existing lives/jobs remain intact. See [V0_21_RELEASE_NOTES.md](V0_21_RELEASE_NOTES.md). The vehicle itself is a static detailed exhibit, not a true chassis/engine physics simulation.
 
 

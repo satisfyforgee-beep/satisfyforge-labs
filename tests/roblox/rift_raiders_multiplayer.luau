@@ -888,6 +888,101 @@ if not lifeService.Process(a,"Work","MECHANIC") or
  fail("mechanic_valid_wage_not_collected") return
 end
 print("SF_RIFT_MP_CHECK physical_auto_diagnostic_correct_repair_and_pay PASS")
+-- Downtown retail uses real customer products and distinct stock stations;
+-- the original suburban entry-level two-task worksite stays compatible.
+local store=world:FindFirstChild("Downtown Hands-On Corner Market")
+local retailApi=require(ServerScriptService:WaitForChild("RetailService"))
+if not store or #retailApi.Products~=3 then fail("physical_corner_market_missing") return end
+if lifeService.Process(a,"RetailScan","GROCERIES") then
+ fail("retail_without_active_shift_accepted") return
+end
+a.Character:PivotTo(CFrame.new(employment.Position+Vector3.new(0,5,0)))
+task.wait(.5)
+if not lifeService.Process(a,"Career","RETAIL") then
+ fail("retail_downtown_career_application_denied") return
+end
+local cityRetail=world:FindFirstChild("Downtown Worksite RETAIL",true)
+if not cityRetail then fail("retail_downtown_shift_station_missing") return end
+a.Character:PivotTo(CFrame.new(cityRetail.Position+Vector3.new(0,4,0)))
+task.wait(12.5)
+if not lifeService.Process(a,"Work","RETAIL") then
+ fail("physical_downtown_retail_shift_denied") return
+end
+local retailOrder=a:GetAttribute("RRLifeRetailOrder")
+if not table.find(retailApi.Products,retailOrder) or
+ a:GetAttribute("RRLifeTaskStep")~=0 then
+ fail("retail_order_not_assigned_by_server") return
+end
+if lifeService.Process(a,"Task","RETAIL",1) then
+ fail("retail_legacy_task_bypass") return
+end
+local farCoins=a:GetAttribute("RRCoins") or 0
+if lifeService.Process(a,"RetailScan",retailOrder) or
+ (a:GetAttribute("RRCoins") or 0)~=farCoins then
+ fail("retail_scan_remote_distance_bypass") return
+end
+local wrongSku=retailOrder=="GROCERIES" and "TOYS" or "GROCERIES"
+local wrongScan=store:FindFirstChild("Retail Checkout "..wrongSku)
+local correctScan=store:FindFirstChild("Retail Checkout "..retailOrder)
+if not wrongScan or not correctScan then fail("retail_checkout_missing") return end
+a.Character:PivotTo(CFrame.new(wrongScan.Position+Vector3.new(0,4,0)))
+task.wait(1.8)
+if lifeService.Process(a,"RetailScan",retailOrder) then
+ fail("retail_checkout_from_wrong_counter") return
+end
+task.wait(.45)
+if lifeService.Process(a,"RetailScan",wrongSku) then
+ fail("retail_wrong_order_checkout_accepted") return
+end
+a.Character:PivotTo(CFrame.new(correctScan.Position+Vector3.new(0,4,0)))
+task.wait(.5)
+if not lifeService.Process(a,"RetailScan",retailOrder) or
+ a:GetAttribute("RRLifeTaskStep")~=1 then
+ fail("retail_correct_checkout_failed") return
+end
+if lifeService.Process(a,"RetailScan",retailOrder) then
+ fail("retail_duplicate_scan") return
+end
+local assignedStock=string.match(a:GetAttribute("RRLifeTaskName") or "",
+ "RESTOCK (%u+) ON")
+local shelf=assignedStock and store:FindFirstChild("Retail Restock "..assignedStock)
+if not shelf then fail("retail_restock_order_not_visible") return end
+local wrongStock=assignedStock=="ELECTRONICS" and "TOYS" or "ELECTRONICS"
+local wrongShelf=store:FindFirstChild("Retail Restock "..wrongStock)
+a.Character:PivotTo(CFrame.new(wrongShelf.Position+Vector3.new(0,4,0)))
+task.wait(1.8)
+if lifeService.Process(a,"RetailStock",assignedStock) then
+ fail("retail_restock_from_wrong_shelf") return
+end
+task.wait(.45)
+if lifeService.Process(a,"RetailStock",wrongStock) then
+ fail("retail_wrong_shelf_accepted") return
+end
+a.Character:PivotTo(CFrame.new(shelf.Position+Vector3.new(0,4,0)))
+task.wait(.6)
+local beforeTip=a:GetAttribute("RRCoins") or 0
+if not lifeService.Process(a,"RetailStock",assignedStock) or
+ a:GetAttribute("RRLifeTaskStep")~=2 or
+ (a:GetAttribute("RRCoins") or 0)<=beforeTip then
+ fail("retail_correct_restock_no_tip") return
+end
+task.wait(.5)
+local afterTip=a:GetAttribute("RRCoins") or 0
+if lifeService.Process(a,"RetailStock",assignedStock) or
+ (a:GetAttribute("RRCoins") or 0)~=afterTip then
+ fail("retail_duplicate_restock_tip") return
+end
+a.Character:PivotTo(CFrame.new(cityRetail.Position+Vector3.new(0,4,0)))
+task.wait(.5)
+local paidShifts=a:GetAttribute("RRLifeShifts") or 0
+if not lifeService.Process(a,"Work","RETAIL") or
+ (a:GetAttribute("RRLifeShifts") or 0)~=paidShifts+1 then
+ fail("retail_workstation_wage_collection_failed") return
+end
+if (b:GetAttribute("RRLifeRetailOrder") or "")~="" then
+ fail("other_player_retail_order_leaked") return
+end
+print("SF_RIFT_MP_CHECK physical_retail_checkout_stock_pay_no_duplicates PASS")
 print("SF_RIFT_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:rift_multiplayer")
 ]==]

@@ -72,6 +72,9 @@
       },
       "MechanicService": {
         "$path": "MechanicService.lua"
+      },
+      "RetailService": {
+        "$path": "RetailService.lua"
       }
     },
     "StarterPlayer": {

@@ -237,7 +237,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.21.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.22.0","version mismatch")
 assert(world:GetAttribute("StudioSavesIsolated")==true,
  "Studio must never write a production profile data store")
 local function count(name)
@@ -356,6 +356,25 @@ local mechanicShift={id="MECHANIC",started=os.clock()-5,progress=0,taskAt=0}
 local fault=mechanic.Assign(mechanicShift)
 assert(table.find(mechanic.Faults,fault) and not mechanicShift.mechanicScanned,
  "randomized mechanical fault assignment missing")
+local market=world:FindFirstChild("Downtown Hands-On Corner Market")
+assert(market and market:GetAttribute("RetailSkuCount")==3 and
+ market:GetAttribute("ServerValidatedOrder")==true and
+ market:GetAttribute("NoBackgroundLoops")==true,
+ "physical retail checkout and restock loop missing")
+local retail=require(game:GetService("ServerScriptService"):WaitForChild("RetailService"))
+for _,sku in ipairs(retail.Products) do
+ local scan=market:FindFirstChild("Retail Checkout "..sku)
+ local restock=market:FindFirstChild("Retail Restock "..sku)
+ assert(scan and scan:FindFirstChildOfClass("ProximityPrompt"),
+  "retail checkout must have actual prompt: "..sku)
+ assert(restock and restock:FindFirstChildOfClass("ProximityPrompt"),
+  "retail shelf must have actual prompt: "..sku)
+end
+local sampleRetail={id="RETAIL",started=os.clock()-5,progress=0,taskAt=0}
+local item,stock=retail.Assign(sampleRetail)
+assert(table.find(retail.Products,item) and table.find(retail.Products,stock)
+ and not sampleRetail.retailScanned,
+ "server-selected retail order or restock SKU missing")
 local CafeService=require(game:GetService("ServerScriptService"):WaitForChild("CafeService"))
 local coffeeShift={id="BARISTA",started=os.clock()-5,progress=0,taskAt=0}
 local selectedOrder=CafeService.Assign(coffeeShift)
