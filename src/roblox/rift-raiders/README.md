@@ -8,6 +8,9 @@ Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach 
 
 ## Implemented
 
+- **v0.14 Official Racing + Suburban Visual Packs:** Opened and safely extracted reusable art from the built-in Roblox Studio Racing and Suburban templates. The new earned-coin **professional racing car uses 29 actual MeshParts**, and the new explorable **SUBURBIA** destination has six detailed official prefabs (two houses, convenience market, gas station, garage and playground). The game retains its detailed Modern City downtown. Ten purchase-gated road vehicles are selectable; six non-sedan choices now have separate original modular SUV, pickup, electric crossover and sports silhouettes, though those are not imported photorealistic meshes. Multi-story owned houses now have actual upstairs walkways, bedrooms and floor access. More purchased home items (BBQ, spa, camera, pet furnishings, pool, solar and robot vacuum) appear physically. Saved profile schema v8 migrates v1–v7. **All template scripts were removed.** The source and exact remaining limitations are in [V0_14_RELEASE_NOTES.md](V0_14_RELEASE_NOTES.md).
+
+
 - **v0.13 Real Home Living & Garage:** 12 landscaped, owner-allocated estate lots with official Modern City mesh trees; functional homes for eleven residential property purchases; physical purchased furniture and household appliances; lockable doors, owner-only interactions, saved security setting, and a fourth Fun lifestyle need. Seven server-authorized sedan-based car choices now use **both the red and white official 45-mesh Roblox city sedan models** and different arcade driving speeds. New LIFE → GARAGE, MY HOME and WORLD → ESTATES destinations. The updated saved profile is v7 with v1–v6 migration. [V0_13_RELEASE_NOTES.md](V0_13_RELEASE_NOTES.md) gives tested features and important quality limitations.
 
 

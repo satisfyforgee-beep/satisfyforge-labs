@@ -97,3 +97,10 @@ The R15 downtown population now has named proximity conversations and verified c
 - A Fun lifestyle need is tracked. Entertainment/books/computers restore fun, fridge food restores hunger and a laundry appliance improves hygiene (all cooldown-gated).
 - Selectable, previously purchased sedan trims now change official imported red/white 3D body and driving top speed, with a server-verified garage selector.
 - No Robux purchase products or public release; the game remains in iterative development.
+
+
+## v0.14 — Imported Racing and Suburban visual libraries
+- Ten purchase-gated road cars now include a source-sanitized official Racing 29-MeshPart drivable race car; existing two imported official Modern City sedans remain, while SUV/pickup/hypercar/crossover etc get separate modular silhouettes.
+- Six built-in Suburban template environment prefabs are now visible and explorable in a 19th region; all source scripts removed. The original local templates are not committed; reusable, reduced art packs and extraction tools are.
+- The user's own homes can have accessible second/third floors, rooms, physical stairs and purchase-dependent electronics, pet gear, pool, hot tub and outdoor furnishings.
+- None of this is real-world commerce; purchases use earned game coins. Suburbia's imported shops are decorative, not yet tied to the shopping economy. Mobile optimization and public Roblox save tests are next.

@@ -6,6 +6,7 @@ local Terrain=workspace.Terrain
 local Catalog=require(game:GetService("ReplicatedStorage"):WaitForChild("LifeCatalog"))
 local Garden=require(script.Parent:WaitForChild("UrbanGardening"))
 local Home=require(script.Parent:WaitForChild("HomeLiving"))
+local Architecture=require(script.Parent:WaitForChild("HomeArchitecture"))
 local Life={}
 local context,world,folder
 local stores={}
@@ -729,13 +730,7 @@ function Life.RefreshProperty(player)
    end
   end
  end)
- for _,floorIndex in ipairs({2,3}) do
-  if floorIndex<=floors then
-   part(m,"Upper Level Floor",Vector3.new(width-1,.7,25),
-    center+Vector3.new(0,3+(floorIndex-1)*10,0),
-    Color3.fromRGB(145,105,77),Enum.Material.WoodPlanks,true)
-  end
- end
+ -- Open stairwell and upstairs rooms are created by HomeArchitecture.Build.
  -- Gabled two-slope roof with overhang, ridge, chimney and front porch.
  for _,side in ipairs({-1,1}) do
   local wedge=Instance.new("WedgePart")
@@ -801,9 +796,9 @@ function Life.RefreshProperty(player)
  originalDoor.Transparency=1
  textSign(m,tier.." • "..player.DisplayName,
   center+Vector3.new(0,height+12,-15),Color3.fromRGB(255,235,169))
- Home.Furnish(m,center,width,floors,player,owned,{
-  getProfile=profile,tell=tell,sync=Life.Sync,
- })
+ local homeContext={getProfile=profile,tell=tell,sync=Life.Sync}
+ Architecture.Build(m,center,width,floors,tier,player,owned,homeContext)
+ Home.Furnish(m,center,width,floors,player,owned,homeContext)
 end
 function Life.PlayerJoined(player)
  if playerSlots[player] then return end

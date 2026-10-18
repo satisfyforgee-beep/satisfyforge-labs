@@ -1,3 +1,12 @@
+## v0.14 — Actual high-detail imported Roblox Studio templates
+- Saved official Studio Racing and Suburban templates locally and wrote reproducible, script-removing art extraction tools.
+- Added real 29-MeshPart racing buggy as an earnable, drivable racing car; expanded to 10 selectable road cars.
+- Added new SUBURBIA destination with six detailed official suburban building/playground prefabs. Existing Modern City mesh-based downtown and the official two sedan meshes remain.
+- Original modular SUV, pickup, crossover, coupe, supercar and hypercar shapes now look different instead of sharing the sedan body, though those are not high-end imported PBR assets.
+- Walkable upstairs rooms, accessible stairwells and household upgrades based on owned inventory.
+- Immediate visual priorities remain fully PBR individual car/boat meshes, animations, real interiors, working Suburbia shops, trustworthy physics and collision, actual iOS/Android QA, asset permission checks and live DataStore rejoin verification.
+- v0.14 Studio smoke and two-client multiplayer checks passed. The 47MB studio place and thousands of extra suburban parts could cause mobile performance problems; no real-phone benchmarks yet.
+
 ## v0.13 — Homes that react to purchases and selectable detailed cars
 - A genuine, new residential neighborhood offers 12 assigned owner-home plots and 12 real official mesh trees.
 - Owner-only keypad / physical opening doors, custom furniture and usable home entertainment, cooking, laundry and bedroom basics tied to purchases.

@@ -42,6 +42,15 @@
       },
       "HomeLiving": {
         "$path": "HomeLiving.lua"
+      },
+      "HomeArchitecture": {
+        "$path": "HomeArchitecture.lua"
+      },
+      "VehicleStyles": {
+        "$path": "VehicleStyles.lua"
+      },
+      "SuburbanDistrict": {
+        "$path": "SuburbanDistrict.lua"
       }
     },
     "StarterPlayer": {
@@ -107,6 +116,12 @@
       },
       "OfficialRedSedanVisual": {
         "$path": "assets/OfficialRedSedanVisual.rbxmx"
+      },
+      "OfficialRacingCarVisual": {
+        "$path": "assets/OfficialRacingCarVisual.rbxmx"
+      },
+      "OfficialSuburbanArchitecture": {
+        "$path": "assets/OfficialSuburbanArchitecture.rbxmx"
       }
     }
   }

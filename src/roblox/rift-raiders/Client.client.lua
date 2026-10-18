@@ -192,7 +192,7 @@ local function panel(name,heading)
  return f,scroll
 end
 local shop,shopList=panel("ShopPanel","EARNED COIN SHOP + PRESTIGE")
-local map,mapList=panel("MapPanel","EXPLORE 18 WORLD LOCATIONS")
+local map,mapList=panel("MapPanel","EXPLORE 19 WORLD LOCATIONS")
 local pack,packList=panel("PackPanel","YOUR RESOURCES & PROGRESS")
 local lifePanel,lifeList=panel("LifePanel","RIFTLIFE • DOWNTOWN CAREERS & SHOPPING")
 local itemOrder=setmetatable({}, {__mode="k"})
@@ -339,7 +339,7 @@ local homeHelp=item(lifeList,"HomeGuide",
  Color3.fromRGB(94,105,120),function() end)
 homeHelp.Active=false;table.insert(homeControls,homeHelp)
 local garageInfo=item(lifeList,"GarageInfo",
- "7 EARNABLE SEDAN TRIMS • TWO OFFICIAL 45-MESH BODIES • VISIT MOTOR ROW",
+ "10 EARNABLE VEHICLES • OFFICIAL RACE CAR, SEDANS, AND SUV/PICKUP • VISIT DEALER",
  Color3.fromRGB(96,103,132),function() end)
 garageInfo.Active=false;table.insert(garageControls,garageInfo)
 local garageButtons={}
@@ -450,6 +450,7 @@ local places={
  {"MODERN","MODERN DOWNTOWN • REAL 3D CITY"},
  {"WATERFRONT","WATERFRONT • OWNED BOATS & YACHTS"},
  {"ESTATES","RESIDENTIAL ESTATES • YOUR HOME"},
+ {"SUBURBIA","SUBURBAN SHOWCASE • DETAILED HOMES & STORES"},
  {"HUB","CENTRAL HUB"},{"CYBER","NEON METROPOLIS"},{"CRYSTAL","PRISM WILDS"},
  {"VOLCANO","MAGMA OUTPOST"},{"SKY","CLOUD KINGDOM"},
  {"CASTLE","CASTLE KINGDOM"},{"FARM","HARVEST VALLEY"},

@@ -6,6 +6,7 @@ local ServerStorage=game:GetService("ServerStorage")
 local Kit=require(script.Parent:WaitForChild("WorldKit"))
 local Expansion=require(script.Parent:WaitForChild("WorldExpansion"))
 local LifeCatalog=require(game:GetService("ReplicatedStorage"):WaitForChild("LifeCatalog"))
+local VehicleStyles=require(script.Parent:WaitForChild("VehicleStyles"))
 local Cars={}
 local active={}
 local cooldown={}
@@ -15,6 +16,7 @@ local function permitted(v)
  if math.abs(x)<52 and math.abs(z)<52 then return true end
  if math.abs(x)<155 and math.abs(z-1600)<115 then return true end
  if math.abs(x)<135 and math.abs(z-2350)<140 then return true end
+ if math.abs(x)<190 and math.abs(z-2785)<125 then return true end
  if math.abs(x-180)<52 and math.abs(z)<52 then return true end
  if math.abs(x+180)<52 and math.abs(z)<52 then return true end
  if math.abs(z-180)<52 and math.abs(x)<52 then return true end
@@ -77,33 +79,50 @@ function Cars.Spawn(world,player,kind)
   -- We keep the existing server-controlled seat and invisible collision shell
   -- so players cannot gain control by injecting local physics or scripts.
   if kind=="car" or kind=="stolen" then
-   local modelName=stats and stats.model=="RED" and
+   local custom=stats and stats.model=="CUSTOM"
+   local modelName=stats and stats.model=="RACING" and
+    "OfficialRacingCarVisual" or stats and stats.model=="RED" and
     "OfficialRedSedanVisual" or "OfficialSedanVisual"
-   local template=ServerStorage:FindFirstChild(modelName)
-   if template then
+   local template=custom and nil or ServerStorage:FindFirstChild(modelName)
+   if template or custom then
     for _,node in ipairs(m:GetChildren()) do
      if node:IsA("BasePart") and node~=seat then
       node.Transparency=1
       node.CastShadow=false
      end
     end
-    local visual=template:Clone()
-    visual.Name="Official Detailed Sedan Body"
-    visual.Parent=m
-    for _,node in ipairs(visual:GetDescendants()) do
-     if node:IsA("Seat") or node:IsA("VehicleSeat") then
-      node:Destroy()
-     elseif node:IsA("BasePart") then
-      node.Anchored=true; node.CanCollide=false; node.CanTouch=false
-      node.CanQuery=false
-     elseif node:IsA("LuaSourceContainer") then
-      node:Destroy()
+    if custom then
+     local original=VehicleStyles.Build(m,cf,choice)
+     if not original then
+      warn("Missing custom vehicle shape",choice)
+     else
+      m:SetAttribute("VisualModel",original:GetAttribute("Silhouette"))
+      m:SetAttribute("DetailedPaint","CUSTOM")
+      m:SetAttribute("SelectedVehicle",choice)
      end
+    else
+     local visual=template:Clone()
+     visual.Name=modelName=="OfficialRacingCarVisual" and
+      "Official Detailed Racing Car Body" or "Official Detailed Sedan Body"
+     visual.Parent=m
+     for _,node in ipairs(visual:GetDescendants()) do
+      if node:IsA("Seat") or node:IsA("VehicleSeat") then
+       node:Destroy()
+      elseif node:IsA("BasePart") then
+       node.Anchored=true; node.CanCollide=false; node.CanTouch=false
+       node.CanQuery=false
+      elseif node:IsA("LuaSourceContainer") then
+       node:Destroy()
+      end
+     end
+     visual:PivotTo(modelName=="OfficialRacingCarVisual" and cf or
+      cf*CFrame.Angles(0,math.pi,0))
+     m:SetAttribute("VisualModel",modelName=="OfficialRacingCarVisual" and
+      "Official 29-mesh Racing Car" or "Official Modern City Sedan")
+     m:SetAttribute("DetailedPaint",modelName=="OfficialRacingCarVisual" and "RACING" or
+      modelName=="OfficialRedSedanVisual" and "RED" or "WHITE")
+     m:SetAttribute("SelectedVehicle",choice or "STARTER")
     end
-    visual:PivotTo(cf*CFrame.new(0,0,0)*CFrame.Angles(0,math.pi,0))
-    m:SetAttribute("VisualModel","Official Modern City Sedan")
-    m:SetAttribute("DetailedPaint",modelName=="OfficialRedSedanVisual" and "RED" or "WHITE")
-    m:SetAttribute("SelectedVehicle",choice or "STARTER")
    end
   end
   if kind=="stolen" then m.Name="Mission Getaway Car" end

@@ -39,6 +39,24 @@ for _,obj in ipairs(sedan:GetDescendants()) do
  assert(not obj:IsA("LuaSourceContainer"),"unsafe imported car script found")
 end
 assert(carMeshCount>=35,"detailed official sedan geometry missing")
+local Styles=require(game:GetService("ServerScriptService"):WaitForChild("VehicleStyles"))
+local vehicleShapes={"PICKUP_TRUCK","SUV","ELECTRIC_CAR",
+ "SUPERCAR","HYPERCAR","CLASSIC_CAR"}
+for _,id in ipairs(vehicleShapes) do
+ local specimen=Styles.Build(workspace,CFrame.new(400,1100,0),id)
+ assert(specimen and #specimen:GetDescendants()>=30,
+  "custom 3D vehicle body incomplete: "..id)
+ assert(specimen:GetAttribute("Silhouette")~="",
+  "custom car silhouette not labeled: "..id)
+ local tires=0
+ for _,part in ipairs(specimen:GetDescendants()) do
+  if part.Name=="Detailed Radial Tire" then tires+=1 end
+  assert(not part:IsA("LuaSourceContainer"),
+   "unsafe vehicle artwork script found: "..id)
+ end
+ assert(tires==4,"incorrect wheel geometry in "..id)
+ specimen:Destroy()
+end
 local redSedan=game:GetService("ServerStorage"):FindFirstChild("OfficialRedSedanVisual")
 assert(redSedan and redSedan:IsA("Model"),"official red sedan missing")
 local redMeshes=0
@@ -47,6 +65,22 @@ for _,obj in ipairs(redSedan:GetDescendants()) do
  assert(not obj:IsA("LuaSourceContainer"),"unsafe red car script found")
 end
 assert(redMeshes>=35,"detailed red sedan geometry incomplete")
+local racing=game:GetService("ServerStorage"):FindFirstChild("OfficialRacingCarVisual")
+assert(racing and racing:IsA("Model"),"official Racing template car art missing")
+local raceMeshes=0
+for _,obj in ipairs(racing:GetDescendants()) do
+ if obj:IsA("MeshPart") then raceMeshes+=1 end
+ assert(not obj:IsA("LuaSourceContainer"),
+  "untrusted Racing template script imported")
+end
+assert(raceMeshes==29,"official Racing car should preserve 29 detailed MeshParts")
+local pack=game:GetService("ServerStorage"):FindFirstChild("OfficialSuburbanArchitecture")
+assert(pack and pack:IsA("Model"),"official Suburban environment pack missing")
+assert(#pack:GetChildren()==6,"not all six official suburban architecture models imported")
+for _,o in ipairs(pack:GetDescendants()) do
+ assert(not o:IsA("LuaSourceContainer"),
+  "unsafe official Suburban template code imported")
+end
 assert(world:FindFirstChild("Downtown Wayfinding"),"downtown portal missing")
 assert(imported:FindFirstChild("Modern City Asphalt Foundation"),"downtown ground missing")
 assert(workspace.StreamingEnabled==true,"streaming must be enabled for mobile")
@@ -54,7 +88,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.13.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.14.0","version mismatch")
 local function count(name)
  local n=0
  for _,v in ipairs(world:GetDescendants()) do if v.Name==name then n+=1 end end
@@ -68,6 +102,17 @@ assert(estates:FindFirstChild("Home Plot 1") and
  estates:FindFirstChild("Home Plot 12"),
  "twelve property plots not built")
 assert(count("Residential Asphalt Road")==2,"neighborhood roads missing")
+local suburbs=world:FindFirstChild("Official Detailed Suburban Town")
+assert(suburbs and suburbs:GetAttribute("OfficialPrefabCount")==6,
+ "Suburban detailed environment not actually spawned")
+assert(suburbs:GetAttribute("DetailedSourceParts")>5000,
+ "Detailed suburban city parts missing")
+assert(suburbs:FindFirstChild("Suburban Single Story House")
+ and suburbs:FindFirstChild("Suburban Two Story House")
+ and suburbs:FindFirstChild("Suburban Convenience Market")
+ and suburbs:FindFirstChild("Suburban Gas Station")
+ and suburbs:FindFirstChild("Suburban Playground"),
+ "Missing genuine detailed suburban building prefab")
 assert(estates:GetAttribute("OfficialMeshTrees")==12,
  "estate official mesh-tree landscaping not installed")
 assert(count("Modern Downtown Life Services")==1,"downtown life services missing")
@@ -145,13 +190,17 @@ assert(count("AI Police Officer 1")==1,"police AI missing")
 assert(count("Media Recording Studio")==1,"creator studio missing")
 local life=require(game:GetService("ReplicatedStorage"):WaitForChild("LifeCatalog"))
 assert(#life.Careers==60,"careers missing")
-assert(#life.Items==173,"expanded real-world catalog count changed")
+assert(#life.Items==174,"expanded real-world catalog count changed")
 assert(life.CareerById.GARDENER and life.CareerById.BOAT_CAPTAIN and
  life.CareerById.SOFTWARE_ENGINEER,"new real-life careers missing")
 assert(life.ById.TOMATO_SEEDS and life.ById.GARDEN_TROWEL and
  life.ById.WATERING_CAN and life.ById.SPEEDBOAT and
  life.ById.HYPERCAR,"garden and premium vehicles missing")
-assert(#life.DrivableCars==7,"seven selectable detailed car trims missing")
+assert(#life.DrivableCars==10,"ten selectable car choices missing")
+assert(life.CarChoices.RACE_CAR and life.ById.RACE_CAR,
+ "official Racing car shop option missing")
+assert(life.CarChoices.PICKUP_TRUCK and life.CarChoices.SUV,
+ "separate pickup and SUV purchases missing")
 assert(life.CarChoices.HYPERCAR.speed>life.CarChoices.SEDAN.speed,
  "purchased car speed tiers invalid")
 assert(life.BusinessPayouts.MARINA_BUSINESS==590,
@@ -183,11 +232,18 @@ assert(restored.selectedCar=="SEDAN" and restored.homeLocked==false and
  restored.needs.fun==26,"legacy profile selected car/home security migration failed")
 assert(lifeApi.Normalize({selectedCar="HACKED_CAR"}).selectedCar=="",
  "malicious selected vehicle failed validation")
+local Architecture=require(game:GetService("ServerScriptService"):WaitForChild("HomeArchitecture"))
 local livingHomes=require(game:GetService("ServerScriptService"):WaitForChild("HomeLiving"))
 local sample=Instance.new("Model")
 sample.Name="Studio Furniture Test House";sample.Parent=workspace
 local dummy={UserId=55155}
 local state={life={homeLocked=true,needs={fun=35,hunger=30,energy=60,hygiene=50}}}
+Architecture.Build(sample,Vector3.new(0,500,0),29,2,"FARMHOUSE",dummy,{
+ SOLAR_PANEL=true,
+},{
+ getProfile=function() return state end,
+ tell=function() end,sync=function() end,
+})
 livingHomes.Furnish(sample,Vector3.new(0,500,0),29,2,dummy,{
  SMART_TV=true,GAME_CONSOLE=true,FRIDGE=true,DINING_TABLE=true,
  WASHER_DRYER=true,KING_BED=true,BABY_CRIB=true,BOOKSHELF=true,
@@ -196,6 +252,12 @@ livingHomes.Furnish(sample,Vector3.new(0,500,0),29,2,dummy,{
  getProfile=function() return state end,
  tell=function() end,sync=function() end,
 })
+assert(sample:FindFirstChild("Walkable Stair Tread 3 1") and
+ sample:FindFirstChild("Walkable Upper Level Floor 2") and
+ sample:FindFirstChild("Upper Bedroom Mattress") and
+ sample:FindFirstChild("Ground Floor Lift") and
+ sample:GetAttribute("ReachableUpperFloors")==1,
+ "home upper floors are not navigable or furnished")
 assert(sample:FindFirstChild("Security Entrance Door")
  and sample:FindFirstChild("Wall Mounted Smart TV")
  and sample:FindFirstChild("Home Refrigerator")

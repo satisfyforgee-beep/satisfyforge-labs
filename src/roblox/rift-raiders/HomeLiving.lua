@@ -103,6 +103,7 @@ local function homeDoor(model,center,player,handlers)
   local state=ownerProfile()
   if not state then return end
   state.homeLocked=not state.homeLocked
+  if state.homeLocked and opened and not busy then change(false) end
   lockLight.Color=state.homeLocked and Color3.fromRGB(209,70,61)
    or Color3.fromRGB(90,196,114)
   lockPanel:SetAttribute("Locked",state.homeLocked)
@@ -248,6 +249,99 @@ function Home.Furnish(model,center,width,floors,player,owned,handlers)
    desk.CFrame*CFrame.new(0,1.1,.2),
    Color3.fromRGB(52,78,99),Enum.Material.Glass,false)
   restore(desk,{fun=20},40,"WORKED ON YOUR COMPUTER • FUN +20!")
+ end
+ -- More purchases appear as equipment in owned homes rather than
+ -- remaining permanent inventory checkmarks.
+ if owned.ROBOT_VACUUM then
+  local robot=piece(model,"Robotic Vacuum",Vector3.new(1.8,.55,1.8),
+   CFrame.new(center+Vector3.new(-width*.3,4.2,6)),
+   Color3.fromRGB(60,75,83),Enum.Material.Metal,false)
+  robot.Shape=Enum.PartType.Cylinder
+  piece(model,"Vacuum Status Light",Vector3.new(.3,.1,.3),
+   robot.CFrame*CFrame.new(0,.29,0),
+   Color3.fromRGB(72,201,161),Enum.Material.Neon,false)
+  restore(robot,{hygiene=15},60,"ROBOT VACUUM CLEANED THE HOUSE • HYGIENE +15!")
+ end
+ if owned.SECURITY_CAMERA then
+  local camera=piece(model,"Exterior Home Security Camera",
+   Vector3.new(1.15,.7,1.4),
+   CFrame.new(center+Vector3.new(-width*.33,11.1,-13.6))*
+    CFrame.Angles(0,math.rad(30),0),
+   Color3.fromRGB(212,212,212),Enum.Material.Metal,false)
+  piece(model,"Security Camera Lens",Vector3.new(.4,.4,.14),
+   camera.CFrame*CFrame.new(0,0,-.77),
+   Color3.fromRGB(43,71,101),Enum.Material.Glass,false)
+  device(model,camera,function(visitor)
+   if visitor~=player or not inRange(visitor,camera,13) then return end
+   local state=handlers.getProfile(player)
+   if not state or not state.life then return end
+   handlers.tell(player,
+    "HOME SECURITY CAMERA INSTALLED. HOUSE IS "..
+     (state.life.homeLocked and "LOCKED." or "OPEN TO GUESTS."))
+  end,"CHECK","Home Security Camera")
+ end
+ if owned.BBQ_GRILL then
+  local grill=piece(model,"Backyard Barbecue Grill",Vector3.new(4,2,2.6),
+   CFrame.new(center+Vector3.new(width*.28,5,19)),
+   Color3.fromRGB(79,81,82),Enum.Material.Metal,true)
+  piece(model,"Barbecue Stainless Steel Hood",Vector3.new(4,.8,2.6),
+   grill.CFrame*CFrame.new(0,1.35,0),
+   Color3.fromRGB(126,132,135),Enum.Material.Metal,false)
+  restore(grill,{hunger=35,fun=10},50,"COOKED A MEAL ON THE GRILL • HUNGER +35!")
+ end
+ if owned.HOT_TUB then
+  local hot=piece(model,"Private Hot Tub",Vector3.new(7.7,2.2,6),
+   CFrame.new(center+Vector3.new(-width*.28,4.2,20)),
+   Color3.fromRGB(121,130,133),Enum.Material.Concrete,true)
+  local spa=piece(model,"Spa Bubbles Surface",Vector3.new(6.6,.15,4.85),
+   hot.CFrame*CFrame.new(0,1.2,0),
+   Color3.fromRGB(89,178,201),Enum.Material.Glass,false)
+  spa.Transparency=.35
+  restore(hot,{fun=35,energy=18},65,
+   "RELAXED IN HOT TUB • FUN +35 • ENERGY +18!")
+ end
+ if owned.PATIO_FURNITURE then
+  local patio=piece(model,"Patio Dining Table",Vector3.new(4,.4,4),
+   CFrame.new(center+Vector3.new(width*.3,4.75,23)),
+   Color3.fromRGB(159,118,75),Enum.Material.WoodPlanks,true)
+  for _,x in ipairs({-1,1}) do
+   local chair=piece(model,"Patio Chair",Vector3.new(1.4,.9,1.4),
+    patio.CFrame*CFrame.new(x*3,-.3,0),
+    Color3.fromRGB(111,129,124),Enum.Material.WoodPlanks,true)
+  end
+  restore(patio,{fun=12},50,"RELAXED ON THE PATIO • FUN +12!")
+ end
+ if owned.TOOL_CABINET then
+  local cabinet=piece(model,"Garage Mechanics Tool Chest",
+   Vector3.new(3.8,3.5,2),
+   CFrame.new(center+Vector3.new(width*.25,4.6,-20)),
+   Color3.fromRGB(164,49,51),Enum.Material.Metal,true)
+  for y=-1,1 do
+   piece(model,"Mechanics Drawer Pull",Vector3.new(2.8,.16,.17),
+    cabinet.CFrame*CFrame.new(0,y,-1.07),
+    Color3.fromRGB(215,210,196),Enum.Material.Metal,false)
+  end
+  restore(cabinet,{fun=10},45,"ORGANIZED GARAGE TOOLS • FUN +10!")
+ end
+ if owned.CAT_TREE then
+  local cat=piece(model,"Owned Cat Tower",Vector3.new(2.8,5.5,2.8),
+   CFrame.new(center+Vector3.new(width*.36,6.6,-5)),
+   Color3.fromRGB(157,133,110),Enum.Material.WoodPlanks,true)
+  for _,height in ipairs({-1.8,.5,2.4}) do
+   piece(model,"Pet Tree Platform",Vector3.new(3.8,.35,3),
+    cat.CFrame*CFrame.new(0,height,0),
+    Color3.fromRGB(176,140,102),Enum.Material.Fabric,false)
+  end
+  restore(cat,{fun=12},55,"SPENT TIME WITH YOUR CAT'S TOYS • FUN +12!")
+ end
+ if owned.DOG_HOUSE then
+  local dog=piece(model,"Backyard Dog House",Vector3.new(4,3.4,4.1),
+   CFrame.new(center+Vector3.new(-width*.37,4.6,20)),
+   Color3.fromRGB(148,104,73),Enum.Material.WoodPlanks,true)
+  piece(model,"Pet Shelter Roof",Vector3.new(5,.5,4.9),
+   dog.CFrame*CFrame.new(0,2.1,0),
+   Color3.fromRGB(67,75,81),Enum.Material.Slate,false)
+  restore(dog,{fun=14},55,"PLAYED WITH PET IN THE GARDEN • FUN +14!")
  end
  model:SetAttribute("FurniturePieces",#model:GetDescendants())
 end

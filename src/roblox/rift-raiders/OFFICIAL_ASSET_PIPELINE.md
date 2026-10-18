@@ -58,3 +58,15 @@ This is a **genuine visual improvement**, but not a completed GTA/Sims-scale wor
 
 ## v0.9 gameplay attachment
 The imported district now also serves as the life-simulation map. `Life.AttachDowntown()` adds small storefront plaques and invisible proximity anchors after `ModernCityIntegration` moves the official model to its runtime position. The original city meshes remain untouched. All 20 careers and six shopping categories can be used in this district, and the original procedural Life City is preserved as a fallback/secondary area.
+
+
+## v0.14 — More official templates safely imported
+
+The built-in **Racing** and **Suburban** templates were opened in Roblox Studio, saved locally on the authorized MacBook, and reduced to standalone .rbxmx packs without any scripts:
+
+```sh
+python3 tools/roblox-studio/extract_official_racing.py ~/Documents/RACING_OFFICIAL.rbxlx src/roblox/rift-raiders/assets/OfficialRacingCarVisual.rbxmx
+python3 tools/roblox-studio/extract_official_suburban.py ~/Documents/SUBURBAN_OFFICIAL.rbxlx src/roblox/rift-raiders/assets/OfficialSuburbanArchitecture.rbxmx
+```
+
+The Racing source provides 29 actual MeshParts and their SurfaceAppearance maps. The Suburban source contains six curated, highly detailed assemblies of separate Parts (not mostly MeshParts), and its originals are expensive to render. The six total over 5,000 physical detail parts, placed in an isolated streamed region. Do not copy every map template indiscriminately; select usable, licensed and performance-friendly models, strip untrusted executable content, and test asset delivery/permissions. Two dead legacy Suburban textures are automatically removed by the exporter. The complete v0.14 checklist is in V0_14_RELEASE_NOTES.md.

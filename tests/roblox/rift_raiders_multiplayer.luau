@@ -557,6 +557,46 @@ print("SF_RIFT_MP_CHECK personal_car_owner_only_driving PASS")
 redCar:Destroy()
 a:SetAttribute("RRLifeOwn_SPORTS_CAR",false)
 a:SetAttribute("RRLifeSelectedCar","")
+-- A genuine 29-MeshPart Racing template body must render as an owned car.
+task.wait(8.2)
+a:SetAttribute("RRLifeOwn_RACE_CAR",true)
+a:SetAttribute("RRLifeSelectedCar","RACE_CAR")
+local spawnedRacing,racingError=vehicleService.Spawn(world,a,"car")
+if not spawnedRacing then
+ fail("official_race_car_spawn_"..tostring(racingError)) return
+end
+local raceVehicle
+for _,candidate in ipairs(world:GetChildren()) do
+ if candidate.Name=="Player Hovercar" and
+  candidate:GetAttribute("OwnerUserId")==a.UserId then raceVehicle=candidate end
+end
+local raceBody=raceVehicle and raceVehicle:FindFirstChild("Official Detailed Racing Car Body")
+if not raceBody or raceVehicle:GetAttribute("TopSpeed")~=60 or
+ raceVehicle:GetAttribute("DetailedPaint")~="RACING" then
+ fail("official_racing_car_mesh_not_equipped") return
+end
+local racingPieces=0
+for _,part in ipairs(raceBody:GetDescendants()) do
+ if part:IsA("MeshPart") then racingPieces+=1 end
+end
+if racingPieces~=29 then fail("official_racing_mesh_count") return end
+print("SF_RIFT_MP_CHECK official_racing_car_29_meshes PASS")
+raceVehicle:Destroy()
+a:SetAttribute("RRLifeOwn_RACE_CAR",false)
+a:SetAttribute("RRLifeSelectedCar","")
+-- Official suburban destination and one-player travel isolation.
+task.wait(2.2)
+if not request(a,"suburb_final","Travel","SUBURBIA") then
+ fail("official_suburban_travel_ack") return
+end
+if not waitFor(function() return
+ (rootA.Position-Vector3.new(0,8,3425)).Magnitude<25 end,6) then
+ fail("official_suburban_travel") return
+end
+if (rootB.Position-Vector3.new(0,8,3425)).Magnitude<50 then
+ fail("suburban_other_player_teleported") return
+end
+print("SF_RIFT_MP_CHECK detailed_official_suburban_destination PASS")
 print("SF_RIFT_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:rift_multiplayer")
 ]==]

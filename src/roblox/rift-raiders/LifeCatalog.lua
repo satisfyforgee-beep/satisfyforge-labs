@@ -280,21 +280,26 @@ Catalog.Items={
  {id="MEDIA_NETWORK_BUSINESS",name="Own a Media Network",category="BUSINESS",price=95000,level=32},
  {id="SOFTWARE_BUSINESS",name="Own a Software Studio",category="BUSINESS",price=56000,level=26},
  {id="PROPERTY_DEVELOPMENT_BUSINESS",name="Own a Property Development Firm",category="BUSINESS",price=145000,level=42},
+ {id="RACE_CAR",name="Professional Racing Car",category="VEHICLE",price=78000,level=28},
 }
 Catalog.ById={}
 for _,entry in ipairs(Catalog.Items) do Catalog.ById[entry.id]=entry end
--- These car purchases currently share an official detailed sedan silhouette.
--- Red/white paint and driving performance differ, not the vehicle body style.
+-- Nine earned, equipped road vehicles: three official Roblox sedans and
+-- six distinctly modeled original SUV/pickup/coupe/crossover silhouettes.
 Catalog.DrivableCars={"SEDAN","SPORTS_CAR","LUXURY_SEDAN",
- "ELECTRIC_CAR","SUPERCAR","HYPERCAR","CLASSIC_CAR"}
+ "ELECTRIC_CAR","SUPERCAR","HYPERCAR","CLASSIC_CAR",
+ "PICKUP_TRUCK","SUV","RACE_CAR"}
 Catalog.CarChoices={
  SEDAN={name="Family Sedan",speed=37,model="WHITE"},
- SPORTS_CAR={name="Sports Sedan Trim",speed=50,model="RED"},
+ SPORTS_CAR={name="Sports Sedan",speed=50,model="RED"},
  LUXURY_SEDAN={name="Executive Sedan",speed=41,model="WHITE"},
- ELECTRIC_CAR={name="Electric Sedan",speed=45,model="WHITE"},
- SUPERCAR={name="Performance Sedan Trim",speed=57,model="RED"},
- HYPERCAR={name="Hyper Performance Sedan Trim",speed=63,model="RED"},
- CLASSIC_CAR={name="Classic Sedan Trim",speed=35,model="WHITE"},
+ ELECTRIC_CAR={name="Electric Crossover",speed=45,model="CUSTOM"},
+ SUPERCAR={name="Low Sports Supercar",speed=57,model="CUSTOM"},
+ HYPERCAR={name="Carbon Hypercar",speed=63,model="CUSTOM"},
+ CLASSIC_CAR={name="Vintage Collector Coupe",speed=35,model="CUSTOM"},
+ PICKUP_TRUCK={name="Crew Cab Pickup",speed=35,model="CUSTOM"},
+ SUV={name="Family SUV",speed=33,model="CUSTOM"},
+ RACE_CAR={name="Official Racing Car",speed=60,model="RACING"},
 }
 Catalog.ShopLocations={
  TECH="Creator Technology Store",APPAREL="Clothing Boutique",
