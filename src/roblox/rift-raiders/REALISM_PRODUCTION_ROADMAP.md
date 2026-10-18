@@ -1,3 +1,10 @@
+## v0.16 — First five minutes, repeatable daily goals and mobile-detail groundwork
+- Tutorial objectives are real, server-verified game actions, with one-time bonuses and a visible UI chip.
+- Four daily missions create meaningful short-term goals and are persisted safely, with UTC rollover and one-claim-per-goal.
+- Official Suburban small decor now has reduced physics and shadow overhead; walkable geometry remains intact and instance streaming stays enabled.
+- Consulted Roblox Creator Hub onboarding/retention/performance and Matter/Nevermore patterns. No private game source or unlicensed assets copied.
+- Remaining must-pass launch gates: real iOS/Android FPS/load benchmark, production session-locked profile save tests and rejoin stress, account-specific asset permission review, positive player feedback/retention evidence, content and moderation review.
+
 ## v0.15 — Make official prefabs earn their place in the game
 - Connected actual imported Suburban market, auto garage, gas-station and playground art to server-validated economic interactions rather than merely displaying scenery.
 - Four Suburban career workstations with application, work-shift and two proximity/time-gated activities use the existing job system.

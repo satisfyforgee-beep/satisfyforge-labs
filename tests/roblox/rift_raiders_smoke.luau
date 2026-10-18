@@ -4,6 +4,24 @@ task.wait(3)
 local success,problem=pcall(function()
 local world=workspace:WaitForChild("RiftRaidersWorld",20)
 assert(world,"missing world")
+local Goals=require(game:GetService("ServerScriptService"):
+ WaitForChild("ProgressionGoals"))
+assert(#Goals.Intro==4,"new player quest sequence missing")
+assert(#Goals.Daily==4,"repeatable daily goals missing")
+assert(Goals.Normalize(nil).intro==0,"new player introduction must be uncompleted")
+assert(Goals.Normalize({intro=900}).intro==4,"illegal intro stage not sanitized")
+assert(Goals.Normalize({intro=-14}).intro==0,"negative intro stage not sanitized")
+local yesterday=Goals.DayKey(os.time()-86400)
+local afterDay=Goals.Normalize({day=yesterday,intro=2,counters={10,10,10,10}})
+assert(afterDay.intro==2 and afterDay.completed==0 and
+ afterDay.counters[1]==0,"daily goals should reset at UTC date rollover")
+local sameDay=Goals.Normalize({day=Goals.DayKey(),
+ intro=3,counters={1,1,1,1}})
+assert(sameDay.intro==3 and sameDay.completed==4,
+ "legitimate completed day should preserve four paid achievements")
+local prevDay=Goals.DayKey(os.time()-86400)
+local nextDay=Goals.DayKey(os.time())
+assert(nextDay>=prevDay,"day keys must increase monotonically")
 local imported=workspace:FindFirstChild("OfficialModernCityDistrict")
 assert(imported and imported:IsA("Model"),"official modern city missing")
 assert(imported:GetAttribute("ImportedScriptsRemoved")==true,"imported script safety missing")
@@ -88,7 +106,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.15.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.16.0","version mismatch")
 local function count(name)
  local n=0
  for _,v in ipairs(world:GetDescendants()) do if v.Name==name then n+=1 end end
@@ -107,6 +125,12 @@ assert(suburbs and suburbs:GetAttribute("OfficialPrefabCount")==6,
  "Suburban detailed environment not actually spawned")
 assert(suburbs:GetAttribute("DetailedSourceParts")>5000,
  "Detailed suburban city parts missing")
+assert(suburbs:GetAttribute("MicroDecorOptimized")>=100,
+ "tiny suburban decorations should avoid expensive collisions/shadows")
+assert(suburbs:GetAttribute("PreservedWalkableColliderParts")>100,
+ "suburban building floors or walls lost their physical collision")
+assert(suburbs:GetAttribute("StreamingAware")==true,
+ "imported world must stream over long distances")
 assert(suburbs:GetAttribute("EnvironmentOnly")==false,
  "Imported suburban town must contain actual playable economic services")
 assert(suburbs:GetAttribute("ActiveSuburbanWorkplaces")==4,

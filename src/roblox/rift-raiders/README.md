@@ -8,6 +8,9 @@ Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach 
 
 ## Implemented
 
+- **v0.16 Guided First Session & Daily Life Challenges:** a compact, non-modal in-world tutorial leads players through first suburb visit, a valid purchase, first job application, and completing a career shift; each verified milestone pays a one-time earned-coin bonus and XP. Four daily goals (work, eat, visit the suburb, harvest gardening crops) reset by UTC day, pay nonrepeatable fictional coin bonuses and appear in LIFE → MY GOALS. Server validators exclusively award achievements; player data moves to saved schema v9 with v1–v8 migration. The real imported Suburban environment now strips collision and shadows from tiny decorative parts without removing its floors, walls, and usable service counters. See [V0_16_RELEASE_NOTES.md](V0_16_RELEASE_NOTES.md) for rewards, tests, researched retention principles, and important remaining limits.
+
+
 - **v0.15 Interactive Official Suburbia:** The six official Roblox Suburban-template prefabs are no longer just passive scenery. Convenience Market can sell HOME/GARDEN/TECH goods and hunger-restoring earned-coin snacks, the garage and gas station allow vehicle dealer access and roadside snacks, and the playground offers free public rest. Four physical career locations (retail, mechanic, courier, security) have hire, start/finish shift and two task prompts, using the same server-validated wage/purchase rules as the main city. Two-player tests verify an actual paid Suburbia purchase, remote-purchase prevention, and unauthorized vehicle-selection rejection. Keeps saved-data schema v8, 60 careers, all earlier destinations and Robux features disabled. See [V0_15_RELEASE_NOTES.md](V0_15_RELEASE_NOTES.md). Imported assets are detailed, but not every prefab component is a MeshPart or photorealistic PBR asset.
 
 

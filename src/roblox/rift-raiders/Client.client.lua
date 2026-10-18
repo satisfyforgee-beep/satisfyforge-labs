@@ -114,6 +114,111 @@ actionsButton.Activated:Connect(function()
  showActions()
 end)
 showActions()
+-- Guided first session: compact, anchored, accessible, non-modal.
+-- This uses server-issued goal state, not a local "free coins" command.
+local goalChip=Instance.new("Frame")
+goalChip.Name="FirstSessionGoals"
+goalChip.Size=UDim2.new(0,math.min(325,UserInputService.TouchEnabled and 265 or 325),0,103)
+goalChip.Position=UDim2.new(0,12,0,11)
+goalChip.BackgroundColor3=Color3.fromRGB(31,46,48)
+goalChip.BackgroundTransparency=.08
+goalChip.BorderSizePixel=0;goalChip.Parent=gui;round(goalChip,12)
+local goalTitle=Instance.new("TextLabel")
+goalTitle.Name="GuidedObjective"
+goalTitle.Size=UDim2.new(1,-18,0,26)
+goalTitle.Position=UDim2.fromOffset(9,7)
+goalTitle.BackgroundTransparency=1
+goalTitle.Font=Enum.Font.GothamBold
+goalTitle.TextSize=15
+goalTitle.TextColor3=Color3.fromRGB(247,212,138)
+goalTitle.TextXAlignment=Enum.TextXAlignment.Left
+goalTitle.Text="WELCOME • YOUR FIRST ADVENTURE"
+goalTitle.Parent=goalChip
+local goalDescription=Instance.new("TextLabel")
+goalDescription.Name="GuidedAction"
+goalDescription.Size=UDim2.new(1,-18,0,32)
+goalDescription.Position=UDim2.fromOffset(9,31)
+goalDescription.BackgroundTransparency=1
+goalDescription.Font=Enum.Font.Gotham
+goalDescription.TextSize=12
+goalDescription.TextWrapped=true
+goalDescription.TextColor3=Color3.fromRGB(235,239,233)
+goalDescription.TextXAlignment=Enum.TextXAlignment.Left
+goalDescription.Text="Explore, earn coins and build your life."
+goalDescription.Parent=goalChip
+local goalQuick=button("GoalQuickAction","GO TO SUBURBIA",
+ UDim2.new(1,-18,0,30),UDim2.new(0,9,1,-37),
+ Color3.fromRGB(52,125,103),goalChip)
+goalQuick.TextSize=13
+local goalCollapsed=false
+goalQuick.Activated:Connect(function()
+ local stage=player:GetAttribute("RRGoalsIntro") or 0
+ if stage==0 then
+  action:FireServer("Travel","SUBURBIA")
+ elseif stage==1 then
+  -- Player must actually visit a suburban market and pay for the snack.
+  action:FireServer("Travel","SUBURBIA")
+ elseif stage==2 or stage==3 then
+  action:FireServer("Travel","SUBURBIA")
+  lifeButton.BackgroundColor3=Color3.fromRGB(91,174,133)
+ else
+  goalCollapsed=not goalCollapsed
+  goalDescription.Visible=not goalCollapsed
+  goalChip.Size=UDim2.new(0,325,0,goalCollapsed and 70 or 103)
+ end
+end)
+local dailyChip=Instance.new("TextLabel")
+dailyChip.Name="DailyGoalsProgress"
+dailyChip.Size=UDim2.new(0,270,0,28)
+dailyChip.Position=UDim2.new(0,14,0,122)
+dailyChip.BackgroundColor3=Color3.fromRGB(33,61,67)
+dailyChip.TextColor3=Color3.fromRGB(166,230,194)
+dailyChip.TextSize=12;dailyChip.TextWrapped=true
+dailyChip.Font=Enum.Font.GothamBold
+dailyChip.BorderSizePixel=0
+dailyChip.Text="DAILY ACTIVITIES • 0/4"
+dailyChip.Parent=gui
+round(dailyChip,9)
+local goalLastStage=-1
+local function refreshGoals()
+ local stage=player:GetAttribute("RRGoalsIntro") or 0
+ local total=player:GetAttribute("RRGoalsIntroCount") or 4
+ local complete=player:GetAttribute("RRGoalsIntroDone")==true
+ goalTitle.Text=complete and "WELCOME TO RIFTLIFE!" or
+  "FIRST STEPS "..stage.."/"..total.." • "..
+  (player:GetAttribute("RRGoalsIntroTitle") or "START EXPLORING")
+ goalDescription.Text=player:GetAttribute("RRGoalsIntroHint") or
+  "Visit new areas, work, and earn coins."
+ goalQuick.Text=complete and "HIDE / SHOW GUIDE" or
+  stage==0 and "GO TO SUBURBIA" or
+  stage==1 and "GO TO MARKET" or
+  stage==2 and "FIND A JOB • SUBURBIA" or
+  "COMPLETE YOUR FIRST SHIFT"
+ local done=player:GetAttribute("RRGoalsDailyDone") or 0
+ local count=player:GetAttribute("RRGoalsDailyTotal") or 4
+ dailyChip.Text="DAILY ACTIVITIES "..done.."/"..count..
+  " • EARN COINS BY PLAYING"
+ if goalLastStage>=0 and stage>goalLastStage then
+  local tween=TweenService:Create(goalChip,
+   TweenInfo.new(.22,Enum.EasingStyle.Back),
+   {BackgroundColor3=Color3.fromRGB(57,121,88)})
+  tween:Play()
+  task.delay(.8,function()
+   if goalChip.Parent then
+    TweenService:Create(goalChip,TweenInfo.new(.35),
+     {BackgroundColor3=Color3.fromRGB(31,46,48)}):Play()
+   end
+  end)
+ end
+ goalLastStage=stage
+end
+for _,name in ipairs({
+ "RRGoalsIntro","RRGoalsIntroCount","RRGoalsIntroTitle","RRGoalsIntroHint",
+ "RRGoalsIntroDone","RRGoalsDailyDone","RRGoalsDailyTotal",
+}) do
+ player:GetAttributeChangedSignal(name):Connect(refreshGoals)
+end
+refreshGoals()
 -- A 2x2 navigation grid leaves the center hotbar clear on desktop and mobile.
 for i,control in ipairs({shopButton,mapButton,packButton,lifeButton}) do
  local col=(i-1)%2
@@ -262,6 +367,10 @@ local homeViewButton=item(lifeList,"HomeView","MY HOME • FURNITURE & SECURITY"
  Color3.fromRGB(110,118,101),function()
   lifeMode="HOME"; updateLifeView()
  end)
+local goalsViewButton=item(lifeList,"GoalView","MY GOALS • DAILY REWARDS",
+ Color3.fromRGB(116,124,78),function()
+  lifeMode="GOALS"; updateLifeView()
+ end)
 local careerHeading=item(lifeList,"CareerHeading","AVAILABLE REAL-WORLD CAREERS",
  Color3.fromRGB(83,112,145),function() end)
 careerHeading.Active=false; table.insert(careerControls,careerHeading)
@@ -338,6 +447,25 @@ local homeHelp=item(lifeList,"HomeGuide",
  " VISIT YOUR HOME AND USE REAL APPLIANCES. KEYPAD CONTROLS GUEST ACCESS.",
  Color3.fromRGB(94,105,120),function() end)
 homeHelp.Active=false;table.insert(homeControls,homeHelp)
+local goalControls={}
+local goalInfo=item(lifeList,"CurrentGoal",
+ "FOLLOW THE FIRST STEPS AT THE TOP LEFT OF YOUR SCREEN",
+ Color3.fromRGB(96,112,84),function() end)
+goalInfo.Active=false;table.insert(goalControls,goalInfo)
+local dailyGoalLabels={
+ "FINISH ONE CAREER SHIFT",
+ "EAT A SUBURBAN MARKET SNACK",
+ "VISIT THE SUBURBAN DISTRICT",
+ "HARVEST CROPS AT THE GARDEN"
+}
+local dailyGoalItems={}
+for index,titleText in ipairs(dailyGoalLabels) do
+ local itemLabel=item(lifeList,"DailyGoal_"..index,titleText,
+  Color3.fromRGB(82,108,89),function() end)
+ itemLabel.Active=false
+ dailyGoalItems[index]=itemLabel
+ table.insert(goalControls,itemLabel)
+end
 local garageInfo=item(lifeList,"GarageInfo",
  "10 EARNABLE VEHICLES • OFFICIAL RACE CAR, SEDANS, AND SUV/PICKUP • VISIT DEALER",
  Color3.fromRGB(96,103,132),function() end)
@@ -398,6 +526,8 @@ updateLifeView=function()
  local boating=lifeMode=="BOATS"
  local garage=lifeMode=="GARAGE"
  local atHome=lifeMode=="HOME"
+ local goalsMode=lifeMode=="GOALS"
+ for _,control in ipairs(goalControls) do control.Visible=goalsMode end
  for _,control in ipairs(homeControls) do control.Visible=atHome end
  for _,control in ipairs(garageControls) do control.Visible=garage end
  for _,control in ipairs(boatControls) do control.Visible=boating end
@@ -430,6 +560,17 @@ updateLifeView=function()
  boatViewButton.BackgroundColor3=boating and Color3.fromRGB(66,132,171) or Color3.fromRGB(69,88,102)
  garageViewButton.BackgroundColor3=garage and Color3.fromRGB(131,119,161) or Color3.fromRGB(69,88,102)
  homeViewButton.BackgroundColor3=atHome and Color3.fromRGB(123,147,114) or Color3.fromRGB(69,88,102)
+ goalsViewButton.BackgroundColor3=goalsMode and Color3.fromRGB(122,146,78) or Color3.fromRGB(69,88,102)
+ goalInfo.Text="FIRST STEPS • "..
+  (player:GetAttribute("RRGoalsIntroTitle") or "START EXPLORING")..
+  " • "..(player:GetAttribute("RRGoalsIntroHint") or "PLAY TO EARN!")
+ for index,label in ipairs(dailyGoalItems) do
+  local complete=(player:GetAttribute("RRGoalsDaily_"..index) or 0)>=1
+  label.Text=(complete and "DONE! " or "NEXT: ")..dailyGoalLabels[index]..
+   (complete and " • REWARD COLLECTED" or " • EARN COINS")
+  label.BackgroundColor3=complete and Color3.fromRGB(62,132,97) or
+   Color3.fromRGB(82,108,89)
+ end
  homeInfo.Text="HOME LOT: "..tostring(player:GetAttribute("RRLifeHomePlot") or 0)..
   " • SECURITY "..(player:GetAttribute("RRLifeHomeLocked") and "LOCKED" or "UNLOCKED")..
   " • FUN "..tostring(player:GetAttribute("RRLifeFun") or 100)..
@@ -569,6 +710,16 @@ local function update()
      "SELECT OWNED CAR" or "BUY FIRST")
   end
  end
+ if lifeMode=="GOALS" then
+  goalInfo.Text="FIRST STEPS • "..
+   (player:GetAttribute("RRGoalsIntroTitle") or "START EXPLORING")..
+   " • "..(player:GetAttribute("RRGoalsIntroHint") or "PLAY TO EARN!")
+  for index,label in ipairs(dailyGoalItems) do
+   local complete=(player:GetAttribute("RRGoalsDaily_"..index) or 0)>=1
+   label.Text=(complete and "DONE! " or "NEXT: ")..dailyGoalLabels[index]..
+    (complete and " • REWARD COLLECTED" or " • EARN COINS")
+  end
+ end
  local target=player:GetAttribute("RRDeliveryTarget")
  hint.Text=(type(target)=="string" and target~="" and
   ("COURIER JOB: DELIVER TO "..target:upper()) or
@@ -674,6 +825,12 @@ for _,name in ipairs({"RRCoins","RRShards","RRLevel","RRXP","RRBlaster",
  "RRLifeGardenPlot","RRLifeGardenCrop","RRLifeGardenStatus",
  "RRLifeGardenHarvests","RRLifeGardenProduce"}) do
  player:GetAttributeChangedSignal(name):Connect(update)
+end
+for _,key in ipairs({
+ "RRGoalsIntro","RRGoalsIntroTitle","RRGoalsIntroHint",
+ "RRGoalsDaily_1","RRGoalsDaily_2","RRGoalsDaily_3","RRGoalsDaily_4"
+}) do
+ player:GetAttributeChangedSignal(key):Connect(update)
 end
 for _,entry in ipairs(LifeCatalog.Items) do
  player:GetAttributeChangedSignal("RRLifeOwn_"..entry.id):Connect(update)

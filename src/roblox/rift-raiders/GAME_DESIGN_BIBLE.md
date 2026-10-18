@@ -111,3 +111,9 @@ The R15 downtown population now has named proximity conversations and verified c
 - Retail, mechanic, courier and security have four additional suburban work sites with real server-authoritative tasks and earned-coin wages. They are alternative worksites, not new catalog career entries.
 - Interaction points are registered on the server, keeping location, ownership, currency, level, and work-step validation in one shared simulation service; no untrusted imported scripts are ever executed.
 - Professional-looking environment geometry + deeper activity remains more valuable than inflating catalog counts.
+
+## v0.16 — Keep players interested in their first five minutes
+- Beginners have a compact first-session checklist tied to gameplay that already exists; players are not forced to read a wall of text before playing.
+- Explore → buy → apply → work provides a clear initial progression through the premium official Suburban map; returning dailies incentivize normal gardening, work, eating and travel without real-money prompts.
+- Goal completion is server-authoritative, awarded only after accepted actual actions with state persisted to v9. There's no client-callable free-coins endpoint.
+- UX success measures for future live telemetry: new player 1-minute/5-minute activation, first purchase/first shift conversion, time-to-first-enjoyable interaction, repeat-session progression, test device FPS and crash counts. No user tracking or analytics integrations have been installed yet.

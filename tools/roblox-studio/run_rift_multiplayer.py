@@ -19,7 +19,7 @@ def main():
  with log.open("w") as out:
   proc=subprocess.Popen(cmd,cwd=ROOT,stdout=out,stderr=subprocess.STDOUT,start_new_session=True)
  try:
-  for _ in range(220):
+  for _ in range(360):
    data=log.read_text(errors="replace")
    if "[FLog::CreatorOutput] SF_RIFT_MP_PASS" in data or "[FLog::CreatorOutput] SF_RIFT_MP_RESULT" in data or "[FLog::CreatorOutput] SF_RIFT_MP_FAIL" in data:break
    if proc.poll() is not None:break

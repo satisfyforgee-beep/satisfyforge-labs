@@ -20,8 +20,9 @@ local SuburbanDistrict=require(ServerScriptService:WaitForChild("SuburbanDistric
 local Catalog=require(ReplicatedStorage:WaitForChild("PrestigeCatalog"))
 local Vehicles=require(ServerScriptService:WaitForChild("VehicleService"))
 local Boats=require(ServerScriptService:WaitForChild("BoatService"))
+local Goals=require(ServerScriptService:WaitForChild("ProgressionGoals"))
 local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
-world:SetAttribute("Version","0.15.0")
+world:SetAttribute("Version","0.16.0")
 world:SetAttribute("Phase","CALM")
 world:SetAttribute("SecondsLeft",75)
 local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
@@ -247,6 +248,7 @@ local function sync(p)
   s.owned.PLATINUM_WRAP and "PLATINUM" or
   s.owned.CITY_WRAP and "MIDNIGHT" or "DEFAULT")
  Life.Sync(p)
+ Goals.Sync(p)
  local ls=p:FindFirstChild("leaderstats")
  if ls then
   ls.Level.Value=s.level; ls.Coins.Value=s.coins; ls.Rifts.Value=s.seals
@@ -265,6 +267,8 @@ local function reward(p,coins,xp,shards)
  end
  sync(p)
 end
+Goals.Initialize({getProfile=function(p) return profiles[p] end,
+ reward=reward,sync=sync,tell=tell})
 -- Seven terrain-based regions, interactive landmarks and server-owned portals.
 local newDestinations=WorldExpansion.Build(world,WorldKit,reward,tell,Vehicles.Spawn)
 local activityDestinations=WorldActivities.Build(world,{
@@ -275,7 +279,8 @@ local activityDestinations=WorldActivities.Build(world,{
 WorldPolish.Build(world,WorldKit)
 local lifeDestination=Life.Build(world,{
  getProfile=function(p) return profiles[p] end,
- reward=reward,sync=sync,tell=tell
+ reward=reward,sync=sync,tell=tell,
+ onActivity=function(p,kind,arg) Goals.Record(p,kind,arg) end,
 })
 LifeCityVisuals.Build(world)
 local modernCityDestination=ModernCityIntegration.Build(world,spawn,tell)
@@ -297,7 +302,7 @@ end
 local function save(p)
  local s=profiles[p]
  if not store or not s or not s.loaded then return end
- local payload={version=8,coins=s.coins,shards=s.shards,level=s.level,xp=s.xp,
+ local payload={version=9,coins=s.coins,shards=s.shards,level=s.level,xp=s.xp,
   blaster=s.blaster,shieldOwned=s.shieldOwned,petOwned=s.petOwned,
   scatterOwned=s.scatterOwned,seals=s.seals,
   resources={
@@ -312,13 +317,14 @@ local function save(p)
    houseOwned=s.jobs.houseOwned==true
   },
   prestige=Catalog.ValidateOwned(s.owned),
-  life=Life.Serialize(s.life)}
+  life=Life.Serialize(s.life),
+  goals=Goals.Normalize(s.goals)}
  local key="Player_"..p.UserId
  local ok,err=pcall(function()
   store:UpdateAsync(key,function(previous)
    local value=type(previous)=="table" and previous or {}
    -- Never regress an existing account to an older schema.
-   if type(value.version)=="number" and value.version>8 then return nil end
+   if type(value.version)=="number" and value.version>9 then return nil end
    return payload
   end)
  end)
@@ -331,11 +337,12 @@ local function init(p)
   shieldUntil=0,travelAt=0,lastShoot=0,loaded=false,pet=nil,
   resources={wood=0,metal=0,fish=0,hide=0,toolkit=0},
   jobs={sports=0,heists=0,bankCooldownUntil=0,carCooldownUntil=0,
-   houseOwned=false},owned={},life=Life.Normalize(nil),heat=0}
+   houseOwned=false},owned={},life=Life.Normalize(nil),
+  goals=Goals.Normalize(nil),heat=0}
  if store then
   local ok,data=pcall(function() return store:GetAsync("Player_"..p.UserId) end)
   if ok then
-   if type(data)=="table" and (data.version==nil or data.version==1 or data.version==2 or data.version==3 or data.version==4 or data.version==5 or data.version==6 or data.version==7 or data.version==8) then
+   if type(data)=="table" and (data.version==nil or data.version==1 or data.version==2 or data.version==3 or data.version==4 or data.version==5 or data.version==6 or data.version==7 or data.version==8 or data.version==9) then
     s.coins=cleanInt(data.coins,1000000); s.shards=cleanInt(data.shards,100000)
     s.level=math.max(1,cleanInt(data.level,100)); s.xp=cleanInt(data.xp,100000)
     s.blaster=math.clamp(cleanInt(data.blaster,4),1,4)
@@ -356,6 +363,7 @@ local function init(p)
     end
     s.owned=Catalog.ValidateOwned(data.prestige)
     s.life=Life.Normalize(data.life)
+    s.goals=Goals.Normalize(data.goals)
    end
    s.loaded=true
   else
@@ -666,6 +674,7 @@ action.OnServerEvent:Connect(function(p,kind,arg,extra)
    if s.scatterOwned then grantWeapon(p,scatterTemplate) end
   end
   tell(p,"ARRIVED: "..arg)
+  Goals.Record(p,"Travel",arg)
  elseif kind=="BuyPrestige" then
   if type(arg)~="string" then return end
   local item=Catalog.ById[arg]
@@ -798,4 +807,4 @@ task.spawn(function()
   Lighting.Ambient=Color3.fromRGB(120,132,179)
  end
 end)
-print("SF_RIFT_RAIDERS_SERVER_READY v0.15.0")
+print("SF_RIFT_RAIDERS_SERVER_READY v0.16.0")

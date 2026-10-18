@@ -59,6 +59,8 @@ function Suburbs.Build(world,options)
  end
  local imported=0
  local countParts=0
+ local optimizedDecor=0
+ local preservedCollision=0
  for _,asset in ipairs(layout) do
   local sample=source:FindFirstChild(asset.name)
   if not sample then warn("Missing official suburban prefab",asset.name) continue end
@@ -87,6 +89,18 @@ function Suburbs.Build(world,options)
    elseif node:IsA("BasePart") then
     node.Anchored=true
     node.CanTouch=false
+    -- Very small imported decorative pieces are visible but should not
+    -- act as physics obstacles or cast expensive individual shadows.
+    -- Leave floors, walls, stairs, roads and usable counters untouched.
+    if node.Size.Magnitude<1.12 and
+     not node:IsA("Seat") and not node:IsA("VehicleSeat") then
+     node.CanCollide=false
+     node.CanQuery=false
+     node.CastShadow=false
+     optimizedDecor+=1
+    elseif node.CanCollide then
+     preservedCollision+=1
+    end
     pieces+=1
    end
   end
@@ -222,6 +236,9 @@ function Suburbs.Build(world,options)
  folder:SetAttribute("EnvironmentOnly",false)
  folder:SetAttribute("OfficialPrefabCount",imported)
  folder:SetAttribute("DetailedSourceParts",countParts)
+ folder:SetAttribute("MicroDecorOptimized",optimizedDecor)
+ folder:SetAttribute("PreservedWalkableColliderParts",preservedCollision)
+ folder:SetAttribute("StreamingAware",workspace.StreamingEnabled)
  folder:SetAttribute("GeometryOrigin","Official Roblox Studio Suburban")
  return arrivals
 end

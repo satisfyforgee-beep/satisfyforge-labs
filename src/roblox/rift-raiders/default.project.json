@@ -51,6 +51,9 @@
       },
       "SuburbanDistrict": {
         "$path": "SuburbanDistrict.lua"
+      },
+      "ProgressionGoals": {
+        "$path": "ProgressionGoals.lua"
       }
     },
     "StarterPlayer": {

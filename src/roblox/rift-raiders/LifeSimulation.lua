@@ -966,6 +966,7 @@ function Life.Process(player,kind,arg,step)
   life.needs.hygiene=math.max(0,life.needs.hygiene-2)
   life.reputation=math.min(1000000,life.reputation+1)
   context.reward(player,career.wage,14,0)
+  if context.onActivity then context.onActivity(player,"SHIFT",arg) end
   tell(player,"SHIFT COMPLETED! +"..career.wage.." COINS • +14 XP")
  elseif kind=="Task" then
   local shift=life.activeShift
@@ -1037,6 +1038,7 @@ function Life.Process(player,kind,arg,step)
    kind=="GardenHarvest" or kind=="GardenSell" then
   return Garden.Process(player,kind,arg,s) and (function()
    context.sync(player)
+   if context.onActivity then context.onActivity(player,kind,arg) end
    return true
   end)() or false
  elseif kind=="GoHome" then
@@ -1144,6 +1146,7 @@ function Life.Process(player,kind,arg,step)
   tell(player,"PAID "..amount.." COINS TOWARD COURT FINES.")
  else return false end
  context.sync(player)
+ if context.onActivity then context.onActivity(player,kind,arg) end
  return true
 end
 local function arrest(player,s,officerUnit)

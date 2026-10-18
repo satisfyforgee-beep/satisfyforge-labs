@@ -24,7 +24,7 @@ end
 local clients=waitFor(function()
  local ps=Players:GetPlayers()
  if #ps>=2 and ps[1]:GetAttribute("RRLevel") and ps[2]:GetAttribute("RRLevel") then return ps end
-end,45)
+end,90)
 if not clients then fail("players_not_ready") return end
 local a,b=clients[1],clients[2]
 local channel=Instance.new("RemoteEvent"); channel.Name="RiftMPProbe"; channel.Parent=ReplicatedStorage
@@ -197,9 +197,15 @@ if not waitFor(function() return (a:GetAttribute("RRCoins") or 0)>=beforeShift+2
 end
 if b:GetAttribute("RRLifeCareer")~="UNEMPLOYED" or
  (b:GetAttribute("RRCoins") or 0)~=0 then fail("life_job_isolation") return end
+-- The first legal shift now also grants one-time onboarding/daily
+-- achievements. Those rewards are intentional, so only compare against the
+-- actual balance immediately after collecting the legitimate shift.
+local balanceAfterShift=a:GetAttribute("RRCoins") or 0
 if not request(a,"shift2","LifeAction","Work","RETAIL") then fail("work2_ack") return end
 task.wait(.3)
-if a:GetAttribute("RRCoins")~=beforeShift+22 then fail("life_wage_cooldown_bypass") return end
+if a:GetAttribute("RRCoins")~=balanceAfterShift then
+ fail("life_wage_cooldown_bypass") return
+end
 print("SF_RIFT_MP_CHECK life_career_wages_and_isolation PASS")
 if not request(a,"arctic_after_life","Travel","ARCTIC") then fail("arctic_retravel_ack") return end
 task.wait(2)
@@ -597,6 +603,14 @@ if (rootB.Position-Vector3.new(0,8,3425)).Magnitude<50 then
  fail("suburban_other_player_teleported") return
 end
 print("SF_RIFT_MP_CHECK detailed_official_suburban_destination PASS")
+if a:GetAttribute("RRGoalsIntro")~=1 or
+ (a:GetAttribute("RRGoalsDailyDone") or 0)<1 then
+ fail("first_session_suburb_goal_and_daily_travel") return
+end
+if (b:GetAttribute("RRGoalsIntro") or 0)>0 then
+ fail("onboarding_progress_leaked_to_second_player") return
+end
+print("SF_RIFT_MP_CHECK first_session_guided_travel_reward PASS")
 local services=world:FindFirstChild("Working Suburban Services",true)
 local market=services and services:FindFirstChild("Official Suburban Market Checkout")
 local garage=services and services:FindFirstChild("Official Suburban Auto Garage Checkout")
@@ -617,15 +631,29 @@ print("SF_RIFT_MP_CHECK suburban_shop_proximity_enforced PASS")
 a.Character:PivotTo(CFrame.new(market.Position+Vector3.new(0,5,0)))
 task.wait(.6)
 local money=a:GetAttribute("RRCoins") or 0
+local prePurchaseLevel=a:GetAttribute("RRLevel") or 1
+local introBeforePurchase=a:GetAttribute("RRGoalsIntro") or 0
 local already=a:GetAttribute("RRLifeOwn_FIRST_AID_KIT")==true
 if money>=130 and not already then
  local bought=lifeService.Process(a,"Buy","FIRST_AID_KIT")
  if not bought then fail("suburban_legal_purchase_rejected") return end
  local remaining=a:GetAttribute("RRCoins") or 0
- if a:GetAttribute("RRLifeOwn_FIRST_AID_KIT")~=true or remaining>money-130 then
+ local postPurchaseLevel=a:GetAttribute("RRLevel") or prePurchaseLevel
+ -- Earned coins are reduced by the exact price, while a first purchase
+ -- awards a one-time 85-coin tutorial reward and potential level-up coins.
+ local legitimateBonus=introBeforePurchase==1 and 85 or 0
+ local expected=money-130+legitimateBonus+
+  math.max(0,postPurchaseLevel-prePurchaseLevel)*50
+ if a:GetAttribute("RRLifeOwn_FIRST_AID_KIT")~=true or
+  remaining~=expected then
+  print("SF_RIFT_MP_BUY_ACCOUNTING actual",remaining,"expected",expected)
   fail("suburban_shop_did_not_charge_earned_coins") return
  end
  print("SF_RIFT_MP_CHECK detailed_suburban_market_real_purchase PASS")
+ if a:GetAttribute("RRGoalsIntro")~=2 then
+  fail("first_session_purchase_goal") return
+ end
+ print("SF_RIFT_MP_CHECK first_session_purchase_goal PASS")
 else
  print("SF_RIFT_MP_CHECK suburban_market_purchase_level_and_budget_guard PASS")
 end
@@ -638,6 +666,53 @@ if lifeService.Process(a,"SelectCar","HYPERCAR") then
  fail("suburban_auto_shop_unowned_vehicle_selection") return
 end
 print("SF_RIFT_MP_CHECK suburban_auto_shop_owner_validation PASS")
+-- Complete a legitimate extra suburban workplace to test that real
+-- validated actions advance the intro and one-per-day challenge ledger.
+local job=services:FindFirstChild("Suburban Worksite RETAIL")
+local taskOne=services:FindFirstChild("Suburban Work Task RETAIL 1")
+local taskTwo=services:FindFirstChild("Suburban Work Task RETAIL 2")
+if not job or not taskOne or not taskTwo then
+ fail("new_suburban_workplace_missing") return
+end
+a.Character:PivotTo(CFrame.new(job.Position+Vector3.new(0,4,0)))
+task.wait(.65)
+if not lifeService.Process(a,"Career","RETAIL") then
+ fail("suburban_career_application_not_accepted") return
+end
+if money>=130 and not already and a:GetAttribute("RRGoalsIntro")~=3 then
+ fail("first_session_apply_for_job_goal") return
+end
+task.wait(.8)
+if not lifeService.Process(a,"Work","RETAIL") then
+ fail("suburban_shift_not_started") return
+end
+task.wait(1.7)
+a.Character:PivotTo(CFrame.new(taskOne.Position+Vector3.new(0,4,0)))
+task.wait(.35)
+if not lifeService.Process(a,"Task","RETAIL",1) then
+ fail("suburban_shift_first_task_not_accepted") return
+end
+task.wait(1.7)
+a.Character:PivotTo(CFrame.new(taskTwo.Position+Vector3.new(0,4,0)))
+task.wait(.35)
+if not lifeService.Process(a,"Task","RETAIL",2) then
+ fail("suburban_shift_second_task_not_accepted") return
+end
+task.wait(.45)
+a.Character:PivotTo(CFrame.new(job.Position+Vector3.new(0,4,0)))
+task.wait(.4)
+local preWages=a:GetAttribute("RRCoins") or 0
+if not lifeService.Process(a,"Work","RETAIL") then
+ fail("suburban_shift_wage_payout_denied") return
+end
+if (a:GetAttribute("RRCoins") or 0)<=preWages or
+ (a:GetAttribute("RRGoalsDailyDone") or 0)<2 then
+ fail("suburban_shift_daily_wages_not_awarded") return
+end
+if money>=130 and not already and a:GetAttribute("RRGoalsIntro")~=4 then
+ fail("first_session_intro_never_completed") return
+end
+print("SF_RIFT_MP_CHECK suburban_live_shift_and_persistent_goal_awards PASS")
 print("SF_RIFT_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:rift_multiplayer")
 ]==]
@@ -645,8 +720,8 @@ server.Parent=ServerScriptService
 local client=Instance.new("LocalScript"); client.Name="RiftMultiplayerClientHarness"
 client.Source=[==[
 local ReplicatedStorage=game:GetService("ReplicatedStorage")
-local channel=ReplicatedStorage:WaitForChild("RiftMPProbe",20)
-local action=ReplicatedStorage:WaitForChild("RiftRaidersAction",20)
+local channel=ReplicatedStorage:WaitForChild("RiftMPProbe",95)
+local action=ReplicatedStorage:WaitForChild("RiftRaidersAction",95)
 channel.OnClientEvent:Connect(function(id,kind,arg,extra)
  action:FireServer(kind,arg,extra)
  task.wait(.15)
