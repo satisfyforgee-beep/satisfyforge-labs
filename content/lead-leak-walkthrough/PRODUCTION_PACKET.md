@@ -113,7 +113,7 @@ Free Revenue Leak Audit: link in bio.
 #HomeServiceMarketing #LeadGeneration #SmallBusinessGrowth #RevenueLeak #SatisfyForge
 
 
-**Production disclosure to include with v1:** AI-generated narration; fictional example; no client data.
+**Production disclosure for v1:** AI-generated narration; fictional example; no client data.
 
 ### TikTok
 
@@ -179,6 +179,7 @@ Do not rely on a temporary trend for the core asset. Platform-native trending au
 - **SHA-256:** `01edf0da6511f6ed73ad3cfdf9b726f8f29ebe4433d785285314b1d545afca68`.
 - **Technical properties:** 1080×1920, 30 fps, 27.000 seconds, H.264/AAC, 815,478 bytes.
 - **Audio:** locally AI-synthesized narration and original interface tones. Add truthful AI narration disclosure to platform captions.
+- **Subtitles:** [lead_leak_v1.srt](./lead_leak_v1.srt) (timed transcript; optional platform upload).
 - **Full QA and reconciliation record:** [RENDER_QA_2026-10-17.md](./RENDER_QA_2026-10-17.md).
 - **Not publish-approved:** voice listening, mobile review, public CTA check, media hosting, final captions and live slot reconciliation remain.
 
