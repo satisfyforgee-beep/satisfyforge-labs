@@ -175,13 +175,37 @@ for _,o in ipairs(pack:GetDescendants()) do
   "unsafe official Suburban template code imported")
 end
 assert(world:FindFirstChild("Downtown Wayfinding"),"downtown portal missing")
+local plaza=world:FindFirstChild("Downtown First Minute Plaza")
+assert(plaza and plaza:GetAttribute("WelcomeVisible")==true,
+ "cinematic first-minute plaza missing")
+assert(plaza:GetAttribute("ImportedMeshTrees")>=4,
+ "real imported city mesh trees not framing spawn")
+assert(plaza:GetAttribute("ArrivalInteractionCount")==1,
+ "welcome kiosk should guide new players into an active destination")
+local tourist=plaza:FindFirstChild("First Minute Explore Kiosk")
+local visitorPrompt=tourist and tourist:FindFirstChild("Arrival EXPLORE SUBURBIA")
+assert(visitorPrompt and visitorPrompt:IsA("ProximityPrompt"),
+ "interactive welcome visitor kiosk missing")
+assert(plaza:FindFirstChild("Reflective Fountain Water") and
+ plaza:FindFirstChild("City Brick Flowerbed") and
+ plaza:FindFirstChild("Plaza Cedar Seat") and
+ plaza:FindFirstChild("Welcome to RiftLife City"),
+ "plaza needs active street furniture, plants and wayfinding")
+local pavers=0
+for _,piece in ipairs(plaza:GetChildren()) do
+ if piece.Name=="Sandstone Plaza Paver" then pavers+=1 end
+end
+assert(pavers==40,"plaza must break up bare asphalt with sandstone paving")
+local heading=world:FindFirstChild("RiftRaidersSpawn").CFrame.LookVector
+assert(heading.X<-.5 and heading.Z>.1,
+ "players must face actual city storefronts, not vacant gray street")
 assert(imported:FindFirstChild("Modern City Asphalt Foundation"),"downtown ground missing")
 assert(workspace.StreamingEnabled==true,"streaming must be enabled for mobile")
 assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.18.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.19.0","version mismatch")
 assert(world:GetAttribute("StudioSavesIsolated")==true,
  "Studio must never write a production profile data store")
 local function count(name)

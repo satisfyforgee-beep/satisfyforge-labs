@@ -3,6 +3,7 @@
 -- built-in Modern City template. All imported executable scripts were removed.
 -- World construction remains separate so this art can be reused in future games.
 local Integration={}
+local Arrivals=require(game:GetService("ServerScriptService"):WaitForChild("DowntownArrivalExperience"))
 local ORIGIN=Vector3.new(720,0,200)
 local DESTINATION=Vector3.new(0,0,2350)
 local DELTA=DESTINATION-ORIGIN
@@ -56,7 +57,7 @@ local function portal(parent,position,title,description,callback)
  prompt.Triggered:Connect(callback)
  return base
 end
-function Integration.Build(world,spawn,tell)
+function Integration.Build(world,spawn,tell,onTravel)
  local imported=workspace:FindFirstChild("OfficialModernCityDistrict")
  if not imported or not imported:IsA("Model") then
   warn("Official Modern City art not loaded; leaving original hub spawn")
@@ -87,7 +88,9 @@ function Integration.Build(world,spawn,tell)
  pad.Transparency=.12
  -- The city becomes the player's first impression, instead of the block arena.
  if spawn then
-  spawn.CFrame=CFrame.new(0,1.5,2215)*CFrame.Angles(0,math.pi,0)
+  -- Face the detailed storefronts on first spawn rather than an empty road.
+  spawn.CFrame=CFrame.lookAt(Vector3.new(0,1.5,2215),
+   Vector3.new(-80,1.5,2280))
   spawn.Size=Vector3.new(9,1,9)
   spawn.Material=Enum.Material.Concrete
   spawn.Color=Color3.fromRGB(148,155,159)
@@ -115,6 +118,8 @@ function Integration.Build(world,spawn,tell)
     tell(player,"WELCOME TO MODERN DOWNTOWN!")
    end
   end)
+ -- Visual first-minute entry into the city should not be bare asphalt.
+ Arrivals.Build(world,imported,tell,onTravel)
  -- Street traffic and shop props are decorative; never claim drivable assets
  -- are actually usable unless server-owned physics controls are implemented.
  return Vector3.new(0,8,2215)

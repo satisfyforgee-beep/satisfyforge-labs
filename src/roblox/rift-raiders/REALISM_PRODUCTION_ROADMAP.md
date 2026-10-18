@@ -1,3 +1,9 @@
+## v0.19 — First 30 seconds should look like a real place
+- Feedback video identified that the camera mainly saw blank asphalt and important buildings only entered the frame after moving. Player first spawn now faces existing imported storefronts.
+- Live-rendered, script-free official Modern City trees, paving, planters, fountain spray, welcome sign, benches, and a one-press visitor center break up the bare road.
+- Important note: Imported source material can still occasionally be rejected by Roblox. This changes presentation, not the license/permission limitations or actual-device/mobile FPS requirements.
+- Highest next priority: a real human 10-minute first-play session and live-phone mobile detail benchmarking, then replace the remaining low-quality vehicle interiors with verified allowed high-quality models.
+
 ## v0.18 — A tactile barista shift and atomic DataStore leases
 - Three espresso machines and a serve counter near the imported modern downtown barista site now carry physical, correct-order shift gameplay, rewards and anti-replay checks.
 - DataPersistence handles atomic active-server session locks, serialized saves and bounded retries; Studio mock tests cover stale/mismatched/future-schema saves without touching production records.

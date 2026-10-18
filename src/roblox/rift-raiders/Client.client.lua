@@ -119,7 +119,8 @@ showActions()
 local goalChip=Instance.new("Frame")
 goalChip.Name="FirstSessionGoals"
 goalChip.Size=UDim2.new(0,math.min(325,UserInputService.TouchEnabled and 265 or 325),0,103)
-goalChip.Position=UDim2.new(0,12,0,11)
+-- Leave Roblox's top-left buttons clear, especially on mobile.
+goalChip.Position=UDim2.new(0,12,0,65)
 goalChip.BackgroundColor3=Color3.fromRGB(31,46,48)
 goalChip.BackgroundTransparency=.08
 goalChip.BorderSizePixel=0;goalChip.Parent=gui;round(goalChip,12)
@@ -164,13 +165,14 @@ goalQuick.Activated:Connect(function()
  else
   goalCollapsed=not goalCollapsed
   goalDescription.Visible=not goalCollapsed
-  goalChip.Size=UDim2.new(0,325,0,goalCollapsed and 70 or 103)
+  goalChip.Size=UDim2.new(0,math.min(325,UserInputService.TouchEnabled and 265 or 325),
+   0,goalCollapsed and 70 or 103)
  end
 end)
 local dailyChip=Instance.new("TextLabel")
 dailyChip.Name="DailyGoalsProgress"
 dailyChip.Size=UDim2.new(0,270,0,28)
-dailyChip.Position=UDim2.new(0,14,0,122)
+dailyChip.Position=UDim2.new(0,14,0,174)
 dailyChip.BackgroundColor3=Color3.fromRGB(33,61,67)
 dailyChip.TextColor3=Color3.fromRGB(166,230,194)
 dailyChip.TextSize=12;dailyChip.TextWrapped=true

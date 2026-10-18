@@ -24,7 +24,7 @@ local Persistence=require(ServerScriptService:WaitForChild("DataPersistence"))
 local Goals=require(ServerScriptService:WaitForChild("ProgressionGoals"))
 local Discovery=require(ServerScriptService:WaitForChild("SuburbanDiscovery"))
 local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
-world:SetAttribute("Version","0.18.0")
+world:SetAttribute("Version","0.19.0")
 world:SetAttribute("Phase","CALM")
 world:SetAttribute("SecondsLeft",75)
 local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
@@ -289,7 +289,8 @@ local lifeDestination=Life.Build(world,{
  onActivity=function(p,kind,arg) Goals.Record(p,kind,arg) end,
 })
 LifeCityVisuals.Build(world)
-local modernCityDestination=ModernCityIntegration.Build(world,spawn,tell)
+local modernCityDestination=ModernCityIntegration.Build(world,spawn,tell,
+ function(player,where) Goals.Record(player,"Travel",where) end)
 local importedDowntown=workspace:FindFirstChild("OfficialModernCityDistrict")
 if importedDowntown then
  Life.AttachDowntown(importedDowntown)
@@ -852,4 +853,4 @@ task.spawn(function()
   Lighting.Ambient=Color3.fromRGB(120,132,179)
  end
 end)
-print("SF_RIFT_RAIDERS_SERVER_READY v0.18.0")
+print("SF_RIFT_RAIDERS_SERVER_READY v0.19.0")

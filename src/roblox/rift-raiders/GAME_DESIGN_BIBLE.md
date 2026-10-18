@@ -127,3 +127,9 @@ The R15 downtown population now has named proximity conversations and verified c
 ## v0.18 — Real job skills and progression integrity
 - Barista workers receive one randomized customer coffee order, brew at a physical espresso machine, then serve for an earned tip and collect base wages. Wrong orders, premature actions and remote spoofing cannot complete the shift.
 - Active session ownership prevents multiple live servers from mutating the same saved profile concurrently. Studio tests simulate these conditions; real private-live DataStore and crash-recovery tests are still required.
+
+
+## v0.19 — First arrival should show, not tell
+- Default first character orientation frames authentic imported city buildings. Arrival space now has an original planted pedestrian plaza, five official detailed mesh trees, decorative fountain, plazas, benches, purposeful lighting, and walk-up world-travel kiosk.
+- The main tutorial card sits below Roblox's built-in top-left controls and activating the visitor kiosk progresses the same authoritative onboarding travel event as using WORLD.
+- Continue favoring a lively, navigable, visually exciting first impression over large piles of additional inventory listings.

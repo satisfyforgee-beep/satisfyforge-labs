@@ -10,6 +10,9 @@ Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach 
 
 ## Implemented
 
+- **v0.19 Better first impression:** Reworked default downtown spawn orientation toward the imported Modern City buildings (instead of a featureless asphalt street), created a 40-tile pedestrian plaza framed with five legitimate official city MeshPart trees, flowering brick planters, a small fountain, benches, warm light fixtures, welcome graphics, and an interactive Suburbia visitor kiosk. Corrected the onboarding widget position so it no longer clashes with the top-left Roblox menu buttons. Portal travel correctly credits real tutorial progress. This responds directly to recorded video feedback and does not require an outside 3D marketplace. See [V0_19_RELEASE_NOTES.md](V0_19_RELEASE_NOTES.md). Advanced phones and live experiences still need real QA.
+
+
 - **v0.18 Playable Cafe & Safer Data:** New in-world coffee bar with three real drink recipes and randomized, server-verified customer orders; serving the right drink gives one earned-coin tip, then the barista collects normal career wages. New DataPersistence module adds atomic session ownership, clean release, retries, sequential saves, safer server shutdown and synthetic DataStore conflict tests without writing to the owner's live Roblox account during Studio testing. **Live private-place DataStore rejoin and mobile tests remain outstanding.** See [V0_18_RELEASE_NOTES.md](V0_18_RELEASE_NOTES.md).
 
 
