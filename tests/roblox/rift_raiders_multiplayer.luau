@@ -370,6 +370,58 @@ if not waitFor(function() return a:GetAttribute("RRLifeShift")=="BARISTA" end,3)
  fail("downtown_shift_start") return
 end
 print("SF_RIFT_MP_CHECK detailed_downtown_career_loop PASS")
+local cafe=world:FindFirstChild("Downtown Interactive Coffee Bar")
+local cafeService=require(ServerScriptService:WaitForChild("CafeService"))
+local lifeService=require(ServerScriptService:WaitForChild("LifeSimulation"))
+local order=a:GetAttribute("RRLifeCafeOrder")
+if not cafe or not table.find(cafeService.Recipes,order) then
+ fail("barista_random_customer_order_missing") return
+end
+if lifeService.Process(a,"CafeServe") then
+ fail("barista_served_without_brewing") return
+end
+local wrong=order=="ESPRESSO" and "MOCHA" or "ESPRESSO"
+local wrongMachine=cafe:FindFirstChild("Coffee Brew "..wrong)
+local rightMachine=cafe:FindFirstChild("Coffee Brew "..order)
+if not wrongMachine or not rightMachine then
+ fail("barista_recipe_buttons_missing") return
+end
+a.Character:PivotTo(CFrame.new(wrongMachine.Position+Vector3.new(0,4,0)))
+task.wait(1.6)
+if lifeService.Process(a,"CafeBrew",wrong) then
+ fail("wrong_coffee_recipe_accepted") return
+end
+a.Character:PivotTo(CFrame.new(rightMachine.Position+Vector3.new(0,4,0)))
+task.wait(.55)
+if not lifeService.Process(a,"CafeBrew",order) then
+ fail("correct_coffee_recipe_not_prepared") return
+end
+if a:GetAttribute("RRLifeTaskStep")~=1 then
+ fail("coffee_brew_stage_not_recorded") return
+end
+local serviceCounter=cafe:FindFirstChild("Cafe Customer Service Register")
+a.Character:PivotTo(CFrame.new(serviceCounter.Position+Vector3.new(0,4,0)))
+task.wait(1.8)
+local tipsBefore=a:GetAttribute("RRCoins") or 0
+if not lifeService.Process(a,"CafeServe") then
+ fail("coffee_not_served_after_correct_recipe") return
+end
+if a:GetAttribute("RRLifeTaskStep")~=2 or
+ (a:GetAttribute("RRCoins") or 0)<=tipsBefore then
+ fail("coffee_service_did_not_earn_tip") return
+end
+task.wait(.55)
+if lifeService.Process(a,"CafeServe") then
+ fail("duplicate_coffee_customer_tip") return
+end
+a.Character:PivotTo(CFrame.new(downtownCafe.Position+Vector3.new(0,4,0)))
+task.wait(.5)
+local shiftsBefore=a:GetAttribute("RRLifeShifts") or 0
+if not lifeService.Process(a,"Work","BARISTA") or
+ (a:GetAttribute("RRLifeShifts") or 0)~=shiftsBefore+1 then
+ fail("barista_shift_wage_collection") return
+end
+print("SF_RIFT_MP_CHECK correct_recipe_barista_job_real_wages PASS")
 local living=world:FindFirstChild("Living Modern Downtown")
 if not living then fail("living_downtown_missing") return end
 local citizen=living:FindFirstChild("Downtown Citizen 1")

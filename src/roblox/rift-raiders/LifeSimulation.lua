@@ -5,6 +5,7 @@ local RunService=game:GetService("RunService")
 local Terrain=workspace.Terrain
 local Catalog=require(game:GetService("ReplicatedStorage"):WaitForChild("LifeCatalog"))
 local Garden=require(script.Parent:WaitForChild("UrbanGardening"))
+local Cafe=require(script.Parent:WaitForChild("CafeService"))
 local Home=require(script.Parent:WaitForChild("HomeLiving"))
 local Architecture=require(script.Parent:WaitForChild("HomeArchitecture"))
 local Life={}
@@ -201,9 +202,15 @@ function Life.Sync(player)
  player:SetAttribute("RRLifeShift",shift and shift.id or "")
  player:SetAttribute("RRLifeTaskStep",shift and shift.progress or 0)
  local nextTarget=shift and taskSites[shift.id] and taskSites[shift.id][shift.progress+1]
- player:SetAttribute("RRLifeTaskName",nextTarget and
-  nextTarget:GetAttribute("TaskLabel") or
-  (shift and "RETURN TO YOUR WORKPLACE FOR WAGES" or ""))
+ player:SetAttribute("RRLifeCafeOrder",shift and shift.id=="BARISTA" and
+  shift.cafeOrder or "")
+ local label=shift and shift.id=="BARISTA" and
+  (shift.progress==0 and "BREW "..(shift.cafeOrder or "COFFEE") or
+   shift.progress==1 and "SERVE DRINK AT CUSTOMER COUNTER" or
+   "COLLECT YOUR BARISTA WAGES") or nil
+ player:SetAttribute("RRLifeTaskName",label or
+  (nextTarget and nextTarget:GetAttribute("TaskLabel") or
+   (shift and "RETURN TO YOUR WORKPLACE FOR WAGES" or "")))
  player:SetAttribute("RRLifeCarTier",
   life.owned.SPORTS_CAR and "SPORTS" or
   life.owned.SEDAN and "SEDAN" or "STARTER")
@@ -268,6 +275,10 @@ local function officer(parent,id,start)
 end
 function Life.Build(targetWorld,options)
  context=options; world=targetWorld
+ Cafe.Build(world,{
+  process=function(p,kind,arg) return Life.Process(p,kind,arg) end,
+  getProfile=profile,tell=tell,sync=Life.Sync,reward=context.reward
+ })
  folder=Instance.new("Folder"); folder.Name="Life City Simulation"; folder.Parent=world
  Terrain:FillBlock(CFrame.new(townCenter+Vector3.new(0,-4,0)),
   Vector3.new(350,12,580),Enum.Material.Grass)
@@ -950,8 +961,14 @@ function Life.Process(player,kind,arg,step)
   end
   if not life.activeShift or life.activeShift.id~=arg then
    life.activeShift={id=arg,started=now,progress=0,taskAt=0}
-   tell(player,"SHIFT STARTED: "..career.name..
-    " • COMPLETE THE TWO WORK TASKS MARKED NEARBY.")
+   if arg=="BARISTA" then
+    local coffee=Cafe.Assign(life.activeShift)
+    tell(player,"CUSTOMER WANTS "..coffee..
+     "! VISIT THE BEAN & BREW MACHINE NEAR THE DOWNTOWN BARISTA WORKSITE.")
+   else
+    tell(player,"SHIFT STARTED: "..career.name..
+     " • COMPLETE THE TWO WORK TASKS MARKED NEARBY.")
+   end
    Life.Sync(player)
    return true
   end
@@ -968,7 +985,13 @@ function Life.Process(player,kind,arg,step)
   context.reward(player,career.wage,14,0)
   if context.onActivity then context.onActivity(player,"SHIFT",arg) end
   tell(player,"SHIFT COMPLETED! +"..career.wage.." COINS • +14 XP")
+ elseif kind=="CafeBrew" or kind=="CafeServe" then
+  return Cafe.Process(player,kind,arg,life.activeShift)
  elseif kind=="Task" then
+  if arg=="BARISTA" then
+   tell(player,"BARISTAS MUST BREW THE CUSTOMER'S ACTUAL DRINK AND SERVE IT AT THE BEAN & BREW.")
+   return false
+  end
   local shift=life.activeShift
   if type(arg)~="string" or not Catalog.CareerById[arg] or
    not shift or shift.id~=arg or life.career~=arg then return false end

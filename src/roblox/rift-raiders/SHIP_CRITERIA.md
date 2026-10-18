@@ -1,12 +1,12 @@
 # Rift Raiders — Finish Line / Public Launch Quality Gates
 
-**Status as of v0.17 (2026-10-18): PROTOTYPE / PRIVATE.** Do not report the game as fully completed until all gates below have objective evidence. No public publishing, paid imports, licensing violations, or Robux activation without owner authorization.
+**Status as of v0.18 (2026-10-18): PROTOTYPE / PRIVATE.** Do not report the game as fully completed until all gates below have objective evidence. No public publishing, paid imports, licensing violations, or Robux activation without owner authorization.
 
 ## 1. Player fun — core experience
 - [x] Clear first-time objective in under 30 seconds, with one-tap access to first interesting region.
 - [x] Earned-coin job shifts, valid in-game purchases, responsive completion feedback, daily activities, real-world gardening, cars/boats, and a repeatable Suburban collectible loop.
 - [ ] Have at least five independent first-time players play 15 minutes without guidance; record first confusion, completion time, and moments of fun/frustration. This requires people, not AI simulation.
-- [ ] Make at least three popular careers truly tactile with suitable tools/animations, NPCs, meaningful timing/skill challenges and their own interiors rather than 2 generic task prompts.
+- [ ] Make at least three popular careers truly tactile with suitable tools/animations, NPCs, meaningful timing/skill challenges and their own interiors rather than 2 generic task prompts. (v0.18 has one first-pass tactile barista recipe workflow; remaining professions and quality polish incomplete.)
 - [ ] Add natural social roleplay with invitations/permissions, emotes, readable names, meaningful two-player activities and explicit controls against griefing.
 - [ ] Test route to enjoying the game in <5 min for fresh accounts without artificially gifting money during tests.
 
@@ -23,7 +23,7 @@
 - [x] Server validates earned-currency shopping, valid career actions/wages, personal car ownership, boat ownership, gardening and collectible claim radius/replay.
 - [x] Profile schema through v10 migrates earlier progression records in source; Studio unit/smoke tests exist.
 - [ ] Run actual private test-game DataStore leave/rejoin checks and two-server simulations using a separate test place (never grant Studio write access to the owner's live production store).
-- [ ] Introduce reliable session ownership/locking and save retries/concurrency without risking existing saved coins/progression.
+- [x] Implement atomic session ownership/locking, retries, serialized in-server saves, and mock cross-server conflict tests. Live private-server acceptance tests remain required.
 - [ ] Verify moderation and exploit rate limits for every RemoteEvent, server-side jobs and player-to-player action.
 - [ ] Balance starter job pay, home ownership, starter vehicles, expensive vehicle unlocks and long-term progression through human playtests.
 

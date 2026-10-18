@@ -122,3 +122,8 @@ The R15 downtown population now has named proximity conversations and verified c
 - The open-world roleplay city now has a short repeatable scavenger loop anchored to eight physical spots, with readable prompts and virtual earned-coin rewards.
 - Discovery progress persists per player, resets at UTC date rollover and rejects double claims/long-distance activation without requiring private-game API access.
 - Future extensions: NPCs can tell natural hints; use professionally modeled prop assets if properly licensed and performant; add sound/spatial atmosphere; rotate discoveries for retention.
+
+
+## v0.18 — Real job skills and progression integrity
+- Barista workers receive one randomized customer coffee order, brew at a physical espresso machine, then serve for an earned tip and collect base wages. Wrong orders, premature actions and remote spoofing cannot complete the shift.
+- Active session ownership prevents multiple live servers from mutating the same saved profile concurrently. Studio tests simulate these conditions; real private-live DataStore and crash-recovery tests are still required.

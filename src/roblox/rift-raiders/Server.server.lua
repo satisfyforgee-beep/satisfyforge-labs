@@ -20,10 +20,11 @@ local SuburbanDistrict=require(ServerScriptService:WaitForChild("SuburbanDistric
 local Catalog=require(ReplicatedStorage:WaitForChild("PrestigeCatalog"))
 local Vehicles=require(ServerScriptService:WaitForChild("VehicleService"))
 local Boats=require(ServerScriptService:WaitForChild("BoatService"))
+local Persistence=require(ServerScriptService:WaitForChild("DataPersistence"))
 local Goals=require(ServerScriptService:WaitForChild("ProgressionGoals"))
 local Discovery=require(ServerScriptService:WaitForChild("SuburbanDiscovery"))
 local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
-world:SetAttribute("Version","0.17.0")
+world:SetAttribute("Version","0.18.0")
 world:SetAttribute("Phase","CALM")
 world:SetAttribute("SecondsLeft",75)
 local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
@@ -200,9 +201,12 @@ local function grantWeapon(p,template)
 end
 local profiles={}
 local store=nil
+local saveToken=game.JobId..":"..HttpService:GenerateGUID(false)
+local SAVE_SCHEMA=10 -- no profile schema migration in v0.18.
 if not RunService:IsStudio() and game.GameId~=0 then
  store=DataStoreService:GetDataStore("RiftRaidersProfiles_v1")
 end
+world:SetAttribute("StudioSavesIsolated",RunService:IsStudio() and store==nil)
 local function cleanInt(n,max)
  return (type(n)=="number" and n==n and n>=0) and math.clamp(math.floor(n),0,max) or 0
 end
@@ -301,9 +305,20 @@ local function quest(p,kind,n)
  end
  sync(p)
 end
-local function save(p)
+-- Serialize saves per player so an older retry cannot overwrite new data.
+-- PlayerRemoving releases the lock only after a successful final save.
+local function save(p,release)
  local s=profiles[p]
- if not store or not s or not s.loaded then return end
+ if not store or not s or not s.loaded then return false end
+ local waitSince=os.clock()
+ while s.saving do
+  if os.clock()-waitSince>25 then
+   warn("RiftRaiders save lock wait timed out",p.UserId)
+   return false
+  end
+  task.wait(.1)
+ end
+ s.saving=true
  local payload={version=10,coins=s.coins,shards=s.shards,level=s.level,xp=s.xp,
   blaster=s.blaster,shieldOwned=s.shieldOwned,petOwned=s.petOwned,
   scatterOwned=s.scatterOwned,seals=s.seals,
@@ -323,15 +338,13 @@ local function save(p)
   goals=Goals.Normalize(s.goals),
   discover=Discovery.Normalize(s.discover)}
  local key="Player_"..p.UserId
- local ok,err=pcall(function()
-  store:UpdateAsync(key,function(previous)
-   local value=type(previous)=="table" and previous or {}
-   -- Never regress an existing account to an older schema.
-   if type(value.version)=="number" and value.version>10 then return nil end
-   return payload
-  end)
- end)
- if not ok then warn("RiftRaiders save failed",p.UserId,err) end
+ local success,detail=Persistence.Save(store,key,saveToken,payload,
+  release==true,SAVE_SCHEMA)
+ s.saving=false
+ if not success then
+  warn("RiftRaiders save could not be verified",p.UserId,detail)
+ end
+ return success
 end
 local function init(p)
  local s={coins=0,shards=0,level=1,xp=0,blaster=1,shieldOwned=false,
@@ -344,8 +357,13 @@ local function init(p)
   goals=Goals.Normalize(nil),
   discover=Discovery.Normalize(nil),heat=0}
  if store then
-  local ok,data=pcall(function() return store:GetAsync("Player_"..p.UserId) end)
-  if ok then
+  local ok,data=Persistence.Acquire(store,"Player_"..p.UserId,
+   saveToken,SAVE_SCHEMA)
+  if not ok then
+   warn("RiftRaiders player profile unavailable",p.UserId,data)
+   p:Kick("Your game progress is still in use or saving. Please rejoin in a moment.")
+   return
+  end
    if type(data)=="table" and (data.version==nil or data.version==1 or data.version==2 or data.version==3 or data.version==4 or data.version==5 or data.version==6 or data.version==7 or data.version==8 or data.version==9 or data.version==10) then
     s.coins=cleanInt(data.coins,1000000); s.shards=cleanInt(data.shards,100000)
     s.level=math.max(1,cleanInt(data.level,100)); s.xp=cleanInt(data.xp,100000)
@@ -370,12 +388,19 @@ local function init(p)
     s.goals=Goals.Normalize(data.goals)
     s.discover=Discovery.Normalize(data.discover)
    end
-   s.loaded=true
-  else
-   warn("RiftRaiders load failed; save disabled for session",p.UserId,data)
-  end
+  s.loaded=true
+ else
+  -- Studio tests are local-memory only; NEVER write the live profile store.
+  s.loaded=true
  end
- if not p.Parent then return end
+ if not p.Parent then
+  -- Client disconnected while the atomic load was in flight; free its lease
+  -- without overwriting any earned progression.
+  if store and s.loaded then
+   Persistence.Release(store,"Player_"..p.UserId,saveToken)
+  end
+  return
+ end
  profiles[p]=s
  WorldActivities.PlayerJoined(p)
  Life.PlayerJoined(p)
@@ -401,21 +426,32 @@ end
 Players.PlayerAdded:Connect(init)
 Players.PlayerRemoving:Connect(function(p)
  WorldActivities.PlayerRemoving(p)
- save(p)
+ save(p,true)
  local s=profiles[p]; if s and s.pet then s.pet:Destroy() end
  profiles[p]=nil
 end)
 for _,p in ipairs(Players:GetPlayers()) do task.spawn(init,p) end
 task.spawn(function()
+ -- Small jitter avoids simultaneous DataStore writes across game servers.
+ task.wait(70+math.random(0,18))
  while world.Parent do
-  task.wait(90)
-  for p in pairs(profiles) do task.spawn(save,p) end
+  for p in pairs(profiles) do task.spawn(save,p,false) end
+  task.wait(84+math.random(0,12))
  end
 end)
 if store then
  game:BindToClose(function()
-  for p in pairs(profiles) do task.spawn(save,p) end
-  task.wait(3)
+  local count=0
+  local finished=0
+  for p in pairs(profiles) do
+   count+=1
+   task.spawn(function()
+    save(p,true)
+    finished+=1
+   end)
+  end
+  local started=os.clock()
+  while finished<count and os.clock()-started<25 do task.wait(.1) end
  end)
 end
 
@@ -816,4 +852,4 @@ task.spawn(function()
   Lighting.Ambient=Color3.fromRGB(120,132,179)
  end
 end)
-print("SF_RIFT_RAIDERS_SERVER_READY v0.17.0")
+print("SF_RIFT_RAIDERS_SERVER_READY v0.18.0")

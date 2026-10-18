@@ -44,6 +44,59 @@ assert(sameDay.intro==3 and sameDay.completed==4,
 local prevDay=Goals.DayKey(os.time()-86400)
 local nextDay=Goals.DayKey(os.time())
 assert(nextDay>=prevDay,"day keys must increase monotonically")
+-- Atomic DataStore locking and migration rules, exercised against a
+-- synchronous fake store. No owner account or live DataStore reads/writes.
+local Persistence=require(game:GetService("ServerScriptService"):WaitForChild("DataPersistence"))
+local fake={records={}}
+function fake:UpdateAsync(key,fn)
+ local nextValue=fn(self.records[key])
+ if nextValue~=nil then self.records[key]=nextValue end
+ return nextValue
+end
+local dataKey="Player_StudioTest"
+local ok,first=Persistence.Acquire(fake,dataKey,"ServerA",10)
+assert(ok and first._session.id=="ServerA","first-session lock acquisition failed")
+local blocked=Persistence.Acquire(fake,dataKey,"ServerB",10)
+assert(not blocked,"other server must not overwrite an active session")
+local stored,versioned=Persistence.Save(fake,dataKey,"ServerA",
+ {version=10,coins=123,life={career="GARDENER"}},false,10)
+assert(stored and versioned.coins==123 and versioned._session.id=="ServerA",
+ "in-session save did not preserve ownership")
+local hijack=Persistence.Save(fake,dataKey,"ServerB",
+ {version=10,coins=90000},false,10)
+assert(not hijack and fake.records[dataKey].coins==123,
+ "rejected server overwrote another player's coins")
+local released,final=Persistence.Save(fake,dataKey,"ServerA",
+ {version=10,coins=190},true,10)
+assert(released and final._session==nil and final.coins==190,
+ "final save did not release session safely")
+local acquiredSecond,second=Persistence.Acquire(fake,dataKey,"ServerB",10)
+assert(acquiredSecond and second.coins==190,
+ "new server must reload latest saved coins after a clean leave")
+fake.records[dataKey]._session.expiresAt=os.time()-2
+local recovered,third=Persistence.Acquire(fake,dataKey,"ServerC",10)
+assert(recovered and third.coins==190,
+ "expired abandoned sessions must be recoverable without losing progress")
+local corruptSave=Persistence.Save(fake,dataKey,"ServerB",
+ {version=10,coins=666},false,10)
+assert(not corruptSave and fake.records[dataKey].coins==190,
+ "stale server should not overwrite re-acquired profile")
+fake.records[dataKey].version=999
+local futureBlocked=Persistence.Acquire(fake,dataKey,"ServerC",10)
+assert(not futureBlocked,"newer profile versions must not be downgraded")
+local orphanStore={records={}}
+function orphanStore:UpdateAsync(key,callback)
+ local result=callback(self.records[key])
+ if result~=nil then self.records[key]=result end
+ return result
+end
+assert(Persistence.Acquire(orphanStore,"Orphan","DisconnectedPlayer",10))
+assert(Persistence.Release(orphanStore,"Orphan","DisconnectedPlayer"),
+ "players leaving during profile initialization must release the lock")
+local reacquired,orphan=Persistence.Acquire(orphanStore,"Orphan","NewServer",10)
+assert(reacquired and orphan._session.id=="NewServer",
+ "released orphan profile must accept new server immediately")
+print("SF_RIFT_CHECK persistence_session_isolation PASS")
 local imported=workspace:FindFirstChild("OfficialModernCityDistrict")
 assert(imported and imported:IsA("Model"),"official modern city missing")
 assert(imported:GetAttribute("ImportedScriptsRemoved")==true,"imported script safety missing")
@@ -128,7 +181,9 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.17.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.18.0","version mismatch")
+assert(world:GetAttribute("StudioSavesIsolated")==true,
+ "Studio must never write a production profile data store")
 local function count(name)
  local n=0
  for _,v in ipairs(world:GetDescendants()) do if v.Name==name then n+=1 end end
@@ -205,6 +260,23 @@ assert((world:FindFirstChild("Downtown Traffic Sedan 1",true):GetAttribute("Dist
 assert(count("Downtown Employment Center")==1,"downtown employment office missing")
 assert(count("Downtown Store GARDEN")==1,"downtown nursery store missing")
 assert(count("Downtown Worksite GARDENER")==1,"new gardener worksite missing")
+local cafe=world:FindFirstChild("Downtown Interactive Coffee Bar")
+assert(cafe and cafe:GetAttribute("InteractiveOrders")==true,
+ "new barista cafe must contain real physical customer-order gameplay")
+for _,coffee in ipairs({"ESPRESSO","LATTE","MOCHA"}) do
+ local node=cafe:FindFirstChild("Coffee Brew "..coffee)
+ assert(node and node:FindFirstChildOfClass("ProximityPrompt"),
+  "interactive coffee recipe missing: "..coffee)
+end
+assert(cafe:FindFirstChild("Cafe Customer Service Register") and
+ cafe:FindFirstChild("Solid Oak Service Counter"),
+ "coffee service window and detail missing")
+local CafeService=require(game:GetService("ServerScriptService"):WaitForChild("CafeService"))
+local coffeeShift={id="BARISTA",started=os.clock()-5,progress=0,taskAt=0}
+local selectedOrder=CafeService.Assign(coffeeShift)
+assert(table.find(CafeService.Recipes,selectedOrder) and
+ coffeeShift.cafeOrder==selectedOrder and not coffeeShift.cafeBrewed,
+ "server-assigned randomly selected barista drink missing")
 assert(count("Downtown Job Task BOAT_CAPTAIN 2")==1,
  "boat captain interactive work task missing")
 assert(count("Downtown Community Garden")==1,"community garden missing")

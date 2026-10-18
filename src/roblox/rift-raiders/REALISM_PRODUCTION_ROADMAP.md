@@ -1,3 +1,8 @@
+## v0.18 — A tactile barista shift and atomic DataStore leases
+- Three espresso machines and a serve counter near the imported modern downtown barista site now carry physical, correct-order shift gameplay, rewards and anti-replay checks.
+- DataPersistence handles atomic active-server session locks, serialized saves and bounded retries; Studio mock tests cover stale/mismatched/future-schema saves without touching production records.
+- Still needed before public launch: real private-live account migration and save/rejoin, more tactile careers, human first-play study, mobile FPS profiling and permitted high-detail mesh replacements for remaining placeholders.
+
 ## v0.17 — Reward exploration of high-quality official scenery
 - Eight collectible secrets now make players explore the actual imported Suburban buildings and streets, with once-per-day server-backed progress.
 - Added a route completion reward and HUD goal progress to supplement the initial job/shopping tutorial; no additional menus are needed to interact with real objects.

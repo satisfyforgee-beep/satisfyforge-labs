@@ -57,6 +57,12 @@
       },
       "SuburbanDiscovery": {
         "$path": "SuburbanDiscovery.lua"
+      },
+      "DataPersistence": {
+        "$path": "DataPersistence.lua"
+      },
+      "CafeService": {
+        "$path": "CafeService.lua"
       }
     },
     "StarterPlayer": {

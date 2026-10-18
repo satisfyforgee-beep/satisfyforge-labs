@@ -10,6 +10,9 @@ Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach 
 
 ## Implemented
 
+- **v0.18 Playable Cafe & Safer Data:** New in-world coffee bar with three real drink recipes and randomized, server-verified customer orders; serving the right drink gives one earned-coin tip, then the barista collects normal career wages. New DataPersistence module adds atomic session ownership, clean release, retries, sequential saves, safer server shutdown and synthetic DataStore conflict tests without writing to the owner's live Roblox account during Studio testing. **Live private-place DataStore rejoin and mobile tests remain outstanding.** See [V0_18_RELEASE_NOTES.md](V0_18_RELEASE_NOTES.md).
+
+
 - **v0.17 Neighborhood Discovery Trail:** Eight physically hidden, glowing collectibles give a new server-authorized exploration loop in the official Suburban-template neighborhood. Each pays 20–34 earned coins and XP once per player per UTC day; completing all eight gives a 180-coin/45-XP bonus. Progress persists in save schema v10 (v1–v9 migration) and appears on the first-session HUD and LIFE → MY GOALS. Server validation checks proximity, alive character and duplicate claim. Roblox Studio smoke tests and two-player exploit/isolation regression tests cover this loop. [V0_17_RELEASE_NOTES.md](V0_17_RELEASE_NOTES.md) has detailed rules, art limitations and remaining launch gates.
 
 
