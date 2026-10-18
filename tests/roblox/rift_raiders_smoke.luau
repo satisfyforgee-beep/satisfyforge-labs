@@ -4,6 +4,28 @@ task.wait(3)
 local success,problem=pcall(function()
 local world=workspace:WaitForChild("RiftRaidersWorld",20)
 assert(world,"missing world")
+local Discovery=require(game:GetService("ServerScriptService"):
+ WaitForChild("SuburbanDiscovery"))
+assert(#Discovery.Sites==8,"discovery trail should have eight collectible locations")
+local emptyDiscovery=Discovery.Normalize(nil)
+assert(Discovery.Count(emptyDiscovery)==0,"new exploration collection must be empty")
+local afterReset=Discovery.Normalize({day=0,found={true,true,true}})
+assert(Discovery.Count(afterReset)==0,"expired collectibles must reset daily")
+local now=os.date("!*t")
+local currentDay=now.year*10000+now.month*100+now.day
+local partial=Discovery.Normalize({day=currentDay,found={true,true,false,true, ["HACKED"]=true}})
+assert(Discovery.Count(partial)==3 and partial.found.HACKED==nil,
+ "discovery progress must sanitize unknown achievements")
+local discoveryFolder=world:FindFirstChild("Suburban Discovery Trail")
+assert(discoveryFolder and discoveryFolder:GetAttribute("CollectibleCount")==8,
+ "hidden explorer keepsakes were not placed")
+assert(discoveryFolder:GetAttribute("OwnershipValidatedByServer")==true,
+ "collectibles missing server validation")
+for i=1,8 do
+ local hidden=discoveryFolder:FindFirstChild("Hidden Keepsake "..i)
+ assert(hidden and hidden:FindFirstChild("Discover Keepsake Prompt"),
+  "hidden collectible not reachable "..i)
+end
 local Goals=require(game:GetService("ServerScriptService"):
  WaitForChild("ProgressionGoals"))
 assert(#Goals.Intro==4,"new player quest sequence missing")
@@ -106,7 +128,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.16.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.17.0","version mismatch")
 local function count(name)
  local n=0
  for _,v in ipairs(world:GetDescendants()) do if v.Name==name then n+=1 end end

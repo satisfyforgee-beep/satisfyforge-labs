@@ -713,6 +713,30 @@ if money>=130 and not already and a:GetAttribute("RRGoalsIntro")~=4 then
  fail("first_session_intro_never_completed") return
 end
 print("SF_RIFT_MP_CHECK suburban_live_shift_and_persistent_goal_awards PASS")
+-- Actual hidden Suburbia collectibles are earned once per player/day;
+-- replaying an old prompt cannot award duplicate coins.
+local discoveries=require(ServerScriptService:WaitForChild("SuburbanDiscovery"))
+local token=world:FindFirstChild("Hidden Keepsake 1",true)
+if not token then fail("hidden_suburbia_keepsake_not_spawned") return end
+if discoveries.Collect(a,1) then
+ fail("remote_hidden_collectible_distance_bypass") return
+end
+a.Character:PivotTo(CFrame.new(token.Position+Vector3.new(0,4,0)))
+task.wait(.5)
+local beforeFind=a:GetAttribute("RRCoins") or 0
+if not discoveries.Collect(a,1) then
+ fail("nearby_keepsake_not_redeemed") return
+end
+local afterFind=a:GetAttribute("RRCoins") or 0
+if afterFind<=beforeFind or a:GetAttribute("RRDiscoverCount")~=1 then
+ fail("real_suburban_keepsake_reward_missing") return
+end
+if discoveries.Collect(a,1) or
+ (a:GetAttribute("RRCoins") or 0)~=afterFind or
+ (b:GetAttribute("RRDiscoverCount") or 0)~=0 then
+ fail("keepsake_replay_or_player_isolation") return
+end
+print("SF_RIFT_MP_CHECK suburban_hidden_exploration_no_double_claim PASS")
 print("SF_RIFT_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:rift_multiplayer")
 ]==]

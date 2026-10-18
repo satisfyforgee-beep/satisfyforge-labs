@@ -8,6 +8,9 @@ Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach 
 
 ## Implemented
 
+- **v0.17 Neighborhood Discovery Trail:** Eight physically hidden, glowing collectibles give a new server-authorized exploration loop in the official Suburban-template neighborhood. Each pays 20–34 earned coins and XP once per player per UTC day; completing all eight gives a 180-coin/45-XP bonus. Progress persists in save schema v10 (v1–v9 migration) and appears on the first-session HUD and LIFE → MY GOALS. Server validation checks proximity, alive character and duplicate claim. Roblox Studio smoke tests and two-player exploit/isolation regression tests cover this loop. [V0_17_RELEASE_NOTES.md](V0_17_RELEASE_NOTES.md) has detailed rules, art limitations and remaining launch gates.
+
+
 - **v0.16 Guided First Session & Daily Life Challenges:** a compact, non-modal in-world tutorial leads players through first suburb visit, a valid purchase, first job application, and completing a career shift; each verified milestone pays a one-time earned-coin bonus and XP. Four daily goals (work, eat, visit the suburb, harvest gardening crops) reset by UTC day, pay nonrepeatable fictional coin bonuses and appear in LIFE → MY GOALS. Server validators exclusively award achievements; player data moves to saved schema v9 with v1–v8 migration. The real imported Suburban environment now strips collision and shadows from tiny decorative parts without removing its floors, walls, and usable service counters. See [V0_16_RELEASE_NOTES.md](V0_16_RELEASE_NOTES.md) for rewards, tests, researched retention principles, and important remaining limits.
 
 

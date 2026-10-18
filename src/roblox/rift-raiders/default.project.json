@@ -54,6 +54,9 @@
       },
       "ProgressionGoals": {
         "$path": "ProgressionGoals.lua"
+      },
+      "SuburbanDiscovery": {
+        "$path": "SuburbanDiscovery.lua"
       }
     },
     "StarterPlayer": {

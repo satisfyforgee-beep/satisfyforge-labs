@@ -117,3 +117,8 @@ The R15 downtown population now has named proximity conversations and verified c
 - Explore → buy → apply → work provides a clear initial progression through the premium official Suburban map; returning dailies incentivize normal gardening, work, eating and travel without real-money prompts.
 - Goal completion is server-authoritative, awarded only after accepted actual actions with state persisted to v9. There's no client-callable free-coins endpoint.
 - UX success measures for future live telemetry: new player 1-minute/5-minute activation, first purchase/first shift conversion, time-to-first-enjoyable interaction, repeat-session progression, test device FPS and crash counts. No user tracking or analytics integrations have been installed yet.
+
+## v0.17 — Suburban discovery collection
+- The open-world roleplay city now has a short repeatable scavenger loop anchored to eight physical spots, with readable prompts and virtual earned-coin rewards.
+- Discovery progress persists per player, resets at UTC date rollover and rejects double claims/long-distance activation without requiring private-game API access.
+- Future extensions: NPCs can tell natural hints; use professionally modeled prop assets if properly licensed and performant; add sound/spatial atmosphere; rotate discoveries for retention.

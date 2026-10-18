@@ -1,3 +1,9 @@
+## v0.17 — Reward exploration of high-quality official scenery
+- Eight collectible secrets now make players explore the actual imported Suburban buildings and streets, with once-per-day server-backed progress.
+- Added a route completion reward and HUD goal progress to supplement the initial job/shopping tutorial; no additional menus are needed to interact with real objects.
+- Continue prioritizing genuinely playable 3D interactions rather than another catalog increase. Art of pickups remains stylized; placement is grounded in imported neighborhood landmarks.
+- Preserve migration path v1–v10; validate live save/rejoin only after a separate private test experience is available.
+
 ## v0.16 — First five minutes, repeatable daily goals and mobile-detail groundwork
 - Tutorial objectives are real, server-verified game actions, with one-time bonuses and a visible UI chip.
 - Four daily missions create meaningful short-term goals and are persisted safely, with UTC rollover and one-claim-per-goal.

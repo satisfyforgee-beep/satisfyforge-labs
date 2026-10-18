@@ -196,8 +196,9 @@ local function refreshGoals()
   "COMPLETE YOUR FIRST SHIFT"
  local done=player:GetAttribute("RRGoalsDailyDone") or 0
  local count=player:GetAttribute("RRGoalsDailyTotal") or 4
- dailyChip.Text="DAILY ACTIVITIES "..done.."/"..count..
-  " • EARN COINS BY PLAYING"
+ dailyChip.Text="DAILY "..done.."/"..count..
+  " • KEEPSAKES "..(player:GetAttribute("RRDiscoverCount") or 0)..
+  "/"..(player:GetAttribute("RRDiscoverTotal") or 8)
  if goalLastStage>=0 and stage>goalLastStage then
   local tween=TweenService:Create(goalChip,
    TweenInfo.new(.22,Enum.EasingStyle.Back),
@@ -215,6 +216,7 @@ end
 for _,name in ipairs({
  "RRGoalsIntro","RRGoalsIntroCount","RRGoalsIntroTitle","RRGoalsIntroHint",
  "RRGoalsIntroDone","RRGoalsDailyDone","RRGoalsDailyTotal",
+ "RRDiscoverCount","RRDiscoverTotal"
 }) do
  player:GetAttributeChangedSignal(name):Connect(refreshGoals)
 end
@@ -448,6 +450,11 @@ local homeHelp=item(lifeList,"HomeGuide",
  Color3.fromRGB(94,105,120),function() end)
 homeHelp.Active=false;table.insert(homeControls,homeHelp)
 local goalControls={}
+local explorationGuide=item(lifeList,"DiscoveriesGuide",
+ "SUBURBAN DISCOVERY: FIND ALL 8 GLOWING KEEPSAKES HIDDEN AROUND IMPORTED BUILDINGS • EARN A SET BONUS",
+ Color3.fromRGB(83,120,127),function() end)
+explorationGuide.Active=false
+table.insert(goalControls,explorationGuide)
 local goalInfo=item(lifeList,"CurrentGoal",
  "FOLLOW THE FIRST STEPS AT THE TOP LEFT OF YOUR SCREEN",
  Color3.fromRGB(96,112,84),function() end)
@@ -561,6 +568,10 @@ updateLifeView=function()
  garageViewButton.BackgroundColor3=garage and Color3.fromRGB(131,119,161) or Color3.fromRGB(69,88,102)
  homeViewButton.BackgroundColor3=atHome and Color3.fromRGB(123,147,114) or Color3.fromRGB(69,88,102)
  goalsViewButton.BackgroundColor3=goalsMode and Color3.fromRGB(122,146,78) or Color3.fromRGB(69,88,102)
+ explorationGuide.Text="EXPLORE SUBURBIA • KEEPSAKES "..
+  (player:GetAttribute("RRDiscoverCount") or 0).."/"..
+  (player:GetAttribute("RRDiscoverTotal") or 8)..
+  " • 8 COLLECTIBLES RESET EACH UTC DAY"
  goalInfo.Text="FIRST STEPS • "..
   (player:GetAttribute("RRGoalsIntroTitle") or "START EXPLORING")..
   " • "..(player:GetAttribute("RRGoalsIntroHint") or "PLAY TO EARN!")
