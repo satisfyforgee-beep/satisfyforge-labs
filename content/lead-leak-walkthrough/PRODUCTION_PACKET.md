@@ -1,6 +1,6 @@
 # Lead Leak Walkthrough — Production Packet
 
-**Status:** production-ready plan; demo source complete; video not yet rendered or QA-passed; not scheduled or published  
+**Status:** v1 video rendered and technical media QA passed; final human/mobile/CTA QA pending; not scheduled or published  
 **Concept key:** `lead-leak-contact-form`  
 **Primary objective:** convert home-service viewers into qualified requests for the free Revenue Leak Audit  
 **Canonical CTA:** https://headless-hjorlnsaplw-satisfyforgee-140d.wix-site-host.com/audit.html  
@@ -112,6 +112,9 @@ Free Revenue Leak Audit: link in bio.
 
 #HomeServiceMarketing #LeadGeneration #SmallBusinessGrowth #RevenueLeak #SatisfyForge
 
+
+**Production disclosure to include with v1:** AI-generated narration; fictional example; no client data.
+
 ### TikTok
 
 Your contact form may be costing you inquiries before a customer ever taps submit.
@@ -121,6 +124,9 @@ Fewer required fields. A clearer action. A real response expectation.
 Fictional example; practical audit framework. Free Revenue Leak Audit in bio.
 
 #HomeServices #SmallBusinessTips #LeadGeneration #WebsiteAudit #SatisfyForge
+
+
+**Production disclosure to include with v1:** AI-generated narration; fictional example; no client data.
 
 ### YouTube Short
 
@@ -137,6 +143,9 @@ No guaranteed leads or revenue. Results depend on the business, offer, market, t
 
 #Shorts #HomeServiceMarketing #LeadGeneration #SmallBusiness
 
+
+**Production disclosure to include with v1:** AI-generated narration; fictional example; no client data.
+
 ### Facebook Reel
 
 Getting website traffic but not enough estimate requests?
@@ -150,6 +159,9 @@ No promised leads or revenue—just practical recommendations based on the publi
 
 #HomeServiceBusiness #LeadFollowUp #WebsiteAudit #SmallBusinessGrowth
 
+
+**Production disclosure to include with v1:** AI-generated narration; fictional example; no client data.
+
 ## Audio plan
 
 Preferred: original light percussion, subtle interface clicks, and one satisfying transition hit at 0:10.
@@ -160,6 +172,15 @@ Do not rely on a temporary trend for the core asset. Platform-native trending au
 - the track remains relevant on the actual posting date;
 - it does not interfere with narration clarity;
 - a clean no-music master is retained.
+
+## Rendered v1 candidate (2026-10-17)
+
+- **MP4:** `lead_leak_v1.mp4` (conversation artifact; not yet stored in the repository).
+- **SHA-256:** `01edf0da6511f6ed73ad3cfdf9b726f8f29ebe4433d785285314b1d545afca68`.
+- **Technical properties:** 1080×1920, 30 fps, 27.000 seconds, H.264/AAC, 815,478 bytes.
+- **Audio:** locally AI-synthesized narration and original interface tones. Add truthful AI narration disclosure to platform captions.
+- **Full QA and reconciliation record:** [RENDER_QA_2026-10-17.md](./RENDER_QA_2026-10-17.md).
+- **Not publish-approved:** voice listening, mobile review, public CTA check, media hosting, final captions and live slot reconciliation remain.
 
 ## Rendering and QA gate
 
@@ -198,6 +219,6 @@ Do not infer revenue from views or clicks. The revenue signal is a qualified req
 
 ## Publish decision
 
-Current decision: **prepare, do not publish**.
+Current decision: **render complete; hold publishing until remaining QA and route checks pass**.
 
-Reason: the owned demo exists, but no final narrated/rendered MP4 or QA evidence exists yet. Live reconciliation found no existing Buffer or Wix copy of this concept, so it is safe to produce as the next business-content candidate without duplicating completed stories.
+Reason: v1 MP4 and technical QA evidence now exist. Live Buffer/Wix checks found no existing matching Lead Leak copy, but human audio/mobile QA, CTA reachability, hosted media and renewed slot reconciliation are required before publication.
