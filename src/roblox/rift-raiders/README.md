@@ -10,6 +10,9 @@ Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach 
 
 ## Implemented
 
+- **v0.20 Video-benchmarked Downtown Streetscape:** Used public Brookhaven RP, Berry Avenue RP and a 2025 Bloxburg streetscape creator video as independent quality references—not unlicensed private game assets or code. Added **18 official Modern City reusable detailed MeshPart prop models** to the entrance neighborhood, pedestrian crossings and signal lights, bicycle parking, easy-to-read destination signage and modest storefront illumination. The glass-canopy **RiftLife Transit** shelter has 3 free, physically proximity-checked stops to jobs, gardens and residential homes, with multiplayer safety tests. Decorative parts can be hidden in GRAPHICS: LOW, and the graphics toggle is tucked into ACTIONS to reduce default HUD clutter. No Robux, publishing, or save-profile migration. See [V0_20_RELEASE_NOTES.md](V0_20_RELEASE_NOTES.md).
+
+
 - **v0.19 Better first impression:** Reworked default downtown spawn orientation toward the imported Modern City buildings (instead of a featureless asphalt street), created a 40-tile pedestrian plaza framed with five legitimate official city MeshPart trees, flowering brick planters, a small fountain, benches, warm light fixtures, welcome graphics, and an interactive Suburbia visitor kiosk. Corrected the onboarding widget position so it no longer clashes with the top-left Roblox menu buttons. Portal travel correctly credits real tutorial progress. This responds directly to recorded video feedback and does not require an outside 3D marketplace. See [V0_19_RELEASE_NOTES.md](V0_19_RELEASE_NOTES.md). Advanced phones and live experiences still need real QA.
 
 

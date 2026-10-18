@@ -5,6 +5,7 @@ local TweenService=game:GetService("TweenService")
 local Lighting=game:GetService("Lighting")
 local RunService=game:GetService("RunService")
 local UserInputService=game:GetService("UserInputService")
+local CollectionService=game:GetService("CollectionService")
 local player=Players.LocalPlayer
 local action=ReplicatedStorage:WaitForChild("RiftRaidersAction")
 local event=ReplicatedStorage:WaitForChild("RiftRaidersEvent")
@@ -108,6 +109,7 @@ local function showActions()
  end
  crosshair.Visible=actionsExpanded
  actionsButton.Text=actionsExpanded and "HIDE ACTIONS" or "ACTIONS"
+ qualityButton.Visible=actionsExpanded
 end
 actionsButton.Activated:Connect(function()
  actionsExpanded=not actionsExpanded
@@ -911,7 +913,19 @@ local function applyGraphics()
  local clouds=workspace.Terrain:FindFirstChildOfClass("Clouds")
  if clouds then clouds.Enabled=quality~="LOW" end
  Lighting.GlobalShadows=quality~="LOW"
+ -- Street detail props are purely visual; keep readable wayfinding and
+ -- interaction collision at all settings, hide nonessential mesh decor in LOW.
+ for _,part in ipairs(CollectionService:GetTagged("RROptionalStreetscape")) do
+  if part:IsA("BasePart") then
+   part.LocalTransparencyModifier=quality=="LOW" and 1 or 0
+  end
+ end
 end
+CollectionService:GetInstanceAddedSignal("RROptionalStreetscape"):Connect(function(part)
+ if part:IsA("BasePart") then
+  part.LocalTransparencyModifier=qualityModes[qualityIndex]=="LOW" and 1 or 0
+ end
+end)
 qualityButton.Activated:Connect(function()
  qualityIndex=qualityIndex%#qualityModes+1
  applyGraphics()

@@ -133,3 +133,9 @@ The R15 downtown population now has named proximity conversations and verified c
 - Default first character orientation frames authentic imported city buildings. Arrival space now has an original planted pedestrian plaza, five official detailed mesh trees, decorative fountain, plazas, benches, purposeful lighting, and walk-up world-travel kiosk.
 - The main tutorial card sits below Roblox's built-in top-left controls and activating the visitor kiosk progresses the same authoritative onboarding travel event as using WORLD.
 - Continue favoring a lively, navigable, visually exciting first impression over large piles of additional inventory listings.
+
+
+## v0.20 — Street-level readability from public competitor video studies
+- Compare our own gameplay against public Brookhaven, Berry Avenue and Bloxburg city-detailing content; learn legibility and first-minute affordances, never clone proprietary work.
+- Official Modern City meshes visibly enhance the starting town; safety-checked RiftLife Transit gives a first-time user three immediate real destinations.
+- Keep scenic graphics tiered so essential business signs and ProximityPrompt interactions are available even in graphics LOW mode.

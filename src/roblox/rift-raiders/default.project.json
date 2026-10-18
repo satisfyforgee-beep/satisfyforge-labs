@@ -66,6 +66,9 @@
       },
       "DowntownArrivalExperience": {
         "$path": "DowntownArrivalExperience.lua"
+      },
+      "DowntownStreetscape": {
+        "$path": "DowntownStreetscape.lua"
       }
     },
     "StarterPlayer": {

@@ -178,6 +178,38 @@ assert(world:FindFirstChild("Downtown Wayfinding"),"downtown portal missing")
 local plaza=world:FindFirstChild("Downtown First Minute Plaza")
 assert(plaza and plaza:GetAttribute("WelcomeVisible")==true,
  "cinematic first-minute plaza missing")
+-- Public Bloxburg/Berry Avenue gameplay review: recognizable places,
+-- street furniture and affordable early activities near arrival.
+local streets=world:FindFirstChild("Detailed Downtown Streetscape")
+assert(streets and streets:IsA("Folder"),
+ "official detailed downtown street polish absent")
+assert(streets:GetAttribute("OfficialDecorativeMeshModels")>=15,
+ "street scene not populated with official Modern City mesh assets")
+assert(streets:GetAttribute("TransitStopCount")==3 and
+ streets:GetAttribute("TransitAccessible")==true,
+ "bus stop not connected to three actual game destinations")
+assert(streets:GetAttribute("ZeroExtraHeartbeatLoops")==true,
+ "street visual polish should not add background animation loops")
+for _,name in ipairs({
+ "Urban Transit Curbside","Bus Stop Tinted Glass","Marked Pedestrian Crossing",
+ "City Traffic Signal Pole","Recognizable Venue THE BEAN & BREW",
+ "Recognizable Venue MOTOR ROW","Recognizable Venue CITY LIFE",
+}) do
+ if name=="Bus Stop Tinted Glass" then name="Bus Stop Tempered Glass" end
+ assert(streets:FindFirstChild(name), "missing visible downtown street scene: "..name)
+end
+for _,name in ipairs({"CITY JOBS","GARDEN","HOMES"}) do
+ local node=streets:FindFirstChild("Transit Stop "..name)
+ assert(node and node:FindFirstChildOfClass("ProximityPrompt"),
+ "free transit prompt missing "..name)
+end
+local CollectionService=game:GetService("CollectionService")
+local tagged=CollectionService:GetTagged("RROptionalStreetscape")
+assert(#tagged>=30,"visual detail mobile tier not marked for culling")
+for _,desc in ipairs(streets:GetDescendants()) do
+ assert(not desc:IsA("LuaSourceContainer"),
+ "imported streetscape contains unsafe third-party scripts")
+end
 assert(plaza:GetAttribute("ImportedMeshTrees")>=4,
  "real imported city mesh trees not framing spawn")
 assert(plaza:GetAttribute("ArrivalInteractionCount")==1,
@@ -205,7 +237,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.19.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.20.0","version mismatch")
 assert(world:GetAttribute("StudioSavesIsolated")==true,
  "Studio must never write a production profile data store")
 local function count(name)

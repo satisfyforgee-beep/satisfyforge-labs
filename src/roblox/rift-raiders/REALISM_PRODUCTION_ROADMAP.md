@@ -1,3 +1,10 @@
+## v0.20 — Public roleplay video benchmarking and actual first-neighborhood polish
+- Public Brookhaven/Berry Avenue/Bloxburg footage and Creator Hub onboarding/performance documentation informed stronger street-level visual cues and faster access to activities.
+- Imported and placed 18 permitted, official high-detail Modern City StreetLights/Street_SetDressing model instances at street corners and around storefronts, rather than more cheap-looking block props.
+- Added real physical road details, traffic signals, readable business signage, bike parking and a public transit station with three server-checked free destinations.
+- Tagged optional details for low-graphics hiding, without adding any extra server animations or loops.
+- Still open: fully modeled new cars and business interiors, physically driving passenger buses, native mobile frame-rate benchmarks, live save/rejoin, deeper collaborative roleplay/social systems.
+
 ## v0.19 — First 30 seconds should look like a real place
 - Feedback video identified that the camera mainly saw blank asphalt and important buildings only entered the frame after moving. Player first spawn now faces existing imported storefronts.
 - Live-rendered, script-free official Modern City trees, paving, planters, fountain spray, welcome sign, benches, and a one-press visitor center break up the bare road.

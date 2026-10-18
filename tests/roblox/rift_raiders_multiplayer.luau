@@ -349,6 +349,28 @@ if (aPack and aPack:FindFirstChild("Pulse Rifle")) or
 end
 print("SF_RIFT_MP_CHECK official_modern_city_travel PASS")
 print("SF_RIFT_MP_CHECK realistic_city_weapon_rules PASS")
+-- First-minute polish is not just decoration: real proximity-checked
+-- transit stops take only the intended player to jobs, farms, and housing.
+local streets=world:FindFirstChild("Detailed Downtown Streetscape")
+local Transit=require(ServerScriptService:WaitForChild("DowntownStreetscape"))
+assert(streets and streets:GetAttribute("TransitStopCount")==3,
+ "bus stop street art absent from game")
+if Transit.UseTransit(a,"FAKE_DESTINATION") or Transit.UseTransit(a,"GARDEN") then
+ fail("transit_remote_or_fake_route_bypass") return
+end
+local gardenStop=streets:FindFirstChild("Transit Stop GARDEN")
+if not gardenStop then fail("transit_garden_stop_missing") return end
+local otherPlayerPosition=rootB.Position
+a.Character:PivotTo(CFrame.new(gardenStop.Position+Vector3.new(0,4,0)))
+task.wait(.25)
+if not Transit.UseTransit(a,"GARDEN") then fail("free_transit_route_broken") return end
+if not waitFor(function()
+ return (rootA.Position-Vector3.new(0,5,2152)).Magnitude<15
+end,4) then fail("transit_garden_destination_wrong") return end
+if (rootB.Position-otherPlayerPosition).Magnitude>12 then
+ fail("transit_teleported_another_player") return
+end
+print("SF_RIFT_MP_CHECK first_minute_free_transit_isolated PASS")
 local employment=world:FindFirstChild("Downtown Employment Center",true)
 if not employment then fail("downtown_employment_missing") return end
 a.Character:PivotTo(CFrame.new(employment.Position+Vector3.new(0,3,0)))
