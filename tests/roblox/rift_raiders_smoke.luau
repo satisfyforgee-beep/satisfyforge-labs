@@ -88,7 +88,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.14.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.15.0","version mismatch")
 local function count(name)
  local n=0
  for _,v in ipairs(world:GetDescendants()) do if v.Name==name then n+=1 end end
@@ -107,6 +107,26 @@ assert(suburbs and suburbs:GetAttribute("OfficialPrefabCount")==6,
  "Suburban detailed environment not actually spawned")
 assert(suburbs:GetAttribute("DetailedSourceParts")>5000,
  "Detailed suburban city parts missing")
+assert(suburbs:GetAttribute("EnvironmentOnly")==false,
+ "Imported suburban town must contain actual playable economic services")
+assert(suburbs:GetAttribute("ActiveSuburbanWorkplaces")==4,
+ "Detailed suburb career shifts missing")
+assert(suburbs:GetAttribute("ServerValidatedServicePoints")>=21,
+ "Server-registered suburban shop and career points missing")
+local realSuburbanServices=world:FindFirstChild("Working Suburban Services",true)
+assert(realSuburbanServices,"Real template-based suburban services missing")
+for _,name in ipairs({
+ "Official Suburban Market Checkout","Official Suburban Auto Garage Checkout",
+ "Official Suburban Gas Station Kiosk","Suburban Play Park Rest Station",
+ "Suburban Worksite RETAIL","Suburban Work Task RETAIL 1",
+ "Suburban Work Task RETAIL 2","Suburban Worksite MECHANIC",
+ "Suburban Work Task MECHANIC 1","Suburban Work Task MECHANIC 2",
+}) do
+ local node=realSuburbanServices:FindFirstChild(name)
+ assert(node and node:IsA("BasePart"),"Missing usable suburb station: "..name)
+ assert(node:GetAttribute("RegisteredSuburbanInteraction")~=nil,
+  "Unregistered suburb station: "..name)
+end
 assert(suburbs:FindFirstChild("Suburban Single Story House")
  and suburbs:FindFirstChild("Suburban Two Story House")
  and suburbs:FindFirstChild("Suburban Convenience Market")

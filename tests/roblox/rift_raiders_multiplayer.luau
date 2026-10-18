@@ -597,6 +597,47 @@ if (rootB.Position-Vector3.new(0,8,3425)).Magnitude<50 then
  fail("suburban_other_player_teleported") return
 end
 print("SF_RIFT_MP_CHECK detailed_official_suburban_destination PASS")
+local services=world:FindFirstChild("Working Suburban Services",true)
+local market=services and services:FindFirstChild("Official Suburban Market Checkout")
+local garage=services and services:FindFirstChild("Official Suburban Auto Garage Checkout")
+local station=services and services:FindFirstChild("Official Suburban Gas Station Kiosk")
+if not market or not garage or not station then
+ fail("suburban_validated_shops_missing") return
+end
+-- The same item may not be bought by remote replay far from a store.
+a.Character:PivotTo(CFrame.new(0,8,3425))
+task.wait(.6)
+if lifeService.Process(a,"Buy","FIRST_AID_KIT") or
+ lifeService.Process(a,"BuySnack","MARKET") then
+ fail("suburban_shop_remote_purchase_bypass") return
+end
+print("SF_RIFT_MP_CHECK suburban_shop_proximity_enforced PASS")
+-- The imported market now sells actual catalog goods, with the same
+-- level/coin checks as the original town shop.
+a.Character:PivotTo(CFrame.new(market.Position+Vector3.new(0,5,0)))
+task.wait(.6)
+local money=a:GetAttribute("RRCoins") or 0
+local already=a:GetAttribute("RRLifeOwn_FIRST_AID_KIT")==true
+if money>=130 and not already then
+ local bought=lifeService.Process(a,"Buy","FIRST_AID_KIT")
+ if not bought then fail("suburban_legal_purchase_rejected") return end
+ local remaining=a:GetAttribute("RRCoins") or 0
+ if a:GetAttribute("RRLifeOwn_FIRST_AID_KIT")~=true or remaining>money-130 then
+  fail("suburban_shop_did_not_charge_earned_coins") return
+ end
+ print("SF_RIFT_MP_CHECK detailed_suburban_market_real_purchase PASS")
+else
+ print("SF_RIFT_MP_CHECK suburban_market_purchase_level_and_budget_guard PASS")
+end
+-- The suburb garage is legitimately accepted as a dealer, but still
+-- requires player-owned cars rather than spoofed client attributes.
+task.wait(.5)
+a.Character:PivotTo(CFrame.new(garage.Position+Vector3.new(0,5,0)))
+task.wait(.6)
+if lifeService.Process(a,"SelectCar","HYPERCAR") then
+ fail("suburban_auto_shop_unowned_vehicle_selection") return
+end
+print("SF_RIFT_MP_CHECK suburban_auto_shop_owner_validation PASS")
 print("SF_RIFT_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:rift_multiplayer")
 ]==]

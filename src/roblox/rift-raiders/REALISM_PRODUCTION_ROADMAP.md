@@ -1,3 +1,10 @@
+## v0.15 — Make official prefabs earn their place in the game
+- Connected actual imported Suburban market, auto garage, gas-station and playground art to server-validated economic interactions rather than merely displaying scenery.
+- Four Suburban career workstations with application, work-shift and two proximity/time-gated activities use the existing job system.
+- Market/roadside snacks cost earned coins and refill Hunger. Retail shopping and garage selection work at the original detailed building sites.
+- Tests prove real purchases and reject remote unauthorized interactions. Original source scripts remain excluded.
+- Still open: premium art sourcing and permissions, connected interior doors/service counters, store NPC animations, live save/rejoin tests, device-specific performance and real car physics.
+
 ## v0.14 — Actual high-detail imported Roblox Studio templates
 - Saved official Studio Racing and Suburban templates locally and wrote reproducible, script-removing art extraction tools.
 - Added real 29-MeshPart racing buggy as an earnable, drivable racing car; expanded to 10 selectable road cars.

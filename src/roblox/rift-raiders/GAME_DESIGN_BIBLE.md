@@ -104,3 +104,10 @@ The R15 downtown population now has named proximity conversations and verified c
 - Six built-in Suburban template environment prefabs are now visible and explorable in a 19th region; all source scripts removed. The original local templates are not committed; reusable, reduced art packs and extraction tools are.
 - The user's own homes can have accessible second/third floors, rooms, physical stairs and purchase-dependent electronics, pet gear, pool, hot tub and outdoor furnishings.
 - None of this is real-world commerce; purchases use earned game coins. Suburbia's imported shops are decorative, not yet tied to the shopping economy. Mobile optimization and public Roblox save tests are next.
+
+
+## v0.15 — Import professional scenery, then connect gameplay
+- Real imported buildings act as in-world businesses, not merely visual exhibits. The official Suburban Convenience Market is a grocery/garden/technology store; gasoline station and auto garage provide further vehicle access; park rest and market snacks affect simulated life needs.
+- Retail, mechanic, courier and security have four additional suburban work sites with real server-authoritative tasks and earned-coin wages. They are alternative worksites, not new catalog career entries.
+- Interaction points are registered on the server, keeping location, ownership, currency, level, and work-step validation in one shared simulation service; no untrusted imported scripts are ever executed.
+- Professional-looking environment geometry + deeper activity remains more valuable than inflating catalog counts.

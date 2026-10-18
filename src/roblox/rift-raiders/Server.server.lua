@@ -21,7 +21,7 @@ local Catalog=require(ReplicatedStorage:WaitForChild("PrestigeCatalog"))
 local Vehicles=require(ServerScriptService:WaitForChild("VehicleService"))
 local Boats=require(ServerScriptService:WaitForChild("BoatService"))
 local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
-world:SetAttribute("Version","0.14.0")
+world:SetAttribute("Version","0.15.0")
 world:SetAttribute("Phase","CALM")
 world:SetAttribute("SecondsLeft",75)
 local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
@@ -417,7 +417,11 @@ local function spawnPet(p)
  glow(pet,pet.Color,12)
 end
 local marinaDestination=Boats.Build(world)
-local suburbanDestination=SuburbanDistrict.Build(world)
+local suburbanDestination=SuburbanDistrict.Build(world,{
+ register=Life.RegisterSuburbanPoint,
+ process=Life.Process,
+ tell=tell,
+})
 local destinations={HUB=Vector3.new(0,6,0),WATERFRONT=marinaDestination}
 for _,b in ipairs(biomes) do destinations[b.id]=b.center+Vector3.new(0,6,0) end
 for id,pos in pairs(newDestinations) do destinations[id]=pos end
@@ -794,4 +798,4 @@ task.spawn(function()
   Lighting.Ambient=Color3.fromRGB(120,132,179)
  end
 end)
-print("SF_RIFT_RAIDERS_SERVER_READY v0.14.0")
+print("SF_RIFT_RAIDERS_SERVER_READY v0.15.0")

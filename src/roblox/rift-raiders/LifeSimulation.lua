@@ -22,6 +22,14 @@ local downtownTaskSites={}
 local downtownFineCounter=nil
 local downtownFoodCounter=nil
 local downtownRestCounter=nil
+-- Extra validated locations supplied by imported, script-free environment art.
+-- This means assets can be reused without trusting any scripts from templates.
+local externalStores={}
+local externalCareerSites={}
+local externalWorkSites={}
+local externalTaskSites={}
+local externalRestSites={}
+local externalSnackSites={}
 local policeUnits={}
 local lastAction={}
 local fineCounter=nil
@@ -72,6 +80,58 @@ local function nearby(player,anchor,distance)
 end
 local function nearbyEither(player,a,b,distance)
  return nearby(player,a,distance) or nearby(player,b,distance)
+end
+local function registeredNearby(player,map,id,distance)
+ local options=map[id]
+ if not options then return false end
+ for _,point in ipairs(options) do
+  if point.Parent and nearby(player,point,distance) then return true end
+ end
+ return false
+end
+function Life.RegisterSuburbanPoint(usage,id,node,step)
+ if not node or not node:IsA("BasePart") then return false end
+ if usage=="STORE" and Catalog.ShopLocations[id] then
+  externalStores[id]=externalStores[id] or {}
+  table.insert(externalStores[id],node)
+ elseif usage=="CAREER" and Catalog.CareerById[id] then
+  externalCareerSites[id]=externalCareerSites[id] or {}
+  table.insert(externalCareerSites[id],node)
+ elseif usage=="WORK" and Catalog.CareerById[id] then
+  externalWorkSites[id]=externalWorkSites[id] or {}
+  table.insert(externalWorkSites[id],node)
+ elseif usage=="TASK" and Catalog.CareerById[id] and
+  (step==1 or step==2) then
+  externalTaskSites[id]=externalTaskSites[id] or {}
+  externalTaskSites[id][step]=externalTaskSites[id][step] or {}
+  table.insert(externalTaskSites[id][step],node)
+ elseif usage=="REST" and id=="PUBLIC" then
+  externalRestSites.PUBLIC=externalRestSites.PUBLIC or {}
+  table.insert(externalRestSites.PUBLIC,node)
+ elseif usage=="SNACK" and id=="MARKET" then
+  externalSnackSites.MARKET=externalSnackSites.MARKET or {}
+  table.insert(externalSnackSites.MARKET,node)
+ else return false end
+ node:SetAttribute("RegisteredSuburbanInteraction",usage)
+ return true
+end
+local function nearStore(player,category,distance)
+ return nearbyEither(player,stores[category],downtownStores[category],distance)
+  or registeredNearby(player,externalStores,category,distance)
+end
+local function nearCareer(player,id,distance)
+ return nearbyEither(player,careerSites[id],downtownCareerSites[id],distance)
+  or registeredNearby(player,externalCareerSites,id,distance)
+end
+local function nearWork(player,id,distance)
+ return nearbyEither(player,workSites[id],downtownWorkSites[id],distance)
+  or registeredNearby(player,externalWorkSites,id,distance)
+end
+local function nearTask(player,id,step,distance)
+ return nearbyEither(player,taskSites[id] and taskSites[id][step],
+  downtownTaskSites[id] and downtownTaskSites[id][step],distance)
+  or (externalTaskSites[id] and
+   registeredNearby(player,externalTaskSites[id],step,distance))
 end
 local function profile(player)
  return context and context.getProfile(player)
@@ -866,7 +926,7 @@ function Life.Process(player,kind,arg,step)
  lastAction[player]=now
  if kind=="Career" then
   local career=type(arg)=="string" and Catalog.CareerById[arg]
-  if not career or not nearbyEither(player,careerSites[arg],downtownCareerSites[arg],17) then return false end
+  if not career or not nearCareer(player,arg,17) then return false end
   if s.level<career.level then
    tell(player,"REACH LEVEL "..career.level.." TO APPLY."); return false
   end
@@ -877,7 +937,7 @@ function Life.Process(player,kind,arg,step)
  elseif kind=="Work" then
   local career=type(arg)=="string" and Catalog.CareerById[arg]
   if not career or arg=="CREATOR" or life.career~=arg or
-   not nearbyEither(player,workSites[arg],downtownWorkSites[arg],18) then return false end
+   not nearWork(player,arg,18) then return false end
   if life.needs.energy<10 or life.needs.hunger<10 then
    tell(player,"TOO TIRED OR HUNGRY TO WORK • REST OR EAT AT THE COMMUNITY KITCHEN.")
    return false
@@ -913,9 +973,7 @@ function Life.Process(player,kind,arg,step)
    not shift or shift.id~=arg or life.career~=arg then return false end
   local expected=shift.progress+1
   if type(step)~="number" or step~=expected or step>2 or
-   (not taskSites[arg] and not downtownTaskSites[arg]) or
-   not nearbyEither(player,taskSites[arg] and taskSites[arg][step],
-    downtownTaskSites[arg] and downtownTaskSites[arg][step],15) then
+   not nearTask(player,arg,step,15) then
    tell(player,"FOLLOW YOUR ASSIGNED WORK TASKS IN ORDER.")
    return false
   end
@@ -947,9 +1005,34 @@ function Life.Process(player,kind,arg,step)
   life.needs.hunger=math.min(100,life.needs.hunger+50)
   tell(player,"ATE A FREE COMMUNITY MEAL • HUNGER RESTORED!")
  elseif kind=="Rest" then
-  if arg~="PUBLIC" or not nearbyEither(player,restCounter,downtownRestCounter,17) then return false end
+  if arg~="PUBLIC" or not
+   (nearbyEither(player,restCounter,downtownRestCounter,17) or
+   registeredNearby(player,externalRestSites,"PUBLIC",17)) then return false end
   life.needs.energy=math.min(100,life.needs.energy+25)
   tell(player,"RESTED AT THE PARK • ENERGY RESTORED!")
+ elseif kind=="BuySnack" then
+  if arg~="MARKET" or not registeredNearby(player,
+   externalSnackSites,"MARKET",16) then
+   return false
+  end
+  if s.coins<15 then
+   tell(player,"YOU NEED 15 EARNED COINS FOR A MARKET SNACK.")
+   return false
+  end
+  if life.needs.hunger>=95 then
+   tell(player,"YOU ARE ALREADY FULL!")
+   return false
+  end
+  local time=os.clock()
+  if time-(life.lastSnack or -100)>25 then
+   life.lastSnack=time
+   s.coins-=15
+   life.needs.hunger=math.min(100,life.needs.hunger+35)
+   tell(player,"BOUGHT A MARKET SNACK FOR 15 COINS • HUNGER +35.")
+  else
+   tell(player,"WAIT A LITTLE BEFORE EATING ANOTHER SNACK.")
+   return false
+  end
  elseif kind=="GardenPlant" or kind=="GardenWater" or
    kind=="GardenHarvest" or kind=="GardenSell" then
   return Garden.Process(player,kind,arg,s) and (function()
@@ -972,7 +1055,7 @@ function Life.Process(player,kind,arg,step)
   if type(arg)~="string" or not Catalog.CarChoices[arg] then
    return false
   end
-  if not nearbyEither(player,stores.VEHICLE,downtownStores.VEHICLE,24) then
+  if not nearStore(player,"VEHICLE",24) then
    tell(player,"VISIT THE VEHICLE DEALER TO SWITCH YOUR DAILY DRIVER.")
    return false
   end
@@ -985,7 +1068,7 @@ function Life.Process(player,kind,arg,step)
    " SELECTED. USE THE CAR BUTTON TO SPAWN IT.")
  elseif kind=="Buy" then
   local item=type(arg)=="string" and Catalog.ById[arg]
-  if not item or not nearbyEither(player,stores[item.category],downtownStores[item.category],24) then
+  if not item or not nearStore(player,item.category,24) then
    tell(player,"VISIT THE CORRECT LIFE CITY STORE TO PURCHASE."); return false
   end
   local seedPacket=Garden.Crops[item.id]~=nil
