@@ -149,8 +149,18 @@ local function makeTrafficSedan(parent,index,startIndex,route)
  local pos=route[startIndex]
  local nextIndex=startIndex%#route+1
  local direction=(route[nextIndex]-pos).Unit
- m:PivotTo(CFrame.lookAt(pos,pos+direction)*CFrame.Angles(0,math.pi,0))
- local state={model=m,position=pos,route=route,index=nextIndex,
+ -- Official white sedan headlights and front bumper are at local -Z.
+ -- Rotating this by 180 degrees made traffic visibly drive in reverse.
+ m:PivotTo(CFrame.lookAt(pos,pos+direction))
+ -- The template pivot is not at the wheel contact patch. Ground the mesh
+ -- against the actual ~1.1-stud downtown asphalt, not a hardcoded pivot Y.
+ local box,dimensions=m:GetBoundingBox()
+ local wheelBottom=box.Position.Y-dimensions.Y*.5
+ local grounded=pos+Vector3.new(0,1.1-wheelBottom,0)
+ m:PivotTo(CFrame.lookAt(grounded,grounded+direction))
+ m:SetAttribute("GroundedRoadHeight",1.1)
+ m:SetAttribute("ForwardFacingTraffic",true)
+ local state={model=m,position=grounded,route=route,index=nextIndex,
   speed=18+index*1.5,distance=0,lastAttribute=0}
  table.insert(traffic,state)
  return m
@@ -219,11 +229,13 @@ function Population.Build(world,cityModel,options)
   for _,car in ipairs(traffic) do
    local m=car.model
    if m and m.Parent then
-    local goal=car.route[car.index]
+    local routeGoal=car.route[car.index]
+    local goal=Vector3.new(routeGoal.X,car.position.Y,routeGoal.Z)
     local delta=goal-car.position
     if delta.Magnitude<2.2 then
      car.index=car.index%#car.route+1
-     goal=car.route[car.index]
+     routeGoal=car.route[car.index]
+     goal=Vector3.new(routeGoal.X,car.position.Y,routeGoal.Z)
      delta=goal-car.position
     end
     if delta.Magnitude>.01 then

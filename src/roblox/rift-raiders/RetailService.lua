@@ -50,7 +50,7 @@ function Retail.Build(world,options)
  table.clear(checkout);table.clear(shelves);table.clear(attendants)
  local folder=Instance.new("Folder")
  folder.Name="Downtown Hands-On Corner Market";folder.Parent=world
- local base=CFrame.new(-72,3,2287)
+ local base=CFrame.new(-72,3,2125)
  part(folder,"Market Terrazzo Floor",Vector3.new(35,.65,31),
   base*CFrame.new(0,-.55,0),Color3.fromRGB(185,174,157),
   Enum.Material.Concrete,true)

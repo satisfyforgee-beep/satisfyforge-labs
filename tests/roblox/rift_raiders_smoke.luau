@@ -106,6 +106,73 @@ assert(imported:GetAttribute("LivingDowntownIntegrated")==true,"living downtown 
 local living=world:WaitForChild("Living Modern Downtown",20)
 assert(living:WaitForChild("Downtown Citizen 8",20),"R15 downtown citizens missing")
 assert(living:WaitForChild("Downtown Traffic Sedan 4",20),"detailed downtown traffic missing")
+local vehicleTraffic=living:FindFirstChild("Downtown Traffic Sedan 1")
+local bumper=vehicleTraffic:FindFirstChild("bumper_front",true)
+local rear=vehicleTraffic:FindFirstChild("bumper_back",true)
+assert(bumper and rear,"official traffic front/rear markers missing")
+assert((bumper.Position-rear.Position):Dot(vehicleTraffic:GetPivot().LookVector)>5,
+ "traffic is moving visually BACKWARDS rather than towards its headlights")
+local trafficBox,trafficSize=vehicleTraffic:GetBoundingBox()
+local trafficBottom=trafficBox.Position.Y-trafficSize.Y/2
+assert(math.abs(trafficBottom-1.1)<.2,
+ "road traffic wheels float above asphalt or sink beneath it")
+assert(vehicleTraffic:GetAttribute("ForwardFacingTraffic")==true,
+ "traffic heading contract missing")
+print("SF_RIFT_CHECK traffic_headlights_forward_and_wheels_grounded PASS")
+local walkin=world:WaitForChild("Real Walk-In Downtown Shops",20)
+assert(walkin:GetAttribute("WalkInShopCount")==2 and
+ walkin:GetAttribute("TeleportEntranceCount")==0,
+ "two genuinely traversable street-facing shops missing")
+for _,storeName in ipairs({"Accessible Corner Market","Accessible Bean and Brew"}) do
+ local store=walkin:FindFirstChild(storeName)
+ local door=store and store:GetAttribute("DoorCenter")
+ assert(door and store:GetAttribute("DoorClearWidth")>=10,
+  "missing physically open shop door: "..storeName)
+ assert(door.Z>store:GetAttribute("InsideCenter").Z, "shop door faces AWAY from downtown approach")
+ local ramp=store:FindFirstChild("Continuous Public Entrance Ramp")
+ assert(ramp and ramp.Position.Z>door.Z, "ramp must extend toward city-facing entrance")
+ assert(ramp and ramp.CanCollide and ramp:GetAttribute("AccessibilityRamp"),
+  "missing traversable ground-to-door access: "..storeName)
+ local params=OverlapParams.new()
+ params.MaxParts=75
+ local intrusions={}
+ for _,node in ipairs(workspace:GetPartBoundsInBox(CFrame.new(door),
+  Vector3.new(7,5,2.1),params)) do
+  if node.CanCollide and not node:IsDescendantOf(store) then
+   table.insert(intrusions,node:GetFullName())
+  end
+ end
+ assert(#intrusions==0,"imported collision blocks "..storeName.." doorway: "..table.concat(intrusions," | "))
+ print("SF_RIFT_WALKIN_DOOR_CLEAR "..storeName.." outside_blockers="..
+  #intrusions.." "..table.concat(intrusions," | "):sub(1,420))
+end
+local outsideCounts={}
+for _,z in ipairs({2170,2190,2210}) do
+ local blockers={}
+ for _,node in ipairs(workspace:GetPartBoundsInBox(CFrame.new(-15,6,z),
+  Vector3.new(7,7,6))) do
+  if node.CanCollide and not node:IsDescendantOf(walkin) then
+   table.insert(blockers,node.Name)
+  end
+ end
+ outsideCounts[#outsideCounts+1]=#blockers
+ print("SF_RIFT_ARCADE_ACCESS_AUDIT z="..z.." blockers="..#blockers..
+  " "..table.concat(blockers,","):sub(1,290))
+end
+local arch=world:WaitForChild("Official Detailed Suburban Town",20)
+for _,name in ipairs({
+ "Suburban Single Story House","Suburban Two Story House",
+ "Suburban Convenience Market","Suburban Gas Station",
+ "Suburban Detailed Garage",
+}) do
+ local prefab=arch:FindFirstChild(name)
+ assert(prefab and prefab:GetAttribute("GroundLevelBottom")==.60,
+  "suburban prefab was not lowered onto real ground: "..name)
+ local cf,extents=prefab:GetBoundingBox()
+ assert(math.abs((cf.Position.Y-extents.Y/2)-.60)<.15,
+  "floating house/shop prefab at "..name)
+end
+print("SF_RIFT_CHECK suburban_buildings_grounded PASS")
 task.wait(1)
 local meshCount=0
 for _,obj in ipairs(imported:GetDescendants()) do
@@ -237,7 +304,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.24.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.25.0","version mismatch")
 assert(world:GetAttribute("StudioSavesIsolated")==true,
  "Studio must never write a production profile data store")
 local function count(name)
@@ -394,6 +461,16 @@ for _,destination in ipairs(courier.Destinations) do
 end
 assert(courierDepot:GetAttribute("CourierNPCCount")==4,
  "courier receivers and depot dispatcher missing")
+local cashier=market:FindFirstChild("Corner Market Cashier A")
+local shoe=cashier and cashier:FindFirstChild("Left Shoe",true)
+assert(shoe and math.abs(shoe.Position.Y-shoe.Size.Y/2-2.775)<.17,
+ "retail character feet are hovering above the indoor floor")
+local dispatcher=courierDepot:FindFirstChild("Rift Express Dispatcher")
+local dispatchShoe=dispatcher and dispatcher:FindFirstChild("Left Shoe",true)
+assert(dispatchShoe and math.abs(dispatchShoe.Position.Y-
+ dispatchShoe.Size.Y/2-2.75)<.17,
+ "courier dispatcher feet hover above depot floor")
+print("SF_RIFT_CHECK venue_characters_foot_contact PASS")
 assert(market:GetAttribute("RetailNPCCount")==2,
  "retail cashier and customer helper missing")
 for _,folder in ipairs({market,courierDepot}) do

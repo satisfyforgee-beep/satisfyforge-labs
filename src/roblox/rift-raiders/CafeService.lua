@@ -53,7 +53,7 @@ function Cafe.Build(world,options)
  handlers=options
  local folder=Instance.new("Folder")
  folder.Name="Downtown Interactive Coffee Bar";folder.Parent=world
- local origin=CFrame.new(-36,4,2281)
+ local origin=CFrame.new(-36,4,2119)
  local foundation=create(folder,"Cafe Porcelain Tile",
   Vector3.new(24,.5,14),origin*CFrame.new(0,-.7,0),
   Color3.fromRGB(192,186,168),Enum.Material.Concrete)

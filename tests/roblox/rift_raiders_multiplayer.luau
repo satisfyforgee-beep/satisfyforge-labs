@@ -86,6 +86,20 @@ local visual=car:FindFirstChild("Official Detailed Sedan Body")
 if not visual or car:GetAttribute("VisualModel")~="Official Modern City Sedan" then
  fail("real_car_art_missing") return
 end
+local function forwardVisual(model,expected)
+ local front=model and model:FindFirstChild("bumper_front",true)
+ local back=model and model:FindFirstChild("bumper_back",true)
+ return front and back and (front.Position-back.Position):Dot(expected)>5
+end
+if not forwardVisual(visual,car:GetPivot().LookVector) then
+ fail("white_sedan_visibly_reversed") return
+end
+local initialBox,initialSize=visual:GetBoundingBox()
+if math.abs(initialBox.Position.Y-initialSize.Y/2-
+ (car:GetPivot().Position.Y-3.3))>.25 then
+ fail("white_sedan_wheels_float") return
+end
+print("SF_RIFT_MP_CHECK vehicle_orientation_and_wheel_alignment PASS")
 print("SF_RIFT_MP_CHECK official_detailed_drivable_sedan PASS")
 local seat=car.DriverSeat
 local humanoid=a.Character and a.Character:FindFirstChildOfClass("Humanoid")
@@ -616,6 +630,11 @@ if redCar:GetAttribute("SelectedVehicle")~="SPORTS_CAR" or
  redCar:GetAttribute("TopSpeed")~=50 then
  fail("premium_car_speed_and_paint") return
 end
+local redModel=redCar:FindFirstChild("Official Detailed Sedan Body")
+if not forwardVisual(redModel,redCar:GetPivot().LookVector) then
+ fail("red_sedan_visibly_reversed_or_sideways") return
+end
+print("SF_RIFT_MP_CHECK red_sedan_front_aligned_with_steering PASS")
 print("SF_RIFT_MP_CHECK official_red_car_and_selected_driving_speed PASS")
 -- The owner-only vehicle logic must prevent another player from hijacking it.
 local foreignHumanoid=b.Character and b.Character:FindFirstChildOfClass("Humanoid")

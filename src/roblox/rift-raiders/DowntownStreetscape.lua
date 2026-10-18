@@ -203,7 +203,7 @@ local function simpleVenues(folder)
   {"CITY LIFE","WORK • CAREERS",Vector3.new(-76,6.4,2241),
    Color3.fromRGB(110,206,184)},
   {"THE BEAN & BREW","ESPRESSO • LATTE • MOCHA",
-   Vector3.new(-40,9,2270),Color3.fromRGB(224,177,120)},
+   Vector3.new(-36,9,2133),Color3.fromRGB(224,177,120)},
   {"MOTOR ROW","CARS • GARAGE",Vector3.new(72,6.4,2241),
    Color3.fromRGB(117,191,231)},
   {"DOWNTOWN NURSERY","GROW • HARVEST",Vector3.new(76,5.5,2180),

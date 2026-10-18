@@ -49,7 +49,7 @@ end
 local function tree(parent,pos,index)
  local m=Instance.new("Model"); m.Name="Street Tree "..index; m.Parent=parent
  local trunk=cylinder(m,"Bark",Vector3.new(2,12,2),
-  CFrame.new(pos+Vector3.new(0,7,0)),Color3.fromRGB(105,83,66),Enum.Material.Wood)
+  CFrame.new(pos+Vector3.new(0,6.3,0)),Color3.fromRGB(105,83,66),Enum.Material.Wood)
  trunk.CanCollide=true
  for i=1,5 do
   local theta=(i-1)*math.pi*2/5
@@ -343,7 +343,9 @@ function Detail.Build(world)
  end
  -- City block landscaping and street furniture with actual collision where needed.
  for i,x in ipairs({-148,-100,-52,-4,44,92,148}) do
-  local z=1538
+  -- This offset is relative to center.Z=1600, not an absolute world Z.
+ -- Earlier 1538 accidentally placed this tree row at Z=3138.
+ local z=-62
   tree(folder,center+Vector3.new(x,3,z),i)
  end
  for _,x in ipairs({-135,-35,65,145}) do

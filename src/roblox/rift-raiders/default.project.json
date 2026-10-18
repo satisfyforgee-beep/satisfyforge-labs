@@ -81,6 +81,9 @@
       },
       "VenueCharacters": {
         "$path": "VenueCharacters.lua"
+      },
+      "WalkInStores": {
+        "$path": "WalkInStores.lua"
       }
     },
     "StarterPlayer": {

@@ -79,7 +79,7 @@ function Suburbs.Build(world,options)
   clone.Parent=folder
   local box,sz=clone:GetBoundingBox()
   local offset=Vector3.new(asset.center.X-box.Position.X,
-   2.05-(box.Position.Y-sz.Y*.5),
+   .60-(box.Position.Y-sz.Y*.5),
    asset.center.Z-box.Position.Z)
   clone:PivotTo(clone:GetPivot()+offset)
   local pieces=0
@@ -104,6 +104,7 @@ function Suburbs.Build(world,options)
     pieces+=1
    end
   end
+  clone:SetAttribute("GroundLevelBottom",.60)
   clone:SetAttribute("OfficialTemplate",true)
   clone:SetAttribute("OriginalVisiblePieces",pieces)
   clone:SetAttribute("EnvironmentalPrefab",true)

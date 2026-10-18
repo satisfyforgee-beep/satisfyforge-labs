@@ -17,6 +17,7 @@ local LifeCityVisuals=require(ServerScriptService:WaitForChild("LifeCityVisuals"
 local ModernCityIntegration=require(ServerScriptService:WaitForChild("ModernCityIntegration"))
 local DowntownPopulation=require(ServerScriptService:WaitForChild("DowntownPopulation"))
 local Streetscape=require(ServerScriptService:WaitForChild("DowntownStreetscape"))
+local WalkInStores=require(ServerScriptService:WaitForChild("WalkInStores"))
 local SuburbanDistrict=require(ServerScriptService:WaitForChild("SuburbanDistrict"))
 local Catalog=require(ReplicatedStorage:WaitForChild("PrestigeCatalog"))
 local Vehicles=require(ServerScriptService:WaitForChild("VehicleService"))
@@ -25,7 +26,7 @@ local Persistence=require(ServerScriptService:WaitForChild("DataPersistence"))
 local Goals=require(ServerScriptService:WaitForChild("ProgressionGoals"))
 local Discovery=require(ServerScriptService:WaitForChild("SuburbanDiscovery"))
 local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
-world:SetAttribute("Version","0.24.0")
+world:SetAttribute("Version","0.25.0")
 world:SetAttribute("Phase","CALM")
 world:SetAttribute("SecondsLeft",75)
 local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
@@ -297,6 +298,7 @@ if importedDowntown then
  Life.AttachDowntown(importedDowntown)
  DowntownPopulation.Build(world,importedDowntown,{tell=tell})
  Streetscape.Build(world,importedDowntown,tell)
+ WalkInStores.Build(world)
 end
 Life.Start()
 local function quest(p,kind,n)

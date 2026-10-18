@@ -1,12 +1,12 @@
 # Rift Raiders — Finish Line / Public Launch Quality Gates
 
-**Status as of v0.24 (2026-10-18): PROTOTYPE / PRIVATE.** Do not report the game as fully completed until all gates below have objective evidence. No public publishing, paid imports, licensing violations, or Robux activation without owner authorization.
+**Status as of v0.25 (2026-10-18): PROTOTYPE / PRIVATE.** Do not report the game as fully completed until all gates below have objective evidence. No public publishing, paid imports, licensing violations, or Robux activation without owner authorization.
 
 ## 1. Player fun — core experience
 - [x] Clear first-time objective in under 30 seconds, with one-tap access to first interesting region.
 - [x] Earned-coin job shifts, valid in-game purchases, responsive completion feedback, daily activities, real-world gardening, cars/boats, and a repeatable Suburban collectible loop.
 - [ ] Have at least five independent first-time players play 15 minutes without guidance; record first confusion, completion time, and moments of fun/frustration. This requires people, not AI simulation.
-- [ ] Make at least three popular careers truly tactile with suitable tools/animations, NPCs, meaningful timing/skill challenges and their own interiors rather than 2 generic task prompts. (v0.24 adds static venue assistants and physical courier parcel handling to the earlier tactile cafe, mechanic, retail and delivery workflows; animation, deeper NPC behavior, sound and human-observed playtesting remain incomplete.)
+- [ ] Make at least three popular careers truly tactile with suitable tools/animations, NPCs, meaningful timing/skill challenges and their own interiors rather than 2 generic task prompts. (v0.25 adds physically enterable downtown market/cafe rooms, grounded traffic, and earlier static venue assistants and courier package handling; the rest of the imported building interiors, animations, NPC depth, sound and observed playtesting are still incomplete.)
 - [ ] Add natural social roleplay with invitations/permissions, emotes, readable names, meaningful two-player activities and explicit controls against griefing.
 - [ ] Test route to enjoying the game in <5 min for fresh accounts without artificially gifting money during tests.
 

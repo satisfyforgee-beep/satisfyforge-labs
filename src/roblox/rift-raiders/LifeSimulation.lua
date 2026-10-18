@@ -587,7 +587,7 @@ function Life.AttachDowntown(cityModel)
  -- Workplaces are spread around the actual imported city block. Invisible
  -- anchors preserve the official mesh art; prompts identify the real activity.
  local jobPositions={
-  RETAIL=Vector3.new(-72,3,2263), BARISTA=Vector3.new(-36,3,2263),
+  RETAIL=Vector3.new(-72,3,2160), BARISTA=Vector3.new(-36,3,2145),
   CREATOR=Vector3.new(0,3,2263), COURIER=Vector3.new(36,3,2263),
   MECHANIC=Vector3.new(72,3,2263),
   PARAMEDIC=Vector3.new(-100,3,2300), FIREFIGHTER=Vector3.new(-100,3,2340),

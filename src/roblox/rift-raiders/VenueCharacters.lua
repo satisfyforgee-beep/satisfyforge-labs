@@ -12,6 +12,9 @@ local function block(parent,name,size,cf,color,material,shape)
  return p
 end
 function VenueCharacters.Create(parent,id,ground,name,shirt,dialogue)
+ -- Workplace coordinates were near the floor *center*, so NPC shoe soles
+ -- were visibly hovering about .4 studs above the real indoor surfaces.
+ ground=ground*CFrame.new(0,-.38,0)
  local rig=Instance.new("Model")
  rig.Name=id;rig:SetAttribute("NPCType","StaticWorkplaceGuide")
  rig:SetAttribute("ResidentName",name)

@@ -115,8 +115,33 @@ function Cars.Spawn(world,player,kind)
        node:Destroy()
       end
      end
-     visual:PivotTo(modelName=="OfficialRacingCarVisual" and cf or
-      cf*CFrame.Angles(0,math.pi,0))
+     -- Use the actual bumper/headlamp positions to resolve imported model
+     -- pivots rather than guessing local +X/-Z orientation or applying 180
+     -- degrees to every template. The red Sedan source has a different pivot.
+     visual:PivotTo(cf)
+     local front=visual:FindFirstChild("bumper_front",true) or
+      visual:FindFirstChild("Race Art bumper",true)
+     local back=visual:FindFirstChild("bumper_back",true) or
+      visual:FindFirstChild("Race Art taillights",true)
+     if front and back then
+      local actual=front.Position-back.Position
+      local desired=cf.LookVector
+      local a=Vector3.new(actual.X,0,actual.Z)
+      local b=Vector3.new(desired.X,0,desired.Z)
+      if a.Magnitude>.1 and b.Magnitude>.1 then
+       a=a.Unit;b=b.Unit
+       local yaw=math.atan2(a.Z*b.X-a.X*b.Z,a.X*b.X+a.Z*b.Z)
+       visual:PivotTo(cf*CFrame.Angles(0,yaw,0))
+       visual:SetAttribute("VerifiedFrontAligned",true)
+      end
+     end
+     local visualBox,visualSize=visual:GetBoundingBox()
+     local oldBottom=visualBox.Position.Y-visualSize.Y*.5
+     local wheelContactY=cf.Position.Y-3.3 -- original Kit.Car wheel height
+     visual:PivotTo(visual:GetPivot()+
+      Vector3.new(0,wheelContactY-oldBottom,0))
+     visual:SetAttribute("VehicleFrontMatchesThrottle",true)
+     visual:SetAttribute("WheelsGroundedToChassis",true)
      m:SetAttribute("VisualModel",modelName=="OfficialRacingCarVisual" and
       "Official 29-mesh Racing Car" or "Official Modern City Sedan")
      m:SetAttribute("DetailedPaint",modelName=="OfficialRacingCarVisual" and "RACING" or
