@@ -4,7 +4,16 @@
 **Verified displayed price:** $7.99  
 **Primary buyer:** faceless short-form creators who want a repeatable structure for factual strange-story videos  
 **Purpose:** remove buyer uncertainty and make the first legitimate sale easier without inventing results, delivery guarantees, scarcity, or income claims  
-**Status:** ready for owner-side Payhip copy/preview use; completed payment and automatic fulfillment remain transaction-untested
+**Status:** free preview created, QA-passed, and stored in Drive; owner-side Payhip attachment plus checkout/fulfillment testing remain incomplete
+
+## Preview asset now ready
+
+- Exact filename: `SatisfyForge_Strange_True_Story_Shorts_Free_Sample.pdf`
+- Google Drive: https://drive.google.com/file/d/1sQdGjXVQn5qjouohvKsICdQ81pJ_Jq2s/view?usp=drivesdk
+- SHA-256: `692bcabc011f63a4bf24cb5f1221a2663629c35fbc99792112317342b9590683`
+- QA: four letter-size pages; rendered and visually inspected; text extraction and CTA verified
+- Canonical manifest: `sales/CREATOR_KIT_FREE_SAMPLE_ASSET.md`
+- Truth boundary: the file is not yet attached to Payhip, and neither the $0 checkout/delivery path nor paid processing has been verified.
 
 ## Truth boundary
 
