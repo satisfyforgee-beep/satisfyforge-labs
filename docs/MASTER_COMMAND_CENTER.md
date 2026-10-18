@@ -65,6 +65,7 @@ This file is the canonical non-sensitive operating index for work that used to b
 - Canonical status: `docs/CREATOR_KIT_STATUS.md`.
 - Canonical organic campaign asset: `sales/CREATOR_KIT_ORGANIC_LAUNCH_PACK.md`; promotion claims remain constrained by the untested completed-payment/automatic-fulfillment gate.
 - First-sale conversion, buyer FAQ, support replies, exact desktop preview-upload steps, and a one-use 100%-coupon fulfillment test that cleanly separates $0 delivery evidence from paid-processor evidence: `sales/CREATOR_KIT_FIRST_SALE_CONVERSION_KIT.md`.
+- 2026-10-18: the four-page customer preview `SatisfyForge_Strange_True_Story_Shorts_Free_Sample.pdf` was created, rendered, visually inspected, text-checked, and uploaded to Google Drive. SHA-256 `692bcabc011f63a4bf24cb5f1221a2663629c35fbc99792112317342b9590683`; manifest: `sales/CREATOR_KIT_FREE_SAMPLE_ASSET.md`. It is not yet attached to Payhip, and checkout/fulfillment remain untested.
 
 ### Service sales / local business
 - Active offer families include:
