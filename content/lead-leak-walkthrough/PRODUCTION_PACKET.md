@@ -1,6 +1,6 @@
 # Lead Leak Walkthrough — Production Packet
 
-**Status:** v1 video rendered and technical media QA passed; final human/mobile/CTA QA pending; not scheduled or published  
+**Status:** corrected v2 video rendered, visually/technically QA-passed, and stored in GitHub; final human/mobile/CTA QA pending; not scheduled or published  
 **Concept key:** `lead-leak-contact-form`  
 **Primary objective:** convert home-service viewers into qualified requests for the free Revenue Leak Audit  
 **Canonical CTA:** https://headless-hjorlnsaplw-satisfyforgee-140d.wix-site-host.com/audit.html  
@@ -173,31 +173,32 @@ Do not rely on a temporary trend for the core asset. Platform-native trending au
 - it does not interfere with narration clarity;
 - a clean no-music master is retained.
 
-## Rendered v1 candidate (2026-10-17)
+## Corrected v2 candidate (2026-10-18)
 
-- **MP4:** `lead_leak_v1.mp4` (conversation artifact; not yet stored in the repository).
-- **SHA-256:** `01edf0da6511f6ed73ad3cfdf9b726f8f29ebe4433d785285314b1d545afca68`.
-- **Technical properties:** 1080×1920, 30 fps, 27.000 seconds, H.264/AAC, 815,478 bytes.
-- **Audio:** locally AI-synthesized narration and original interface tones. Add truthful AI narration disclosure to platform captions.
+- **MP4:** [`media/lead-leak-v2.mp4`](../../media/lead-leak-v2.mp4) (canonical GitHub media).
+- **SHA-256:** `20b03e401fde1e7b85f52a95a56cde0d0e884355bf00fc3df24e6ce6c3ae60bf`.
+- **Technical properties:** 1080×1920, 30 fps, 27.000 seconds, H.264/AAC, 935,754 bytes.
+- **Correction:** replaced three unsupported checklist glyphs visible from 20.0–23.95 seconds with supported vector-font checkmarks; confirmed clean at the end-card transition.
+- **Audio:** locally AI-synthesized narration and original interface tones. The encoded audio stream is byte-identical to v1 (`MD5 5a2089957795e94576f6e129e9bb6d7e`). Add truthful AI narration disclosure to platform captions.
 - **Subtitles:** [lead_leak_v1.srt](./lead_leak_v1.srt) (timed transcript; optional platform upload).
 - **Full QA and reconciliation record:** [RENDER_QA_2026-10-17.md](./RENDER_QA_2026-10-17.md).
-- **Not publish-approved:** voice listening, mobile review, public CTA check, media hosting, final captions and live slot reconciliation remain.
+- **Not publish-approved:** human voice listening, real-device mobile review, public CTA check, final captions, and another immediate pre-publish slot reconciliation remain.
 
 ## Rendering and QA gate
 
 Do not schedule or publish until every item passes:
 
-- [ ] Export is 1080×1920.
-- [ ] Frame rate is 30 fps.
-- [ ] Runtime is 24–30 seconds.
+- [x] Export is 1080×1920.
+- [x] Frame rate is 30 fps.
+- [x] Runtime is 24–30 seconds.
 - [ ] All text is readable on a phone at normal viewing size.
-- [ ] “FICTIONAL EXAMPLE · NO CLIENT DATA” is visible.
-- [ ] No real business name, form, lead, email, phone number, or customer record appears.
+- [x] “FICTIONAL EXAMPLE · NO CLIENT DATA” is visible.
+- [x] No real business name, form, lead, email, phone number, or customer record appears.
 - [ ] CTA resolves to the canonical Revenue Leak Audit page.
-- [ ] No guaranteed-results language appears.
+- [x] No guaranteed-results language appears.
 - [ ] AI disclosure is accurate for the final production method.
-- [ ] Audio rights are valid for every selected platform.
-- [ ] Final MP4 SHA-256 is recorded.
+- [x] Audio uses only the original narration and original interface tones in this master.
+- [x] Final MP4 SHA-256 is recorded.
 - [ ] Buffer and Wix are rechecked for the same concept, media, platform, and slot.
 - [ ] One route owns each platform/slot.
 - [ ] Metricool remains unused.
@@ -220,6 +221,6 @@ Do not infer revenue from views or clicks. The revenue signal is a qualified req
 
 ## Publish decision
 
-Current decision: **render complete; hold publishing until remaining QA and route checks pass**.
+Current decision: **corrected v2 render complete and stored; hold publishing until remaining human/mobile/CTA and immediate route checks pass**.
 
-Reason: v1 MP4 and technical QA evidence now exist. Live Buffer/Wix checks found no existing matching Lead Leak copy, but human audio/mobile QA, CTA reachability, hosted media and renewed slot reconciliation are required before publication.
+Reason: v2 passed the automated media inspection and contact-sheet/full-resolution visual review, and the exact file is in canonical GitHub media. The October 18 Buffer/Wix reconciliation found no Lead Leak duplicate. Human narration listening, real-device mobile QA, public CTA reachability, final caption review, and another immediate pre-publish reconciliation are still required.
