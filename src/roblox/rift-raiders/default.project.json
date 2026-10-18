@@ -52,6 +52,9 @@
       "SuburbanDistrict": {
         "$path": "SuburbanDistrict.lua"
       },
+      "SuburbanAccess": {
+        "$path": "SuburbanAccess.lua"
+      },
       "ProgressionGoals": {
         "$path": "ProgressionGoals.lua"
       },

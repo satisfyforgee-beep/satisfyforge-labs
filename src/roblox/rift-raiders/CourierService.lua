@@ -111,7 +111,7 @@ function Courier.Build(world,options)
  local folder=Instance.new("Folder")
  folder.Name="Downtown Hands-On Delivery Depot";folder.Parent=world
  local base=CFrame.new(36,3,2291)
- create(folder,"Depot Loading Dock",Vector3.new(32,.8,19),
+ create(folder,"Depot Loading Dock",Vector3.new(42,.8,20),
   base*CFrame.new(0,-.65,0),Color3.fromRGB(128,133,129),
   Enum.Material.Concrete,true)
  local header=create(folder,"Rift Express Parcel Dispatch",
@@ -124,7 +124,9 @@ function Courier.Build(world,options)
   ELECTRONICS=Color3.fromRGB(103,148,187),
  }
  for i,package in ipairs(Courier.Parcels) do
-  local x=(i-2)*10
+  -- Separate interactable bins enough that touching a neighboring crate
+  -- cannot count as being within the assigned parcel pickup radius.
+  local x=(i-2)*14
   local crate=create(folder,"Courier Pickup "..package,
    Vector3.new(7,3.8,4.5),base*CFrame.new(x,1.55,-2),
    Color3.fromRGB(82,93,99),Enum.Material.Metal,true)
@@ -206,7 +208,7 @@ function Courier.Process(player,kind,arg,shift)
  local now=os.clock()
  if kind=="CourierPickup" then
   if type(arg)~="string" or not bins[arg] or
-   not close(player,bins[arg],8) or
+   not close(player,bins[arg],6) or
    (shift.progress~=0 and not (shift.progress==1 and
     shift.courierPickedUp and not Courier.HasPackage(player,shift))) or
    now-shift.started<1.5 then return false end

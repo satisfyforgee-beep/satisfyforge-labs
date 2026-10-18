@@ -1,6 +1,6 @@
 # Rift Raiders — Finish Line / Public Launch Quality Gates
 
-**Status as of v0.25 (2026-10-18): PROTOTYPE / PRIVATE.** Do not report the game as fully completed until all gates below have objective evidence. No public publishing, paid imports, licensing violations, or Robux activation without owner authorization.
+**Status as of v0.26 (2026-10-18): PROTOTYPE / PRIVATE.** Do not report the game as fully completed until all gates below have objective evidence. No public publishing, paid imports, licensing violations, or Robux activation without owner authorization.
 
 ## 1. Player fun — core experience
 - [x] Clear first-time objective in under 30 seconds, with one-tap access to first interesting region.
@@ -15,7 +15,7 @@
 - [x] Two detailed official sedans, official Racing mesh, distinct original SUV/pickup/sports silhouettes.
 - [ ] Replace each premium car class with a recognizable unique, properly licensed, verified and platform-permitted 3D mesh (including wheels/interior). Do not label placeholder 3D part assemblies photorealistic.
 - [ ] Replace yachts, speedboats, jet skis with materially different 3D mesh hulls/details and driving/occupancy appropriate to each size.
-- [ ] Add distinctly furnished, navigable interiors to at least two imported Suburban buildings.
+- [ ] Verify human walk-through and gameplay in at least two original furnished, imported Suburban interiors. v0.26 restores six doors across two houses, the imported market and garage; source geometry is original, and proximity-secured door animation passes automated tests, but physical navigation with an actual player still requires inspection.
 - [ ] Verify all developer-owned or officially reusable audio/material/mesh permissions on the actual owner account; eliminate noncompliant third-party asset loads.
 - [ ] Improve lighting, sound effects, scenery transitions and visible/interactable NPCs; verify readability under LOW graphics.
 

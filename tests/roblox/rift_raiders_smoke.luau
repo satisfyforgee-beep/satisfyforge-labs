@@ -173,6 +173,55 @@ for _,name in ipairs({
   "floating house/shop prefab at "..name)
 end
 print("SF_RIFT_CHECK suburban_buildings_grounded PASS")
+local Access=require(game:GetService("ServerScriptService"):WaitForChild("SuburbanAccess"))
+assert(arch:GetAttribute("RestoredSuburbanEntrances")==6,
+ "original suburban doors still unlinked to server interactions")
+assert(arch:GetAttribute("InertImportedClickDetectorsRemoved")>=100,
+ "dead imported ClickDetector controls still present")
+-- Studio RunScript can require a module in a distinct VM from game scripts.
+-- Verify actual Workspace doors rather than a second VM's private module cache.
+local observed={}
+for _,instance in ipairs(arch:GetDescendants()) do
+ if instance:IsA("BasePart") then
+  local key=instance:GetAttribute("DoorAccessKey")
+  if key then
+   assert(not observed[key],"duplicate imported entrance for "..key)
+   observed[key]=instance
+  end
+ end
+end
+local found=0
+for _ in pairs(observed) do found+=1 end
+assert(found==6,"expected six unique physical entries, got "..found)
+for _,key in ipairs({
+ "HOUSE_ONE","HOUSE_TWO","MARKET","GARAGE_PEDESTRIAN",
+ "GARAGE_BAY_1","GARAGE_BAY_2",
+}) do
+ local marker=observed[key]
+ assert(marker and marker:GetAttribute("OpeningPanelCount")>0,
+  "missing playable original door "..key)
+ assert(marker:FindFirstChildOfClass("ProximityPrompt"),
+  "imported door lacks an accessible physical interaction "..key)
+ assert(not marker.CanCollide and not marker.CanQuery,
+  "invisible entry marker collides with players")
+end
+assert(arch:FindFirstChild("Suburban Convenience Market")
+ :GetAttribute("RealInteriorCheckout")==true,
+ "existing market counter isn't available for real shopping")
+assert(arch:FindFirstChild("Suburban Detailed Garage")
+ :GetAttribute("RealInteriorDealer")==true,
+ "existing detailed garage hasn't been activated as a shop")
+local originalMarket=arch:FindFirstChild("Suburban Convenience Market")
+local importedCounter=originalMarket:FindFirstChild("Counter",true)
+local counterPart=importedCounter and importedCounter:FindFirstChildWhichIsA("BasePart",true)
+assert(counterPart and counterPart:GetAttribute("RegisteredSuburbanInteraction")=="SNACK" and
+ counterPart:FindFirstChildOfClass("ProximityPrompt"),
+ "original imported market register does not offer server-checked shopping")
+local importedDealer=arch:FindFirstChild("Walk-In Auto Dealer Interior",true)
+assert(importedDealer and importedDealer:GetAttribute("RegisteredSuburbanInteraction")=="STORE" and
+ importedDealer:FindFirstChildOfClass("ProximityPrompt"),
+ "imported auto garage interior has no vehicle dealer interaction")
+print("SF_RIFT_CHECK restored_six_suburban_entries_and_indoor_shopping PASS")
 task.wait(1)
 local meshCount=0
 for _,obj in ipairs(imported:GetDescendants()) do
@@ -304,7 +353,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.25.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.26.0","version mismatch")
 assert(world:GetAttribute("StudioSavesIsolated")==true,
  "Studio must never write a production profile data store")
 local function count(name)

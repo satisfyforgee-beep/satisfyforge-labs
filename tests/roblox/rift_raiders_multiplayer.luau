@@ -759,6 +759,60 @@ if lifeService.Process(a,"SelectCar","HYPERCAR") then
  fail("suburban_auto_shop_unowned_vehicle_selection") return
 end
 print("SF_RIFT_MP_CHECK suburban_auto_shop_owner_validation PASS")
+-- Imported interiors must open via actual, server-controlled door panels.
+-- Do not accept a label-only or teleport-door substitute.
+local Access=require(ServerScriptService:WaitForChild("SuburbanAccess"))
+local countOpened=0
+for _,key in ipairs({
+ "HOUSE_ONE","HOUSE_TWO","MARKET","GARAGE_PEDESTRIAN",
+ "GARAGE_BAY_1","GARAGE_BAY_2",
+}) do
+ local entry=Access.Inspect(key)
+ if not entry or entry.opened or entry.pieces<1 then
+  fail("missing_original_door_registry_"..key) return
+ end
+ if Access.Open(a,key) or Access.Open(b,key) then
+  fail("remote_suburban_door_open_"..key) return
+ end
+ local part=entry.firstPanel
+ local startingPosition=part.Position
+ a.Character:PivotTo(CFrame.new(entry.position+Vector3.new(0,3,0)))
+ task.wait(.35)
+ if not Access.Open(a,key) then
+  fail("walkup_open_rejected_"..key) return
+ end
+ task.wait(.75)
+ local after=Access.Inspect(key)
+ if not after.opened or not after.door:GetAttribute("IsOpen") or
+  not after.anchor:GetAttribute("IsOpen") or
+  part.CanCollide or part.CanQuery or
+  ((part.Position-startingPosition)-entry.delta).Magnitude>.2 then
+  fail("real_original_door_panel_did_not_slide_"..key) return
+ end
+ local blockers={}
+ for _,node in ipairs(workspace:GetPartBoundsInBox(
+  CFrame.new(after.threshold),Vector3.new(2.0,4.0,2.0))) do
+  if node.CanCollide and node:IsDescendantOf(after.building) and
+   not node:IsDescendantOf(after.door) then
+   table.insert(blockers,node.Name)
+  end
+ end
+ print("SF_RIFT_ORIGINAL_DOOR_COLLISION_AUDIT "..key.." blockers="..
+  #blockers.." "..table.concat(blockers,","):sub(1,190))
+ local _,totalOpen=Access.Count()
+ countOpened+=1
+ if totalOpen~=countOpened or not Access.Open(a,key) or
+  select(2,Access.Count())~=countOpened then
+  fail("suburban_open_count_or_duplicate_"..key) return
+ end
+ if Access.Open(b,key) then
+  fail("other_player_remotely_unlocked_"..key) return
+ end
+end
+print("SF_RIFT_MP_CHECK six_server_validated_suburban_real_door_openings PASS")
+a.Character:PivotTo(CFrame.new(0,8,3425))
+task.wait(.25)
+
 -- Complete a legitimate extra suburban workplace to test that real
 -- validated actions advance the intro and one-per-day challenge ledger.
 local job=services:FindFirstChild("Suburban Worksite RETAIL")

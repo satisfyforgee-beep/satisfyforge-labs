@@ -1,6 +1,7 @@
 -- v0.14 Script-free official Roblox Studio Suburban template architecture.
 -- Detailed source houses/stores remain actual prefabs, not generated cubes.
 local ServerStorage=game:GetService("ServerStorage")
+local Access=require(script.Parent:WaitForChild("SuburbanAccess"))
 local Suburbs={}
 local arrivals=Vector3.new(0,8,3425)
 local layout={
@@ -61,6 +62,7 @@ function Suburbs.Build(world,options)
  local countParts=0
  local optimizedDecor=0
  local preservedCollision=0
+ local deadClickDetectors=0
  for _,asset in ipairs(layout) do
   local sample=source:FindFirstChild(asset.name)
   if not sample then warn("Missing official suburban prefab",asset.name) continue end
@@ -86,6 +88,9 @@ function Suburbs.Build(world,options)
   for _,node in ipairs(clone:GetDescendants()) do
    if node:IsA("LuaSourceContainer") then
     node:Destroy()
+   elseif node:IsA("ClickDetector") then
+    node:Destroy()
+    deadClickDetectors+=1
    elseif node:IsA("BasePart") then
     node.Anchored=true
     node.CanTouch=false
@@ -110,6 +115,7 @@ function Suburbs.Build(world,options)
   clone:SetAttribute("EnvironmentalPrefab",true)
   imported+=1;countParts+=pieces
  end
+ local restoredEntrances=Access.Build(folder,{tell=options.tell})
  local arrival=solid(folder,"Suburban Community Arrival",
   Vector3.new(20,.5,15),Vector3.new(0,1.65,3425),
   Color3.fromRGB(154,153,144),Enum.Material.Concrete,true)
@@ -162,6 +168,42 @@ function Suburbs.Build(world,options)
   if options.register and options.register(kind,id,node,step) then
    registered+=1
   end
+ end
+ -- The imported Convenience Market contains an actual furnished interior:
+ -- register its EXISTING checkout for legal earned-coin shopping/snacks.
+ local detailedMarket=folder:FindFirstChild("Suburban Convenience Market")
+ local interiorCheckout=detailedMarket and detailedMarket:FindFirstChild("Counter",true)
+ local insideCounter=interiorCheckout and interiorCheckout:FindFirstChildWhichIsA("BasePart",true)
+ if insideCounter then
+  for _,category in ipairs({"HOME","GARDEN","TECH"}) do
+   register("STORE",category,insideCounter)
+  end
+  register("SNACK","MARKET",insideCounter)
+  activate(insideCounter,"BUY SNACK • 15 COINS",
+   "Walk-In Market Checkout",function(player)
+   if options.process then options.process(player,"BuySnack","MARKET") end
+  end)
+  activate(insideCounter,"SHOP AT COUNTER","Walk-In Market",function(player)
+   if options.tell then
+    options.tell(player,"WELCOME INSIDE! OPEN LIFE → SHOPPING • HOME, GARDEN OR TECH.")
+   end
+  end)
+  detailedMarket:SetAttribute("RealInteriorCheckout",true)
+ end
+ -- The imported auto garage receives an actual interior dealer station too.
+ local importedGarage=folder:FindFirstChild("Suburban Detailed Garage")
+ if importedGarage then
+  local c=importedGarage:GetBoundingBox()
+  local interior=station("Walk-In Auto Dealer Interior",
+   Vector3.new(c.Position.X,4.5,c.Position.Z),
+   "INSIDE AUTO GARAGE","CARS • VEHICLE SHOP")
+  register("STORE","VEHICLE",interior)
+  activate(interior,"BROWSE CARS","Indoor Garage Dealer",function(player)
+   if options.tell then
+    options.tell(player,"WELCOME INSIDE MOTOR ROW • OPEN LIFE → GARAGE TO VIEW OWNED CARS.")
+   end
+  end)
+  importedGarage:SetAttribute("RealInteriorDealer",true)
  end
  local market=station("Official Suburban Market Checkout",
   Vector3.new(208,5,3447),"MARKET","GROCERIES • GARDEN • HOME")
@@ -238,6 +280,8 @@ function Suburbs.Build(world,options)
  folder:SetAttribute("OfficialPrefabCount",imported)
  folder:SetAttribute("DetailedSourceParts",countParts)
  folder:SetAttribute("MicroDecorOptimized",optimizedDecor)
+ folder:SetAttribute("OriginalDoorControllersRepaired",restoredEntrances)
+ folder:SetAttribute("InertImportedClickDetectorsRemoved",deadClickDetectors)
  folder:SetAttribute("PreservedWalkableColliderParts",preservedCollision)
  folder:SetAttribute("StreamingAware",workspace.StreamingEnabled)
  folder:SetAttribute("GeometryOrigin","Official Roblox Studio Suburban")
