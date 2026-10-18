@@ -8,6 +8,7 @@ local Garden=require(script.Parent:WaitForChild("UrbanGardening"))
 local Cafe=require(script.Parent:WaitForChild("CafeService"))
 local Mechanic=require(script.Parent:WaitForChild("MechanicService"))
 local Retail=require(script.Parent:WaitForChild("RetailService"))
+local Courier=require(script.Parent:WaitForChild("CourierService"))
 local Home=require(script.Parent:WaitForChild("HomeLiving"))
 local Architecture=require(script.Parent:WaitForChild("HomeArchitecture"))
 local Life={}
@@ -210,6 +211,8 @@ function Life.Sync(player)
   shift.mechanicScanned and shift.mechanicFault or "")
  player:SetAttribute("RRLifeRetailOrder",shift and shift.id=="RETAIL" and
   shift.retailScanSku or "")
+ player:SetAttribute("RRLifeCourierPackage",shift and shift.id=="COURIER" and
+  shift.courierPackage or "")
  local label=shift and shift.id=="MECHANIC" and
   (shift.progress==0 and "INSPECT CAR AT PIT STOP SCANNER" or
    shift.progress==1 and "REPAIR "..(shift.mechanicFault or "CAR")..
@@ -218,6 +221,10 @@ function Life.Sync(player)
   (shift.progress==0 and "SCAN "..shift.retailScanSku.." AT CORNER MARKET" or
    shift.progress==1 and "RESTOCK "..shift.retailStockSku.." ON THE STORE SHELF" or
    "COLLECT YOUR RETAIL PAYCHECK") or nil)
+ label=label or (shift and shift.id=="COURIER" and shift.courierPackage and
+  (shift.progress==0 and "PICK UP "..shift.courierPackage.." AT RIFT EXPRESS" or
+   shift.progress==1 and "DELIVER PARCEL TO "..shift.courierDestination or
+   "COLLECT YOUR COURIER PAYCHECK") or nil)
  label=label or (shift and shift.id=="BARISTA" and
   (shift.progress==0 and "BREW "..(shift.cafeOrder or "COFFEE") or
    shift.progress==1 and "SERVE DRINK AT CUSTOMER COUNTER" or
@@ -298,6 +305,10 @@ function Life.Build(targetWorld,options)
   getProfile=profile,tell=tell,sync=Life.Sync,reward=context.reward
  })
  Retail.Build(world,{
+  process=function(p,kind,arg) return Life.Process(p,kind,arg) end,
+  tell=tell,sync=Life.Sync,reward=context.reward
+ })
+ Courier.Build(world,{
   process=function(p,kind,arg) return Life.Process(p,kind,arg) end,
   tell=tell,sync=Life.Sync,reward=context.reward
  })
@@ -990,6 +1001,9 @@ function Life.Process(player,kind,arg,step)
    elseif arg=="RETAIL" and nearby(player,downtownWorkSites.RETAIL,18) then
     local scan,stock=Retail.Assign(life.activeShift)
     tell(player,"NEW CUSTOMER ORDER: SCAN "..scan.." AT THE CORNER MARKET, THEN RESTOCK "..stock.." ON ITS SHELF.")
+   elseif arg=="COURIER" and nearby(player,downtownWorkSites.COURIER,18) then
+    local package,destination=Courier.Assign(life.activeShift)
+    tell(player,"NEW RIFT EXPRESS DELIVERY! PICK UP "..package.." AT DEPOT, THEN DELIVER TO "..destination..".")
    elseif arg=="MECHANIC" then
     Mechanic.Assign(life.activeShift)
     tell(player,"NEW VEHICLE IN THE SERVICE BAY! INSPECT IT AT THE PIT STOP DIAGNOSTIC TABLET NEAR MOTOR ROW.")
@@ -1019,7 +1033,13 @@ function Life.Process(player,kind,arg,step)
   return Mechanic.Process(player,kind,arg,life.activeShift)
  elseif kind=="RetailScan" or kind=="RetailStock" then
   return Retail.Process(player,kind,arg,life.activeShift)
+ elseif kind=="CourierPickup" or kind=="CourierDeliver" then
+  return Courier.Process(player,kind,arg,life.activeShift)
  elseif kind=="Task" then
+  if arg=="COURIER" and life.activeShift and life.activeShift.courierPackage then
+   tell(player,"DOWNTOWN COURIERS MUST PICK UP AND DELIVER THE REAL ASSIGNED PACKAGE.")
+   return false
+  end
   if arg=="RETAIL" and life.activeShift and life.activeShift.retailScanSku then
    tell(player,"DOWNTOWN RETAIL WORKERS MUST SCAN THE REAL CUSTOMER ITEM AND RESTOCK THE LABELED SHELF.")
    return false

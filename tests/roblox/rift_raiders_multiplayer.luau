@@ -983,6 +983,97 @@ if (b:GetAttribute("RRLifeRetailOrder") or "")~="" then
  fail("other_player_retail_order_leaked") return
 end
 print("SF_RIFT_MP_CHECK physical_retail_checkout_stock_pay_no_duplicates PASS")
+-- Downtown courier adds a real dispatch / destination job without changing
+-- the generic suburban entry-level career and independent delivery activities.
+local depot=world:FindFirstChild("Downtown Hands-On Delivery Depot")
+local courierApi=require(ServerScriptService:WaitForChild("CourierService"))
+if not depot or #courierApi.Parcels~=3 then fail("physical_courier_depot_missing") return end
+if lifeService.Process(a,"CourierPickup","DOCUMENTS") then
+ fail("courier_pickup_without_shift") return
+end
+a.Character:PivotTo(CFrame.new(employment.Position+Vector3.new(0,5,0)))
+task.wait(.5)
+if not lifeService.Process(a,"Career","COURIER") then
+ fail("courier_downtown_hire_failed") return
+end
+local courierWork=world:FindFirstChild("Downtown Worksite COURIER",true)
+if not courierWork then fail("courier_downtown_worksite_missing") return end
+a.Character:PivotTo(CFrame.new(courierWork.Position+Vector3.new(0,4,0)))
+task.wait(12.5)
+if not lifeService.Process(a,"Work","COURIER") then
+ fail("courier_downtown_shift_denied") return
+end
+local parcel=a:GetAttribute("RRLifeCourierPackage")
+if not table.find(courierApi.Parcels,parcel) or
+ a:GetAttribute("RRLifeTaskStep")~=0 then
+ fail("courier_dispatch_assignment_missing") return
+end
+if lifeService.Process(a,"Task","COURIER",1) or
+ lifeService.Process(a,"CourierPickup",parcel) then
+ fail("courier_generic_task_or_remote_pickup_bypass") return
+end
+local wrongParcel=parcel=="DOCUMENTS" and "GROCERIES" or "DOCUMENTS"
+local wrongBin=depot:FindFirstChild("Courier Pickup "..wrongParcel)
+local correctBin=depot:FindFirstChild("Courier Pickup "..parcel)
+if not wrongBin or not correctBin then fail("courier_package_bins_missing") return end
+a.Character:PivotTo(CFrame.new(wrongBin.Position+Vector3.new(0,4,0)))
+task.wait(1.8)
+if lifeService.Process(a,"CourierPickup",parcel) then
+ fail("courier_wrong_dispatch_bin_distance_bypass") return
+end
+task.wait(.45)
+if lifeService.Process(a,"CourierPickup",wrongParcel) then
+ fail("courier_wrong_package_accepted") return
+end
+a.Character:PivotTo(CFrame.new(correctBin.Position+Vector3.new(0,4,0)))
+task.wait(.5)
+if not lifeService.Process(a,"CourierPickup",parcel) or
+ a:GetAttribute("RRLifeTaskStep")~=1 then
+ fail("courier_actual_pickup_rejected") return
+end
+local address=string.match(a:GetAttribute("RRLifeTaskName") or "",
+ "DELIVER PARCEL TO (%u+)")
+local correctDoor=address and depot:FindFirstChild("Courier Dropoff "..address)
+if not correctDoor then fail("courier_destination_instruction_missing") return end
+if lifeService.Process(a,"CourierDeliver",address) then
+ fail("courier_remote_delivery_bypass") return
+end
+local wrongAddress=address=="APARTMENTS" and "OFFICES" or "APARTMENTS"
+local wrongDoor=depot:FindFirstChild("Courier Dropoff "..wrongAddress)
+a.Character:PivotTo(CFrame.new(wrongDoor.Position+Vector3.new(0,4,0)))
+task.wait(1.8)
+if lifeService.Process(a,"CourierDeliver",address) then
+ fail("courier_delivery_at_wrong_address") return
+end
+task.wait(.45)
+if lifeService.Process(a,"CourierDeliver",wrongAddress) then
+ fail("courier_wrong_destination_accepted") return
+end
+a.Character:PivotTo(CFrame.new(correctDoor.Position+Vector3.new(0,4,0)))
+task.wait(.6)
+local beforeCourierTip=a:GetAttribute("RRCoins") or 0
+if not lifeService.Process(a,"CourierDeliver",address) or
+ a:GetAttribute("RRLifeTaskStep")~=2 or
+ (a:GetAttribute("RRCoins") or 0)<=beforeCourierTip then
+ fail("courier_legitimate_delivery_tip_missing") return
+end
+local afterCourierTip=a:GetAttribute("RRCoins") or 0
+task.wait(.5)
+if lifeService.Process(a,"CourierDeliver",address) or
+ (a:GetAttribute("RRCoins") or 0)~=afterCourierTip then
+ fail("courier_duplicate_delivery_tip") return
+end
+a.Character:PivotTo(CFrame.new(courierWork.Position+Vector3.new(0,4,0)))
+task.wait(.5)
+local shiftCount=a:GetAttribute("RRLifeShifts") or 0
+if not lifeService.Process(a,"Work","COURIER") or
+ (a:GetAttribute("RRLifeShifts") or 0)~=shiftCount+1 then
+ fail("courier_legitimate_wages_denied") return
+end
+if (b:GetAttribute("RRLifeCourierPackage") or "")~="" then
+ fail("courier_other_player_private_order_leaked") return
+end
+print("SF_RIFT_MP_CHECK physical_courier_pickup_route_pay_no_duplicates PASS")
 print("SF_RIFT_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:rift_multiplayer")
 ]==]

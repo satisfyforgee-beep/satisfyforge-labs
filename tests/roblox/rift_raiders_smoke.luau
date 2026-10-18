@@ -237,7 +237,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.22.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.23.0","version mismatch")
 assert(world:GetAttribute("StudioSavesIsolated")==true,
  "Studio must never write a production profile data store")
 local function count(name)
@@ -375,6 +375,28 @@ local item,stock=retail.Assign(sampleRetail)
 assert(table.find(retail.Products,item) and table.find(retail.Products,stock)
  and not sampleRetail.retailScanned,
  "server-selected retail order or restock SKU missing")
+local courierDepot=world:FindFirstChild("Downtown Hands-On Delivery Depot")
+assert(courierDepot and courierDepot:GetAttribute("CourierParcelTypes")==3 and
+ courierDepot:GetAttribute("CourierDestinationTypes")==3 and
+ courierDepot:GetAttribute("ServerValidatedDelivery")==true and
+ courierDepot:GetAttribute("NoBackgroundLoops")==true,
+ "physical courier route and dispatch/depot missing")
+local courier=require(game:GetService("ServerScriptService"):WaitForChild("CourierService"))
+for _,parcel in ipairs(courier.Parcels) do
+ local bin=courierDepot:FindFirstChild("Courier Pickup "..parcel)
+ assert(bin and bin:FindFirstChildOfClass("ProximityPrompt"),
+  "pickup bin missing "..parcel)
+end
+for _,destination in ipairs(courier.Destinations) do
+ local stop=courierDepot:FindFirstChild("Courier Dropoff "..destination)
+ assert(stop and stop:FindFirstChildOfClass("ProximityPrompt"),
+  "delivery door missing "..destination)
+end
+local sampleCourier={id="COURIER",started=os.clock()-5,progress=0,taskAt=0}
+local parcel,address=courier.Assign(sampleCourier)
+assert(table.find(courier.Parcels,parcel) and
+ table.find(courier.Destinations,address) and
+ not sampleCourier.courierPickedUp,"courier assignment invalid")
 local CafeService=require(game:GetService("ServerScriptService"):WaitForChild("CafeService"))
 local coffeeShift={id="BARISTA",started=os.clock()-5,progress=0,taskAt=0}
 local selectedOrder=CafeService.Assign(coffeeShift)

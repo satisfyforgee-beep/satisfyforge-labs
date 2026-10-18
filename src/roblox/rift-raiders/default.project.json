@@ -75,6 +75,9 @@
       },
       "RetailService": {
         "$path": "RetailService.lua"
+      },
+      "CourierService": {
+        "$path": "CourierService.lua"
       }
     },
     "StarterPlayer": {
