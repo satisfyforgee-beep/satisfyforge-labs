@@ -811,6 +811,83 @@ if discoveries.Collect(a,1) or
  fail("keepsake_replay_or_player_isolation") return
 end
 print("SF_RIFT_MP_CHECK suburban_hidden_exploration_no_double_claim PASS")
+-- Genuine mechanic job regression: correct diagnosis, three distinct repair
+-- choices, awarded tip + normal wages, no remote or duplicate rewards.
+local repairFolder=world:FindFirstChild("Pit Stop Detailed Mechanic Bay")
+local repairService=require(ServerScriptService:WaitForChild("MechanicService"))
+local diagnostic=repairFolder and repairFolder:FindFirstChild("Fault Diagnostic Tablet")
+if not repairFolder or not diagnostic then
+ fail("pit_stop_service_garage_missing") return
+end
+if lifeService.Process(a,"MechanicInspect") or
+ lifeService.Process(a,"MechanicRepair","BRAKES") then
+ fail("unauthorized_automotive_repair_without_shift") return
+end
+a.Character:PivotTo(CFrame.new(employment.Position+Vector3.new(0,5,0)))
+task.wait(.5)
+if not lifeService.Process(a,"Career","MECHANIC") then
+ fail("mechanic_job_application_not_accepted") return
+end
+local mechanicWork=world:FindFirstChild("Downtown Worksite MECHANIC",true)
+if not mechanicWork then fail("mechanic_downtown_workstation_missing") return end
+a.Character:PivotTo(CFrame.new(mechanicWork.Position+Vector3.new(0,4,0)))
+task.wait(12.5)
+if not lifeService.Process(a,"Work","MECHANIC") then
+ fail("real_mechanic_shift_not_started") return
+end
+if a:GetAttribute("RRLifeShift")~="MECHANIC" or
+ a:GetAttribute("RRLifeMechanicFault")~="" then
+ fail("secret_fault_must_be_hidden_before_diagnostic") return
+end
+local unexpected=a:GetAttribute("RRLifeTaskStep") or -1
+if unexpected~=0 then fail("mechanic_shift_not_at_step_zero") return end
+a.Character:PivotTo(CFrame.new(diagnostic.Position+Vector3.new(0,5,0)))
+task.wait(1.7)
+if lifeService.Process(a,"MechanicRepair","TIRES") then
+ fail("mechanic_must_diagnose_before_repair") return
+end
+task.wait(.5)
+if not lifeService.Process(a,"MechanicInspect") then
+ fail("mechanic_diagnostic_scan_rejected") return
+end
+local assigned=a:GetAttribute("RRLifeMechanicFault")
+if not table.find(repairService.Faults,assigned) or
+ a:GetAttribute("RRLifeTaskStep")~=1 then
+ fail("diagnostic_did_not_reveal_real_vehicle_fault") return
+end
+local wrongFault=assigned=="BRAKES" and "BATTERY" or "BRAKES"
+local wrongStation=repairFolder:FindFirstChild("Repair Station "..wrongFault)
+local correctStation=repairFolder:FindFirstChild("Repair Station "..assigned)
+if not wrongStation or not correctStation then
+ fail("pit_stop_repair_stations_missing") return
+end
+a.Character:PivotTo(CFrame.new(wrongStation.Position+Vector3.new(0,4,0)))
+task.wait(1.7)
+if lifeService.Process(a,"MechanicRepair",wrongFault) then
+ fail("wrong_vehicle_repair_accepted") return
+end
+a.Character:PivotTo(CFrame.new(correctStation.Position+Vector3.new(0,4,0)))
+task.wait(.5)
+local tipStart=a:GetAttribute("RRCoins") or 0
+if not lifeService.Process(a,"MechanicRepair",assigned) then
+ fail("actual_vehicle_repair_rejected") return
+end
+if a:GetAttribute("RRLifeTaskStep")~=2 or
+ (a:GetAttribute("RRCoins") or 0)<=tipStart then
+ fail("proper_repair_tip_or_progress_missing") return
+end
+task.wait(.45)
+if lifeService.Process(a,"MechanicRepair",assigned) then
+ fail("mechanic_duplicate_tip") return
+end
+a.Character:PivotTo(CFrame.new(mechanicWork.Position+Vector3.new(0,4,0)))
+task.wait(.55)
+local workPaidBefore=a:GetAttribute("RRLifeShifts") or 0
+if not lifeService.Process(a,"Work","MECHANIC") or
+ (a:GetAttribute("RRLifeShifts") or 0)~=workPaidBefore+1 then
+ fail("mechanic_valid_wage_not_collected") return
+end
+print("SF_RIFT_MP_CHECK physical_auto_diagnostic_correct_repair_and_pay PASS")
 print("SF_RIFT_MP_SERVER_PASS players=2")
 StudioTestService:EndTest("PASS:rift_multiplayer")
 ]==]

@@ -237,7 +237,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.20.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.21.0","version mismatch")
 assert(world:GetAttribute("StudioSavesIsolated")==true,
  "Studio must never write a production profile data store")
 local function count(name)
@@ -327,6 +327,35 @@ end
 assert(cafe:FindFirstChild("Cafe Customer Service Register") and
  cafe:FindFirstChild("Solid Oak Service Counter"),
  "coffee service window and detail missing")
+-- Second tactile workplace: official racing MeshParts are a visible
+-- demo car while the service loop itself is independently server checked.
+local mechanicBay=world:FindFirstChild("Pit Stop Detailed Mechanic Bay")
+assert(mechanicBay and mechanicBay:GetAttribute("MechanicFaultTypes")==3,
+ "three-fault interactive auto repair garage missing")
+assert(mechanicBay:GetAttribute("RequiresRealInspection")==true and
+ mechanicBay:GetAttribute("NoBackgroundLoops")==true,
+ "service flow should be physical and efficient")
+local importedDemo=mechanicBay:FindFirstChild("Official Racing Service Demo Car")
+assert(importedDemo and importedDemo:IsA("Model"),
+ "actual official detailed racing car absent from repair bay")
+local repairMeshes=0
+for _,piece in ipairs(importedDemo:GetDescendants()) do
+ if piece:IsA("MeshPart") then repairMeshes+=1 end
+ assert(not piece:IsA("LuaSourceContainer"),"untrusted demo car code inserted")
+end
+assert(repairMeshes==29,"demo car should retain 29 official racing meshes")
+local mechanic=require(game:GetService("ServerScriptService"):WaitForChild("MechanicService"))
+for _,fault in ipairs({"BRAKES","BATTERY","TIRES"}) do
+ local workbench=mechanicBay:FindFirstChild("Repair Station "..fault)
+ assert(workbench and workbench:FindFirstChildOfClass("ProximityPrompt"),
+  "actual repair workbench missing "..fault)
+end
+assert(mechanicBay:FindFirstChild("Fault Diagnostic Tablet"):FindFirstChildOfClass("ProximityPrompt"),
+ "working repair fault scanner not accessible")
+local mechanicShift={id="MECHANIC",started=os.clock()-5,progress=0,taskAt=0}
+local fault=mechanic.Assign(mechanicShift)
+assert(table.find(mechanic.Faults,fault) and not mechanicShift.mechanicScanned,
+ "randomized mechanical fault assignment missing")
 local CafeService=require(game:GetService("ServerScriptService"):WaitForChild("CafeService"))
 local coffeeShift={id="BARISTA",started=os.clock()-5,progress=0,taskAt=0}
 local selectedOrder=CafeService.Assign(coffeeShift)

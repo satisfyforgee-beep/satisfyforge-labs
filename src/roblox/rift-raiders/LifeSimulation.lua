@@ -6,6 +6,7 @@ local Terrain=workspace.Terrain
 local Catalog=require(game:GetService("ReplicatedStorage"):WaitForChild("LifeCatalog"))
 local Garden=require(script.Parent:WaitForChild("UrbanGardening"))
 local Cafe=require(script.Parent:WaitForChild("CafeService"))
+local Mechanic=require(script.Parent:WaitForChild("MechanicService"))
 local Home=require(script.Parent:WaitForChild("HomeLiving"))
 local Architecture=require(script.Parent:WaitForChild("HomeArchitecture"))
 local Life={}
@@ -204,10 +205,16 @@ function Life.Sync(player)
  local nextTarget=shift and taskSites[shift.id] and taskSites[shift.id][shift.progress+1]
  player:SetAttribute("RRLifeCafeOrder",shift and shift.id=="BARISTA" and
   shift.cafeOrder or "")
- local label=shift and shift.id=="BARISTA" and
+ player:SetAttribute("RRLifeMechanicFault",shift and shift.id=="MECHANIC" and
+  shift.mechanicScanned and shift.mechanicFault or "")
+ local label=shift and shift.id=="MECHANIC" and
+  (shift.progress==0 and "INSPECT CAR AT PIT STOP SCANNER" or
+   shift.progress==1 and "REPAIR "..(shift.mechanicFault or "CAR")..
+    " AT THE MATCHING WORKBENCH" or "COLLECT YOUR MECHANIC PAYCHECK") or nil
+ label=label or (shift and shift.id=="BARISTA" and
   (shift.progress==0 and "BREW "..(shift.cafeOrder or "COFFEE") or
    shift.progress==1 and "SERVE DRINK AT CUSTOMER COUNTER" or
-   "COLLECT YOUR BARISTA WAGES") or nil
+   "COLLECT YOUR BARISTA WAGES") or nil)
  player:SetAttribute("RRLifeTaskName",label or
   (nextTarget and nextTarget:GetAttribute("TaskLabel") or
    (shift and "RETURN TO YOUR WORKPLACE FOR WAGES" or "")))
@@ -276,6 +283,10 @@ end
 function Life.Build(targetWorld,options)
  context=options; world=targetWorld
  Cafe.Build(world,{
+  process=function(p,kind,arg) return Life.Process(p,kind,arg) end,
+  getProfile=profile,tell=tell,sync=Life.Sync,reward=context.reward
+ })
+ Mechanic.Build(world,{
   process=function(p,kind,arg) return Life.Process(p,kind,arg) end,
   getProfile=profile,tell=tell,sync=Life.Sync,reward=context.reward
  })
@@ -965,6 +976,9 @@ function Life.Process(player,kind,arg,step)
     local coffee=Cafe.Assign(life.activeShift)
     tell(player,"CUSTOMER WANTS "..coffee..
      "! VISIT THE BEAN & BREW MACHINE NEAR THE DOWNTOWN BARISTA WORKSITE.")
+   elseif arg=="MECHANIC" then
+    Mechanic.Assign(life.activeShift)
+    tell(player,"NEW VEHICLE IN THE SERVICE BAY! INSPECT IT AT THE PIT STOP DIAGNOSTIC TABLET NEAR MOTOR ROW.")
    else
     tell(player,"SHIFT STARTED: "..career.name..
      " • COMPLETE THE TWO WORK TASKS MARKED NEARBY.")
@@ -987,7 +1001,13 @@ function Life.Process(player,kind,arg,step)
   tell(player,"SHIFT COMPLETED! +"..career.wage.." COINS • +14 XP")
  elseif kind=="CafeBrew" or kind=="CafeServe" then
   return Cafe.Process(player,kind,arg,life.activeShift)
+ elseif kind=="MechanicInspect" or kind=="MechanicRepair" then
+  return Mechanic.Process(player,kind,arg,life.activeShift)
  elseif kind=="Task" then
+  if arg=="MECHANIC" then
+   tell(player,"MECHANICS MUST INSPECT THE DEMO CAR AND REPAIR THE ACTUAL FAULT AT THE PIT STOP.")
+   return false
+  end
   if arg=="BARISTA" then
    tell(player,"BARISTAS MUST BREW THE CUSTOMER'S ACTUAL DRINK AND SERVE IT AT THE BEAN & BREW.")
    return false

@@ -10,6 +10,9 @@ Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach 
 
 ## Implemented
 
+- **v0.21 Detailed Pit Stop & True Mechanic Shifts:** The career now uses a physical, customer-car service bay with an official 29-MeshPart Roblox Racing demo vehicle, visible scanner and three distinct brake, battery and tire repair stations. The game assigns one random hidden vehicle fault per shift; the player must diagnose it and use the correct bench to earn one tip before taking their normal mechanic wages. Incorrect, remote or repeat repair requests are rejected by the server. The prior v0.20 city graphics, transit, imported assets and all existing lives/jobs remain intact. See [V0_21_RELEASE_NOTES.md](V0_21_RELEASE_NOTES.md). The vehicle itself is a static detailed exhibit, not a true chassis/engine physics simulation.
+
+
 - **v0.20 Video-benchmarked Downtown Streetscape:** Used public Brookhaven RP, Berry Avenue RP and a 2025 Bloxburg streetscape creator video as independent quality references—not unlicensed private game assets or code. Added **18 official Modern City reusable detailed MeshPart prop models** to the entrance neighborhood, pedestrian crossings and signal lights, bicycle parking, easy-to-read destination signage and modest storefront illumination. The glass-canopy **RiftLife Transit** shelter has 3 free, physically proximity-checked stops to jobs, gardens and residential homes, with multiplayer safety tests. Decorative parts can be hidden in GRAPHICS: LOW, and the graphics toggle is tucked into ACTIONS to reduce default HUD clutter. No Robux, publishing, or save-profile migration. See [V0_20_RELEASE_NOTES.md](V0_20_RELEASE_NOTES.md).
 
 

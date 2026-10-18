@@ -1,3 +1,8 @@
+## v0.21 — Mechanic mini-game with official car art and non-replayable repair rewards
+- Motor Row mechanic activity now takes place at The Pit Stop, with a detailed official Racing-template mesh car, scanner and specialty repair benches.
+- A real randomized diagnostic and correct repair are required for a tip and standard wages. Other players cannot remotely trigger repair rewards.
+- Next: interactive retail transactions, pedestrian conversation depth, pro-quality interior/vehicle assets, and real-device performance testing.
+
 ## v0.20 — Public roleplay video benchmarking and actual first-neighborhood polish
 - Public Brookhaven/Berry Avenue/Bloxburg footage and Creator Hub onboarding/performance documentation informed stronger street-level visual cues and faster access to activities.
 - Imported and placed 18 permitted, official high-detail Modern City StreetLights/Street_SetDressing model instances at street corners and around storefronts, rather than more cheap-looking block props.

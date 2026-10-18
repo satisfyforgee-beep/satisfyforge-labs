@@ -139,3 +139,8 @@ The R15 downtown population now has named proximity conversations and verified c
 - Compare our own gameplay against public Brookhaven, Berry Avenue and Bloxburg city-detailing content; learn legibility and first-minute affordances, never clone proprietary work.
 - Official Modern City meshes visibly enhance the starting town; safety-checked RiftLife Transit gives a first-time user three immediate real destinations.
 - Keep scenic graphics tiered so essential business signs and ProximityPrompt interactions are available even in graphics LOW mode.
+
+
+## v0.21 — Physical auto repair instead of two generic prompts
+- Auto mechanics work on a visible licensed/template 3D demo car. The server secretly assigns one of three faults. The player inspects a diagnosis tablet, repairs the actual matching component at the appropriate specialist bench and receives a single tip and wages.
+- Additional steps and timing must be enforced by the server. Visual quality should continue to be upgraded with permitted models and original meshes, not hidden money or inaccessible content.
