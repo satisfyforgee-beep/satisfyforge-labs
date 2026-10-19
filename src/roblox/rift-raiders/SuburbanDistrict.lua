@@ -41,7 +41,12 @@ function Suburbs.Build(world,options)
  local folder=Instance.new("Folder")
  folder.Name="Official Detailed Suburban Town";folder.Parent=world
  local terrain=workspace.Terrain
- terrain:FillBlock(CFrame.new(0,-6,3600),
+ -- Roblox Terrain voxel cells are 4 studs high. The previous -6/13
+ -- FillBlock yielded an actual walkable grass surface near Y=2.52, higher
+ -- than our Y=1.8 house floors and Y=1.4 roads (burying both).
+ -- Lower the voxel fill by two studs, then inspect the real raycast
+ -- surface rather than trusting theoretical block bounds.
+ terrain:FillBlock(CFrame.new(0,-8,3600),
   Vector3.new(760,13,510),Enum.Material.Grass)
  for _,z in ipairs({3435,3610}) do
   solid(folder,"Neighborhood Asphalt Boulevard",

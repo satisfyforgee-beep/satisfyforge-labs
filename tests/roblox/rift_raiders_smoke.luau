@@ -160,6 +160,22 @@ for _,z in ipairs({2170,2190,2210}) do
   " "..table.concat(blockers,","):sub(1,290))
 end
 local arch=world:WaitForChild("Official Detailed Suburban Town",20)
+-- Check ACTUAL Roblox voxel ground, not the theoretical FillBlock bounds.
+-- v0.28 terrain rose above both the drivable road and the houses' floors.
+local terrainOnly=RaycastParams.new()
+terrainOnly.FilterType=Enum.RaycastFilterType.Include
+terrainOnly.FilterDescendantsInstances={workspace.Terrain}
+local grass=workspace:Raycast(Vector3.new(330,20,3500),
+ Vector3.new(0,-65,0),terrainOnly)
+assert(grass and grass.Instance==workspace.Terrain and
+ math.abs(grass.Position.Y-.5)<.9,
+ "suburban voxel grass is burying the roads or inside floors: "..
+  tostring(grass and grass.Position.Y))
+local road=arch:FindFirstChild("Neighborhood Asphalt Boulevard")
+assert(road and road.Position.Y+road.Size.Y/2>grass.Position.Y+.4,
+ "road surface is submerged below grass terrain")
+print("SF_RIFT_CHECK terrain_voxel_clear_of_original_floor_and_roads PASS",
+ "grassY",grass.Position.Y,"roadTop",road.Position.Y+road.Size.Y/2)
 for _,name in ipairs({
  "Suburban Single Story House","Suburban Two Story House",
  "Suburban Convenience Market","Suburban Gas Station",
@@ -383,7 +399,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.28.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.29.0","version mismatch")
 assert(world:GetAttribute("StudioSavesIsolated")==true,
  "Studio must never write a production profile data store")
 local function count(name)
