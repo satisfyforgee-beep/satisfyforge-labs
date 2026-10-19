@@ -825,6 +825,46 @@ for _,key in ipairs({
  end
 end
 print("SF_RIFT_MP_CHECK six_server_validated_suburban_real_door_openings PASS")
+-- The original detailed house's actual electrical fixtures have physically
+-- interactive shared lights; users cannot toggle them across the map.
+local Lighting=require(ServerScriptService:WaitForChild("SuburbanHomeLights"))
+local availableLights=Lighting.List()
+if #availableLights<12 then
+ fail("original_house_room_switches_not_wired") return
+end
+local lightA,lightB=availableLights[1],availableLights[#availableLights]
+local circuit=Lighting.Inspect(lightA)
+local otherCircuit=Lighting.Inspect(lightB)
+if not circuit or not otherCircuit or circuit.lights<1 or
+ not circuit.firstLight or circuit.fixture==otherCircuit.fixture then
+ fail("lighting_groups_not_independent") return
+end
+a.Character:PivotTo(CFrame.new(0,8,3425))
+b.Character:PivotTo(CFrame.new(0,8,3425))
+task.wait(.45)
+if Lighting.Toggle(a,lightA) or Lighting.Toggle(b,lightB) then
+ fail("remote_house_light_switch_allowed") return
+end
+local before=circuit.firstLight.Enabled
+local untouched=otherCircuit.firstLight.Enabled
+local balance=a:GetAttribute("RRCoins")
+a.Character:PivotTo(CFrame.new(circuit.fixture.Position+Vector3.new(0,-3,0)))
+task.wait(.5)
+if not Lighting.Toggle(a,lightA) or
+ circuit.firstLight.Enabled==before or
+ otherCircuit.firstLight.Enabled~=untouched then
+ fail("original_room_fixture_not_really_toggled") return
+end
+if Lighting.Toggle(a,lightA) or
+ a:GetAttribute("RRCoins")~=balance then
+ fail("lighting_cooldown_or_fake_economy_reward") return
+end
+task.wait(.5)
+if not Lighting.Toggle(a,lightA) or
+ circuit.firstLight.Enabled~=before then
+ fail("original_room_light_cannot_turn_back_on") return
+end
+print("SF_RIFT_MP_CHECK original_furnished_room_lights_shared_server_validated PASS")
 a.Character:PivotTo(CFrame.new(0,8,3425))
 task.wait(.25)
 

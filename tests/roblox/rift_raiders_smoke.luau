@@ -267,6 +267,38 @@ local importedDealer=arch:FindFirstChild("Walk-In Auto Dealer Interior",true)
 assert(importedDealer and importedDealer:GetAttribute("RegisteredSuburbanInteraction")=="STORE" and
  importedDealer:FindFirstChildOfClass("ProximityPrompt"),
  "imported auto garage interior has no vehicle dealer interaction")
+-- Reuse actual prefab ceiling lights; no fake unlit controls.
+local fixtures={}
+local roomLights=0
+local perHome={}
+for _,homeName in ipairs({"Suburban Single Story House",
+ "Suburban Two Story House"}) do
+ local home=arch:FindFirstChild(homeName)
+ perHome[homeName]=home:GetAttribute("FunctionalOriginalRoomLightGroups") or 0
+ assert(perHome[homeName]>=5,
+  "too few restored original light circuits: "..homeName)
+end
+for _,node in ipairs(arch:GetDescendants()) do
+ if node:IsA("BasePart") then
+  local key=node:GetAttribute("OriginalHouseLightKey")
+  if key then
+   assert(not fixtures[key],"duplicate original lighting fixture "..key)
+   fixtures[key]=true
+   roomLights+=1
+   assert((node:GetAttribute("OriginalRoomLightCount") or 0)>0 and
+    node:FindFirstChild("Original Room Light Toggle "..key),
+    "fixture light toggle missing "..key)
+   assert(node:FindFirstChild("Original Room Light Toggle "..key)
+    :IsA("ProximityPrompt"),
+    "room light switch not a usable proximity interaction")
+  end
+ end
+end
+assert(roomLights>=12 and
+ arch:GetAttribute("InteractiveOriginalHouseLightGroups")==roomLights,
+ "original room lights were not rewired in furnished houses")
+print("SF_RIFT_CHECK original_furnished_room_lighting_controls PASS",
+ roomLights)
 print("SF_RIFT_CHECK restored_six_suburban_entries_and_indoor_shopping PASS")
 task.wait(1)
 local meshCount=0
@@ -399,7 +431,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.29.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.30.0","version mismatch")
 assert(world:GetAttribute("StudioSavesIsolated")==true,
  "Studio must never write a production profile data store")
 local function count(name)

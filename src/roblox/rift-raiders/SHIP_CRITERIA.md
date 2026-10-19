@@ -1,6 +1,6 @@
 # Rift Raiders — Finish Line / Public Launch Quality Gates
 
-**Status as of v0.29 (2026-10-18): PROTOTYPE / PRIVATE.** Do not report the game as fully completed until all gates below have objective evidence. No public publishing, paid imports, licensing violations, or Robux activation without owner authorization.
+**Status as of v0.30 (2026-10-19): PROTOTYPE / PRIVATE.** Do not report the game as fully completed until all gates below have objective evidence. No public publishing, paid imports, licensing violations, or Robux activation without owner authorization.
 
 ## 1. Player fun — core experience
 - [x] Clear first-time objective in under 30 seconds, with one-tap access to first interesting region.
@@ -15,7 +15,7 @@
 - [x] Two detailed official sedans, official Racing mesh, distinct original SUV/pickup/sports silhouettes.
 - [ ] Replace each premium car class with a recognizable unique, properly licensed, verified and platform-permitted 3D mesh (including wheels/interior). Do not label placeholder 3D part assemblies photorealistic.
 - [ ] Replace yachts, speedboats, jet skis with materially different 3D mesh hulls/details and driving/occupancy appropriate to each size.
-- [ ] Verify human walk-through and gameplay in at least two original furnished, imported Suburban interiors. v0.26 restored six doors, and v0.28 relocates both furnished house interiors to their actual first floor surface with real sloped footpaths. Automated geometry now proves door heights/ground contact, v0.29 corrects voxel grass that buried roads/floors, and a Studio test computes humanoid navmesh routes through opened original front doors into both homes. Human walk-through of full rooms/stairs and mobile phone play remain required.
+- [ ] Verify human walk-through and gameplay in at least two original furnished, imported Suburban interiors. v0.26 restored six doors, and v0.28 relocates both furnished house interiors to their actual first floor surface with real sloped footpaths. Automated geometry now proves door heights/ground contact, v0.29 corrects voxel grass that buried roads/floors, and a Studio test computes humanoid navmesh routes through opened original front doors into both homes. v0.30 also wires 20 real original room light fixtures to working shared proximity switches, not simulated fake controls. Human walk-through of full rooms/stairs and mobile phone play remain required.
 - [ ] Verify all developer-owned or officially reusable audio/material/mesh permissions on the actual owner account; eliminate noncompliant third-party asset loads.
 - [ ] Improve lighting, sound effects, scenery transitions and visible/interactable NPCs; verify readability under LOW graphics. (v0.27 corrects reverse-facing *moving* traffic and removes emergency NPC position snapping; cinematic/realistic street behavior, light/audio and mobile rendering remain unverified.)
 

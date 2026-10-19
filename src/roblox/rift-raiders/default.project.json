@@ -55,6 +55,9 @@
       "SuburbanAccess": {
         "$path": "SuburbanAccess.lua"
       },
+      "SuburbanHomeLights": {
+        "$path": "SuburbanHomeLights.lua"
+      },
       "ProgressionGoals": {
         "$path": "ProgressionGoals.lua"
       },
