@@ -62,6 +62,7 @@ function Suburbs.Build(world,options)
  local countParts=0
  local optimizedDecor=0
  local preservedCollision=0
+ local floorAlignedHomes=0
  local deadClickDetectors=0
  for _,asset in ipairs(layout) do
   local sample=source:FindFirstChild(asset.name)
@@ -84,6 +85,29 @@ function Suburbs.Build(world,options)
    .60-(box.Position.Y-sz.Y*.5),
    asset.center.Z-box.Position.Z)
   clone:PivotTo(clone:GetPivot()+offset)
+  -- Imported house templates contain basements, detached scenery and other
+  -- deep ornamental geometry. Their bounding-box bottoms do NOT describe
+  -- a walkable ground floor. Align the REAL first-floor surface instead.
+  if asset.name=="Suburban Single Story House" or
+   asset.name=="Suburban Two Story House" then
+   local lowestTop=math.huge
+   for _,part in ipairs(clone:GetDescendants()) do
+    if part:IsA("BasePart") and part.Name=="Floor" and
+     part.Size.X>=8 and part.Size.Z>=8 then
+     local top=part.Position.Y+part.Size.Y/2
+     lowestTop=math.min(lowestTop,top)
+    end
+   end
+   if lowestTop<math.huge then
+    local targetTop=1.8 -- grass surface ~0.5, road surface ~1.4
+    clone:PivotTo(clone:GetPivot()+Vector3.new(0,targetTop-lowestTop,0))
+    clone:SetAttribute("WalkableGroundFloorTop",targetTop)
+    clone:SetAttribute("GroundReferenceMode","ActualFirstFloor")
+    floorAlignedHomes+=1
+   else
+    warn("Cannot find actual house interior floor",asset.name)
+   end
+  end
   local pieces=0
   for _,node in ipairs(clone:GetDescendants()) do
    if node:IsA("LuaSourceContainer") then
@@ -109,13 +133,59 @@ function Suburbs.Build(world,options)
     pieces+=1
    end
   end
-  clone:SetAttribute("GroundLevelBottom",.60)
+  -- Decorative bottom is informational only after accurate floor alignment.
+  local visualBox,visualSize=clone:GetBoundingBox()
+  clone:SetAttribute("GroundLevelBottom",visualBox.Position.Y-visualSize.Y/2)
+  clone:SetAttribute("OriginalPrefabBoundingBottom",.60)
   clone:SetAttribute("OfficialTemplate",true)
   clone:SetAttribute("OriginalVisiblePieces",pieces)
   clone:SetAttribute("EnvironmentalPrefab",true)
   imported+=1;countParts+=pieces
  end
  local restoredEntrances=Access.Build(folder,{tell=options.tell})
+ -- Accessible, non-teleporting sloped footpaths lead from real ground
+ -- into both houses. Source doorway panels and frames remain intact.
+ local approachCount=0
+ for _,house in ipairs({
+  folder:FindFirstChild("Suburban Single Story House"),
+  folder:FindFirstChild("Suburban Two Story House"),
+ }) do
+  if house and house:GetAttribute("GroundReferenceMode")=="ActualFirstFloor" then
+   local doorway=house:FindFirstChild("Accessible "..
+    (house.Name=="Suburban Single Story House" and
+     "Single Story Home" or "Two Story Home").." Entrance")
+   if doorway then
+    local houseBox=house:GetBoundingBox()
+    local a=doorway.Position-houseBox.Position
+    local outward
+    if math.abs(a.X)>math.abs(a.Z) then
+     outward=Vector3.new(a.X<0 and -1 or 1,0,0)
+    else
+     outward=Vector3.new(0,0,a.Z<0 and -1 or 1)
+    end
+    local floorTop=house:GetAttribute("WalkableGroundFloorTop")
+    local grassTop=.5
+    local run=12
+    local slab=.36
+    local yCenter=(floorTop+grassTop)/2-slab/2
+    local midpoint=Vector3.new(doorway.Position.X,yCenter,
+     doorway.Position.Z)+outward*(run/2+.3)
+    local angle=math.atan2(floorTop-grassTop,run)
+    local ramp=Instance.new("Part")
+    ramp.Name="Ground-to-Front-Door Walkway"
+    ramp.Size=Vector3.new(6.7,slab,run+.9)
+    ramp.Anchored=true;ramp.CanCollide=true;ramp.CanTouch=false
+    ramp.Material=Enum.Material.Concrete
+    ramp.Color=Color3.fromRGB(166,160,148)
+    ramp.CFrame=CFrame.lookAt(midpoint,midpoint-outward)*
+     CFrame.Angles(angle,0,0)
+    ramp:SetAttribute("AccessibleGroundApproach",true)
+    ramp:SetAttribute("InteriorFloorTarget",floorTop)
+    ramp.Parent=house
+    approachCount+=1
+   end
+  end
+ end
  local arrival=solid(folder,"Suburban Community Arrival",
   Vector3.new(20,.5,15),Vector3.new(0,1.65,3425),
   Color3.fromRGB(154,153,144),Enum.Material.Concrete,true)
@@ -281,6 +351,8 @@ function Suburbs.Build(world,options)
  folder:SetAttribute("DetailedSourceParts",countParts)
  folder:SetAttribute("MicroDecorOptimized",optimizedDecor)
  folder:SetAttribute("OriginalDoorControllersRepaired",restoredEntrances)
+ folder:SetAttribute("ActualFloorAlignedHouses",floorAlignedHomes)
+ folder:SetAttribute("SlopedFrontWalkways",approachCount)
  folder:SetAttribute("InertImportedClickDetectorsRemoved",deadClickDetectors)
  folder:SetAttribute("PreservedWalkableColliderParts",preservedCollision)
  folder:SetAttribute("StreamingAware",workspace.StreamingEnabled)

@@ -166,13 +166,43 @@ for _,name in ipairs({
  "Suburban Detailed Garage",
 }) do
  local prefab=arch:FindFirstChild(name)
- assert(prefab and prefab:GetAttribute("GroundLevelBottom")==.60,
-  "suburban prefab was not lowered onto real ground: "..name)
- local cf,extents=prefab:GetBoundingBox()
- assert(math.abs((cf.Position.Y-extents.Y/2)-.60)<.15,
-  "floating house/shop prefab at "..name)
+ assert(prefab,"missing imported prefab: "..name)
+ if name=="Suburban Single Story House" or
+  name=="Suburban Two Story House" then
+  assert(prefab:GetAttribute("GroundReferenceMode")=="ActualFirstFloor",
+   "house placement still uses misleading decorative bottom: "..name)
+  local lowest=math.huge
+  for _,floor in ipairs(prefab:GetDescendants()) do
+   if floor:IsA("BasePart") and floor.Name=="Floor" and
+    floor.Size.X>=8 and floor.Size.Z>=8 then
+    lowest=math.min(lowest,floor.Position.Y+floor.Size.Y/2)
+   end
+  end
+  assert(math.abs(lowest-1.8)<.1,
+   "actual house walkable interior still floating: "..name.." "..lowest)
+  local ramp=prefab:FindFirstChild("Ground-to-Front-Door Walkway")
+  assert(ramp and ramp.CanCollide and
+   ramp:GetAttribute("AccessibleGroundApproach")==true,
+   "missing continuous exterior house approach "..name)
+  local nearDoor=ramp.CFrame:PointToWorldSpace(
+   Vector3.new(0,ramp.Size.Y/2,-ramp.Size.Z/2))
+  local nearGrass=ramp.CFrame:PointToWorldSpace(
+   Vector3.new(0,ramp.Size.Y/2,ramp.Size.Z/2))
+  assert(nearDoor.Y>nearGrass.Y and
+   math.abs(nearDoor.Y-1.8)<.2 and
+   math.abs(nearGrass.Y-.5)<.2,
+   "front walkway slopes in wrong direction "..name..
+    " indoor="..nearDoor.Y.." grass="..nearGrass.Y)
+ else
+  local cf,extents=prefab:GetBoundingBox()
+  assert(math.abs((cf.Position.Y-extents.Y/2)-.60)<.15,
+   "non-house prefab floating: "..name)
+ end
 end
-print("SF_RIFT_CHECK suburban_buildings_grounded PASS")
+assert(arch:GetAttribute("ActualFloorAlignedHouses")==2 and
+ arch:GetAttribute("SlopedFrontWalkways")==2,
+ "unrepaired house front-door grounding")
+print("SF_RIFT_CHECK suburban_first_floor_ground_contact_and_sloped_walkways PASS")
 local Access=require(game:GetService("ServerScriptService"):WaitForChild("SuburbanAccess"))
 assert(arch:GetAttribute("RestoredSuburbanEntrances")==6,
  "original suburban doors still unlinked to server interactions")
@@ -353,7 +383,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.27.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.28.0","version mismatch")
 assert(world:GetAttribute("StudioSavesIsolated")==true,
  "Studio must never write a production profile data store")
 local function count(name)
