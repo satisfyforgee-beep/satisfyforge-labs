@@ -4,7 +4,7 @@
 **Verified displayed price:** $7.99  
 **Primary buyer:** faceless short-form creators who want a repeatable structure for factual strange-story videos  
 **Purpose:** remove buyer uncertainty and make the first legitimate sale easier without inventing results, delivery guarantees, scarcity, or income claims  
-**Status:** free preview created, QA-passed, and stored in Drive; owner-side Payhip attachment plus checkout/fulfillment testing remain incomplete
+**Status:** free preview and buyer quick-start created, QA-passed, and stored in Drive; owner-side Payhip package update plus checkout/fulfillment testing remain incomplete
 
 ## Preview asset now ready
 
@@ -14,6 +14,18 @@
 - QA: four letter-size pages; rendered and visually inspected; text extraction and CTA verified
 - Canonical manifest: `sales/CREATOR_KIT_FREE_SAMPLE_ASSET.md`
 - Truth boundary: the file is not yet attached to Payhip, and neither the $0 checkout/delivery path nor paid processing has been verified.
+
+## Buyer quick-start asset now ready
+
+- Exact filename: `SatisfyForge_Creator_Kit_Quick_Start.pdf`
+- Google Drive: https://drive.google.com/file/d/1XjYdP7uYX97VcJTpz7yJHoAaNYAvRBH1/view?usp=drivesdk
+- SHA-256: `b6fef8296f22621e597c74ead9f33e9865d9875e87d6be8c6786b441f3ef22d9`
+- QA: four letter-size pages; rendered and visually inspected; text extraction and Drive readback verified
+- Buyer value: ordered start-here workflow, fifteen-minute setup, seven-session build plan, and reusable publish-readiness record
+- Canonical manifest: `sales/CREATOR_KIT_QUICK_START_ASSET.md`
+- Truth boundary: the file is not yet included in the paid Payhip ZIP and no checkout or fulfillment claim changes because of this asset alone.
+
+This is a buyer-only companion for the paid package, not a replacement for the four-page public preview. Add it only after preserving and verifying the current canonical ZIP for product `MSLBK`, then hash and test the rebuilt package through the documented one-use 100%-off order flow.
 
 ## Truth boundary
 
