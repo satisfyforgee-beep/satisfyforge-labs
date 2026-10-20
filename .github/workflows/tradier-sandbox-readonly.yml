@@ -41,7 +41,9 @@ jobs:
     # Current GitHub Sandbox secret gave Tradier HTTP 401 on 2026-10-20.
     # Keep CI green for local code without repeatedly hitting the bad token.
     # Run only when owner has securely corrected the stored Sandbox token.
-    if: github.event_name == 'workflow_dispatch'
+    # Temporary PREVIEW-ONLY diagnosis on push after owner corrected sandbox secret.
+    # The CLI cannot submit any order; removes this push trigger after inspection.
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     needs: offline-validation
     name: Explicit sandbox identity + preview=true (NO ORDER)
     runs-on: ubuntu-latest

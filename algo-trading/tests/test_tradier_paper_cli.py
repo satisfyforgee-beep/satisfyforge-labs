@@ -73,6 +73,18 @@ class PreviewSmokeTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 tradier_paper_cli.main(["--paper-submit"])
 
+    def test_sanitized_error_stage_does_not_leak_credentials(self):
+        from zerocost_bot.tradier_paper import BrokerUncertain
+        class BrokenClient(DummyClient):
+            last_stage = "orders"
+            def state(self):
+                raise BrokerUncertain("secret-should-not-appear")
+        with patch("tradier_paper_cli.TradierSandbox", return_value=BrokenClient()):
+            with self.assertRaises(tradier_paper_cli.SafeStageError) as e:
+                tradier_paper_cli.inspect_or_preview("SOFI", True)
+        self.assertEqual(str(e.exception), "orders")
+        self.assertNotIn("secret-should-not-appear", str(e.exception))
+
     def test_sanitized_connected_preview_report(self):
         with patch("tradier_paper_cli.TradierSandbox", return_value=DummyClient()):
             with patch("sys.stdout", new_callable=io.StringIO) as out:

@@ -44,9 +44,16 @@ def quote_limit(sb, symbol):
     return price
 
 
+class SafeStageError(RuntimeError):
+    """Only fixed stage labels, never account data, leave this process."""
+
+
 def inspect_or_preview(symbol, do_preview=False):
     client = TradierSandbox()
-    account = client.state()
+    try:
+        account = client.state()
+    except (PaperBlocked, BrokerUncertain):
+        raise SafeStageError(client.last_stage) from None
     summary = {
         "environment": "TRADIER_SANDBOX_ONLY",
         "paper_account_connected": True,
@@ -58,8 +65,14 @@ def inspect_or_preview(symbol, do_preview=False):
         "live_money_trade": False,
     }
     if do_preview:
-        price = quote_limit(client, symbol)
-        result = client.preview(symbol, price)
+        try:
+            price = quote_limit(client, symbol)
+        except (PaperBlocked, BrokerUncertain):
+            raise SafeStageError("delayed_quote") from None
+        try:
+            result = client.preview(symbol, price)
+        except (PaperBlocked, BrokerUncertain):
+            raise SafeStageError(client.last_stage) from None
         summary["preview"] = {
             "status": result["status"],
             "entry_limit": result["entry_limit"],
@@ -83,9 +96,20 @@ def main(argv=None):
         return 2
     try:
         summary = inspect_or_preview(args.symbol, do_preview=args.preview)
+    except SafeStageError as error:
+        # Fixed, code-owned stage labels. Never relay Tradier response
+        # bodies, account metadata, URLs, secrets, or raw exceptions.
+        safe_stages = {
+            "profile", "account_selection", "balances", "positions",
+            "orders", "pending_orders", "account_state_ready",
+            "delayed_quote", "preview_preflight", "preview_request",
+            "preview_validation", "not_started",
+        }
+        stage = str(error) if str(error) in safe_stages else "unspecified"
+        print("Tradier sandbox verification BLOCKED at " + stage +
+              "; no order was submitted.", file=sys.stderr)
+        return 1
     except (PaperBlocked, BrokerUncertain):
-        # Do not print exception messages, account details, auth headers,
-        # brokerage payloads or sensitive URLs.
         print("Tradier sandbox verification BLOCKED; no order was submitted.",
               file=sys.stderr)
         return 1

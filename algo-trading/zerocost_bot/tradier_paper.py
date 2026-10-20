@@ -161,6 +161,7 @@ class TradierSandbox:
         if not self._token or not isinstance(self._token, str):
             raise PaperBlocked("sandbox token missing from local/Actions secret")
         self.transport = transport or self._http
+        self.last_stage = "not_started"
 
     def _http(self, method, path, query=None, form=None):
         if not path.startswith("/") or "//" in path or "://" in path:
@@ -224,9 +225,12 @@ class TradierSandbox:
             raise BrokerUncertain("sandbox network outcome uncertain") from None
 
     def state(self, account_selector=None):
-        account = _choose_account(
-            self._request("GET", "/user/profile"), expected=account_selector)
+        self.last_stage = "profile"
+        profile = self._request("GET", "/user/profile")
+        self.last_stage = "account_selection"
+        account = _choose_account(profile, expected=account_selector)
         base = "/accounts/" + account
+        self.last_stage = "balances"
         balance_res = self._request("GET", base + "/balances")
         balances = balance_res.get("balances")
         if not isinstance(balances, dict):
@@ -243,12 +247,15 @@ class TradierSandbox:
             raise BrokerUncertain("sandbox balance missing or invalid") from None
         if not cash.is_finite() or cash < 0:
             raise BrokerUncertain("sandbox cash negative or non-finite")
+        self.last_stage = "positions"
         positions = _items(self._request("GET", base + "/positions"),
                            "positions", "position")
+        self.last_stage = "orders"
         orders = _items(self._request(
             "GET", base + "/orders", query={"limit": 1000}), "orders", "order")
         if len(orders) >= 1000:
             raise BrokerUncertain("too many sandbox orders to confirm uniqueness")
+        self.last_stage = "pending_orders"
         pending = balances.get("pending_orders_count")
         if pending is None:
             raise BrokerUncertain("sandbox pending order count unavailable")
@@ -258,6 +265,7 @@ class TradierSandbox:
             raise BrokerUncertain("bad pending order count") from None
         if pending < 0:
             raise BrokerUncertain("bad pending order count")
+        self.last_stage = "account_state_ready"
         return {
             "account": account, "cash": cash,
             "positions": positions, "orders": orders, "pending": pending,
@@ -279,11 +287,14 @@ class TradierSandbox:
             raise PaperBlocked("timezone required")
         snap = self.state(account_selector)
         entry = _money(price)
+        self.last_stage = "preview_preflight"
         self._flat(snap, entry, symbol)
         tag = _tag(snap["account"], now.astimezone(_ET).date(), symbol)
         form = build_paper_otoco(symbol, entry, tag=tag)
+        self.last_stage = "preview_request"
         result = self._request("POST", "/accounts/" + snap["account"] + "/orders",
                                form=form, paper_armed=False)
+        self.last_stage = "preview_validation"
         return dict(_normalize_preview(result), symbol=symbol,
                     entry_limit=str(entry), max_notional="20.00",
                     otoco_exits=True, source="TRADIER_SANDBOX_15_MIN_DELAYED")
