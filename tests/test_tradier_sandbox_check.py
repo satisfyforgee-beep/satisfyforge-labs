@@ -56,8 +56,9 @@ class SandboxCheckTests(unittest.TestCase):
         output = io.StringIO()
         with patch.dict(mod.os.environ, {"TRADIER_SANDBOX_TOKEN": "private-token-should-not-appear"}):
             with patch.object(mod, "check", side_effect=err):
-                with redirect_stderr(output):
-                    result = mod.main()
+                with patch.object(mod.sys, "argv", ["tradier_sandbox_check.py"]):
+                    with redirect_stderr(output):
+                        result = mod.main()
         self.assertEqual(result, 1)
         self.assertIn("profile returned HTTP 401", output.getvalue())
         self.assertNotIn("private-token-should-not-appear", output.getvalue())
