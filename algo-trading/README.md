@@ -90,3 +90,13 @@ CSV header: `symbol,time,open,high,low,close,volume`. Time must include timezone
    funding and live trading, including exchange/regulatory account limits.
 
 Never place brokerage secrets or account numbers in the public GitHub repo.
+
+## v0.2 multi-agent research layer (stacked review branch)
+
+The next review adds a **live-money-ready architecture, not live-money execution**:
+independent algorithmic evidence reviewers, risk vetoes, persistent proposal
+journal, and a free Alpaca IEX live-data **research-only** WebSocket listener.
+Run `python3 -m unittest discover -s tests -v` to test offline. See
+[`LIVE_TRADING_ROADMAP.md`](LIVE_TRADING_ROADMAP.md) for exact implemented
+features, data limitations, stop-loss gaps, free setup, and activation gates.
+**Do not arm paper or live broker orders from this branch.**

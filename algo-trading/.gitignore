@@ -7,3 +7,9 @@ __pycache__/
 *.pem
 .secrets/
 results/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.db
+*.db-wal
+*.db-shm
