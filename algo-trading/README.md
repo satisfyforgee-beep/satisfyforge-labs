@@ -90,3 +90,21 @@ CSV header: `symbol,time,open,high,low,close,volume`. Time must include timezone
    funding and live trading, including exchange/regulatory account limits.
 
 Never place brokerage secrets or account numbers in the public GitHub repo.
+
+## v0.2 multi-agent research layer (stacked review branch)
+
+The next review adds a **live-money-ready architecture, not live-money execution**:
+independent algorithmic evidence reviewers, risk vetoes, persistent proposal
+journal, and a free Alpaca IEX live-data **research-only** WebSocket listener.
+Run `python3 -m unittest discover -s tests -v` to test offline. See
+[`LIVE_TRADING_ROADMAP.md`](LIVE_TRADING_ROADMAP.md) for exact implemented
+features, data limitations, stop-loss gaps, free setup, and activation gates.
+**Do not arm paper or live broker orders from this branch.**
+
+Optional localhost AI advisor research is isolated in `zerocost_bot/ollama_advisors.py`:
+no local Ollama installation or live model inference has been verified.
+
+`zerocost_bot/coordinator.py` is the additional gated paper-only integration:
+broker account readback, fresh risk checks, journal-before-submit and broker
+uncertainty stop. Tests mock broker responses; no simulated or live orders were
+sent to Alpaca. The live-trading activation path remains unimplemented.
