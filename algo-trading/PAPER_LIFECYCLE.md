@@ -21,17 +21,24 @@ handling, or automatic strategy-triggered submission.
 | Live funds / live broker orders / options trading | **NOT implemented/authorized** |
 | Realtime live execution signal | **NOT available from sandbox**; delayed market data |
 
-**Latest integration status (October 20, 4:26 p.m. ET):** The prior
-read-only GitHub sandbox test had succeeded, but the subsequent protected
-preview workflow received **HTTP 401 at GET /user/profile**. That is a sandbox
-authentication/entitlement issue, not an order preview or trading result.
-The Actions secret is nonempty, but its current value is rejected. Only the
-account owner should inspect the present *Sandbox* key at
-https://web.tradier.com/user/api and securely update the
-`TRADIER_SANDBOX_TOKEN` repository Actions secret if it differs. Do not
-paste or screenshot the revealed token. Since the credential currently fails,
-a push runs only the offline tests; the broker-preview job requires a
-deliberate manual workflow dispatch after the key is corrected.
+**Verified integration status (October 20, 2026):** The owner updated
+the existing GitHub Actions SANDBOX secret. The re-run successfully
+authenticated, found one simulated brokerage account and retrieved a delayed
+quote. The order-preview CLI was initially blocked at the empty positions
+endpoint. Tradier returns empty collections as the literal string `"null"`,
+so the parser was corrected with a narrow allowlist and regression tests.
+The subsequent Actions run **successfully completed a one-share SOFI OTOCO
+preview=true with a simulated entry limit of $14.76**. It reported no
+existing positions, no pending or prior-session orders, and available
+simulated cash. The preview confirmed its bracket parameters and did
+**NOT** submit an order, create a position, or place any live trade.
+
+Evidence: https://github.com/satisfyforgee-beep/satisfyforge-labs/actions/runs/39500872171
+
+The existing secret should **not** be rotated unnecessarily. The
+broker-authenticated preview job has been returned to manual dispatch
+only; ordinary pushes run the offline safety tests without touching the
+sandbox brokerage API.
 
 ## Zero-cost verification in GitHub Actions
 

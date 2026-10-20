@@ -163,3 +163,7 @@ The proven Tradier sandbox GitHub Actions workflow is extended to run this
 protected preview using the **existing** repository secret. See
 [PAPER_LIFECYCLE.md](PAPER_LIFECYCLE.md) for incomplete child-exit
 reconciliation, market-data limitations, security and next tests.
+
+**Broker milestone verified, October 20, 2026:** Sandbox OTOCO order preview
+returned PREVIEW_OK with no simulated or real order submitted. GitHub
+[verification run](https://github.com/satisfyforgee-beep/satisfyforge-labs/actions/runs/39500872171).
