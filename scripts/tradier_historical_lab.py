@@ -219,6 +219,48 @@ def simulate(bars, signals, start, stop, *, budget=30.0, cost_bps=20.0,
     }
 
 
+
+def walkforward_training_folds(bars, *, budget=30.0, cost_bps=20.0, fee=0.0):
+    """Anchored, sequential train -> next-window validation entirely PRE-holdout.
+
+    Each fold selects a strategy solely from earlier dates; each following
+    window starts fresh and is marked to its own close. No fold tests
+    influence the independent outer holdout dataset or global ticker ranking.
+    """
+    split = int(len(bars) * 0.7)
+    boundaries = (int(split * 0.55), int(split * 0.76), split)
+    folds = []
+    for train_end, test_end in zip(boundaries, boundaries[1:]):
+        if train_end <= 100 or test_end - train_end < 30:
+            raise ValueError("Insufficient walkforward sample")
+        choices = []
+        for strategy in STRATEGIES:
+            sig = signals_for(bars[:train_end], strategy)
+            train = simulate(bars[:train_end], sig, 60, train_end,
+                             budget=budget, cost_bps=cost_bps, fee=fee)
+            if train["entries"] >= 2 and train["exits"] >= 1:
+                choices.append((training_score(train), strategy))
+        if not choices:
+            folds.append({"train_through": bars[train_end - 1].day.isoformat(),
+                          "test_through": bars[test_end - 1].day.isoformat(),
+                          "status": "ABSTAIN", "reason": "Not enough earlier trades"})
+            continue
+        chosen = sorted(choices, key=lambda item: (-item[0], item[1]))[0][1]
+        sig = signals_for(bars[:test_end], chosen)
+        tested = simulate(bars[:test_end], sig, train_end, test_end,
+                          budget=budget, cost_bps=cost_bps, fee=fee)
+        folds.append({
+            "train_through": bars[train_end - 1].day.isoformat(),
+            "test_through": bars[test_end - 1].day.isoformat(),
+            "selected_before_fold": chosen,
+            "return_pct": tested["return_pct"],
+            "max_dd_pct": tested["max_dd_pct"],
+            "entries": tested["entries"],
+            "status": ("POSITIVE" if tested["return_pct"] > 0 and tested["entries"] >= 2
+                       else "FAILED_OR_THIN"),
+        })
+    return folds
+
 def analyze_symbol(bars, *, budget=30.0, cost_bps=20.0, fee=0.0):
     """Select on training ONLY; evaluate winning training candidate on holdout."""
     if len(bars) < MIN_BARS:
@@ -262,6 +304,8 @@ def analyze_symbol(bars, *, budget=30.0, cost_bps=20.0, fee=0.0):
         "holdout_start": bars[split].day.isoformat(),
         "holdout_end": bars[-1].day.isoformat(),
         "selected": selected, "training": trial, "test": outcome,
+        "walkforward_inside_training": walkforward_training_folds(
+            bars, budget=budget, cost_bps=cost_bps, fee=fee),
         "buyhold_holdout": baseline,
         "note": "Daily unadjusted bars; no corporate-action/borrow/tax model; "
                 "next-open fills hypothetical; selection only on training",
@@ -327,12 +371,15 @@ def portfolio_research_decision(reports):
     choice = ranking[0]
     chosen = reports[choice["symbol"]]
     test = chosen.get("test")
-    status = ("PASS" if not test or test["gate"] != "RESEARCH ONLY - NOT VERIFIED EDGE"
+    folds = chosen.get("walkforward_inside_training", [])
+    stable = len(folds) == 2 and all(x.get("status") == "POSITIVE" for x in folds)
+    status = ("PASS" if not test or test["gate"] != "RESEARCH ONLY - NOT VERIFIED EDGE" or not stable
               else "RESEARCH ONLY - NEEDS INDEPENDENT CONFIRMATION")
     return {"status": status, "reason": "Top candidate chosen without seeing any holdout results",
             "training_ranking": ranking,
             "precommitted_candidate": choice,
             "candidate_holdout_result": test,
+            "candidate_earlier_walkforward": folds,
             "out_of_sample_benchmark": chosen["buyhold_holdout"],
             "no_live_trading_authorized": True}
 
