@@ -207,8 +207,10 @@ function Courier.Process(player,kind,arg,shift)
   type(shift.courierPackage)~="string" then return false end
  local now=os.clock()
  if kind=="CourierPickup" then
+  -- Match the actual pickup prompt's eight-stud activation range.
+  -- Bins are fourteen studs apart, so a neighboring bin remains out of range.
   if type(arg)~="string" or not bins[arg] or
-   not close(player,bins[arg],6) or
+   not close(player,bins[arg],8) or
    (shift.progress~=0 and not (shift.progress==1 and
     shift.courierPickedUp and not Courier.HasPackage(player,shift))) or
    now-shift.started<1.5 then return false end

@@ -299,6 +299,32 @@ assert(roomLights>=12 and
  "original room lights were not rewired in furnished houses")
 print("SF_RIFT_CHECK original_furnished_room_lighting_controls PASS",
  roomLights)
+-- Original window slats remain physical art and are raised by a server control.
+local blindCount=0
+for _,homeName in ipairs({"Suburban Single Story House",
+ "Suburban Two Story House"}) do
+ local home=arch:FindFirstChild(homeName)
+ assert(home and (home:GetAttribute("FunctionalOriginalWindowBlinds") or 0)>=10,
+  "original furnished house missing working window blinds: "..homeName)
+end
+for _,node in ipairs(arch:GetDescendants()) do
+ if node:IsA("Model") then
+  local key=node:GetAttribute("OriginalWindowBlindKey")
+  if key then
+   blindCount+=1
+   local rod=node:FindFirstChild("Raise")
+   local prompt=rod and rod:FindFirstChild("Original Window Blind "..key)
+   assert(rod and rod:IsA("BasePart") and prompt and
+    prompt:IsA("ProximityPrompt") and
+    (node:GetAttribute("OriginalBlindSlatCount") or 0)>=18,
+    "original window blind not actually interactive: "..key)
+  end
+ end
+end
+assert(blindCount==21 and
+ arch:GetAttribute("InteractiveOriginalWindowBlinds")==blindCount,
+ "expected 21 original working window blinds, found "..blindCount)
+print("SF_RIFT_CHECK original_furnished_window_blinds PASS",blindCount)
 print("SF_RIFT_CHECK restored_six_suburban_entries_and_indoor_shopping PASS")
 task.wait(1)
 local meshCount=0
