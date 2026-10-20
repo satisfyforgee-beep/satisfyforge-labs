@@ -108,3 +108,23 @@ no local Ollama installation or live model inference has been verified.
 broker account readback, fresh risk checks, journal-before-submit and broker
 uncertainty stop. Tests mock broker responses; no simulated or live orders were
 sent to Alpaca. The live-trading activation path remains unimplemented.
+
+
+## v0.3 read-only multi-feed coverage extension
+
+See [DATA_COVERAGE.md](DATA_COVERAGE.md) for the exact source matrix,
+limits and security requirements. The new `market_coverage.py` rejects
+stale, unentitled, contradictory or misclassified quotes. Read-only
+`read_only_feeds.py` parses Alpaca IEX, consolidated Tradier LIVE
+stock/options, delayed Tradier sandbox and Kraken public USD crypto spot
+data. No broker orders or real-money access are part of this addition.
+
+```bash
+python3 coverage_report.py --demo  # synthetic, NOT current prices
+python3 coverage_report.py --kraken-public  # public, real Kraken-only BTC/USD
+```
+
+Tradier live quotes require a separately created eligible brokerage
+account, a locally stored production data token, and an explicit read-only
+enable gate. They have NOT been connected or retrieved. The base v0.2
+trading/paper constraints above remain fully in force.

@@ -153,3 +153,17 @@ This coordinator is **not** activated by the stream research CLI; integration
 into a securely hosted, authorized paper-forward runner remains a separate
 acceptance gate. It rejects non-PaperBroker adapters. A real-money adapter
 remains absent, by design.
+
+
+## v0.3 quote coverage (new stacked review)
+
+Added a fail-closed multi-provider source registry/quote-quality gate and
+provider adapters for IEX, Tradier consolidated LIVE REST/stream message
+parsing, and public Kraken crypto spot order-book research. This is
+**market data only**, not multi-broker execution. Read-only Kraken BTC/USD
+REST retrieval was verified in a live public request on October 20,
+2026; test fixture prices are explicitly labeled synthetic. Tradier
+account/tokens and all live-money order transports remain absent.
+See [DATA_COVERAGE.md](DATA_COVERAGE.md) and do not treat broad source
+support as unrestricted full market coverage, profit evidence, or live
+authorization.

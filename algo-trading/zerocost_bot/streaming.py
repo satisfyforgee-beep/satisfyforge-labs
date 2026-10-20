@@ -98,7 +98,12 @@ class LiveResearch:
         if any(v.agent == "data_integrity" for v in d.votes):
             return None
         self.last_evaluated[symbol] = last.time
-        return d.as_report()
+        report = d.as_report()
+        report["market_data"] = {
+            "source": "alpaca_iex", "coverage": "single_venue",
+            "not_consolidated": True, "live_order_authorized": False,
+        }
+        return report
 
 
 async def stream_research(symbols=DEFAULT_SYMBOLS, output=print):

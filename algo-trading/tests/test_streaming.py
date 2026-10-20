@@ -45,6 +45,8 @@ class StreamTests(unittest.TestCase):
         self.assertIsNotNone(report)
         self.assertEqual(report["action"],"candidate")
         self.assertEqual(report["symbol"],"SOFI")
+        self.assertEqual(report["market_data"]["coverage"], "single_venue")
+        self.assertFalse(report["market_data"]["live_order_authorized"])
         self.assertIsNone(runner.ingest(q,NOW))
         self.assertIsNone(runner.ingest(bar("SOFI",19,last=True),NOW))
     def test_max_free_symbols(self):
