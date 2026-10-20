@@ -2,7 +2,7 @@
 
 **Verified baseline (2026-10-20):** GitHub Actions run 39474133636 completed successfully: sandbox token authenticated, one paper account detected, SPY delayed quote retrieved, four offline smoke tests passed. The token is stored as a GitHub Actions repository secret `TRADIER_SANDBOX_TOKEN`; **it is not in GitHub source control.**
 
-Live status must be rechecked; a past successful run does not prove current access. The live brokerage margin-to-cash request is separate from the sandbox.
+**Latest authenticated recheck (2026-10-20 20:12 UTC): FAILED with HTTP 401 from the sandbox profile endpoint, while 12 offline tests passed.** The quote-screen step was skipped because authentication failed. The token might have been rotated or revoked, but this is not confirmed. Do not overwrite a secret without verifying it is the SANDBOX token. Re-run once after checking the secret's value through the owner-only GitHub Actions Secrets UI. A past successful run does not prove current access. The live brokerage margin-to-cash request is separate from the sandbox.
 
 ## Scope and safeguards
 
@@ -10,12 +10,12 @@ Live status must be rechecked; a past successful run does not prove current acce
 - Sandbox quotes are approximately 15 minutes delayed and can be much staler after market close. `bid_date`, `ask_date` and `trade_date` are epoch milliseconds; the scanner shows the oldest as-of timestamp and flags data older than 30 minutes. A single delayed snapshot is **not** a signal to trade, or proof of executable bid/ask.
 - The scanner handles stocks and ETFs only; it estimates affordable **whole shares** with a hypothetical $30 cash-only budget. It rejects missing/crossed bids and asks, oversized spreads, non-stock instruments and unavailable timestamps by flag. It does **not** recommend buys.
 - The offline replay ledger operates on locally supplied **hypothetical** CSV data. It assumes buys at the supplied ask and sells at the supplied bid, supports manually specified fees, refuses shorts and borrowing, and marks open holdings to the last supplied bid. It does not simulate slippage, volume constraints, taxes, execution uncertainty, liquidity shocks or options greeks, and is not a full backtest.
-- No continuous scanner, scheduled trade strategy, broker order placement, capital transfers or real-money API access. All scans are initiated by trusted code commits to this one branch or manual workflow dispatch.
+- No continuous scanner, scheduled trade strategy, broker order placement, capital transfers or real-money API access. In the current draft PR, scans run only on trusted code pushes to its fixed branch. Manual workflow dispatch may require the workflow to exist on the default branch after review/merge.
 - This is a **public repository**. Never commit/log keys, account IDs, actual transactions, other personally identifiable information or brokerage balances. Do not upload local paper journals into public CI/artifacts. Do not run secret-bearing jobs from untrusted PRs.
 
 ## How to use
 
-1. To inspect the GitHub sandbox job, visit **Actions → Tradier Sandbox Read-Only Verification**. It runs the tests, reads sandbox quotes, then prints *non-personal* delayed research summaries. It must have the `TRADIER_SANDBOX_TOKEN` repository secret. No paid services or upgrades are required.
+1. To inspect the GitHub sandbox job, visit **Actions → Tradier Sandbox Read-Only Verification**. It runs the offline tests, checks authenticated sandbox read-only access and, **only if that succeeds**, prints non-personal delayed research summaries. It must have a currently authorized sandbox token in the `TRADIER_SANDBOX_TOKEN` repository secret. No paid services or upgrades are required.
 2. On your personal, trusted computer, securely set environment variable `TRADIER_SANDBOX_TOKEN` with your **sandbox** token. Avoid shell history, source files and chat messages. Run `python3 scripts/tradier_sandbox_check.py --symbol SPY` to check the sandbox connection.
 3. Run `python3 scripts/tradier_paper_lab.py --scan --symbols SOFI,AAL,F,PLTR,SPY --budget 30` to inspect the delayed paper-budget screen. The scanner does not request or print account details.
 4. To replay a **fully synthetic or locally stored** hypothetical share ledger, prepare a private CSV with exact headers `timestamp,symbol,action,shares,bid,ask`, timestamp in ISO 8601 with timezone, and chronological rows. Example rows:
