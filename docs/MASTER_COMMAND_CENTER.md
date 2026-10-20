@@ -260,6 +260,14 @@ Roblox Studio/device testing remains a genuine local/desktop requirement unless 
 - Kroger's public developer surface exposes product/location/identity/cart capabilities, which can support an owned price/deal/cart intelligence tool, but a supported public coupon-clipping operation has not been established. Do not call a price scanner 'coupon clipping.'
 - Actual account coupon clipping remains blocked until an authenticated Kroger-supported workflow exists.
 
+## Tradier sandbox research lab (read-only)
+
+- Draft PR #72 adds a Tradier sandbox API authentication check, a delayed stock/ETF watchlist screen and an **offline-only hypothetical share ledger** with bid/ask fill assumptions, cash-only limits and synthetic test examples.
+- The read-only API is pinned to `sandbox.tradier.com`. No orders, live brokerage calls, funding, or recurring scans. Credentials belong exclusively in GitHub Actions repository secrets, never this **public** repository.
+- 2026-10-20: authenticated sandbox quote check **previously passed**. The latest authenticated CI recheck returned **HTTP 401** while all 12 offline tests passed; re-verification is required before calling the new scanner operational.
+- No real or paper broker trades have been submitted by this subsystem. The simulated ledger is **not** verified brokerage performance. Keep PR draft until the token issue and tests are reviewed.
+- Detailed owner instructions and status: `docs/TRADIER_SANDBOX_SETUP.md`.
+
 ## Automation policy
 
 Active automation slots are scarce. Prefer multifunction loops instead of one task per old chat.
