@@ -83,7 +83,36 @@ def sandbox_history(token, symbol, start, end, getter=fetch_json):
     # Requires the existing GET-only SANDBOX allowlist.
     data = getter("/markets/history", token,
                   params={"symbol": symbol, "interval": "daily", "start": start, "end": end})
-    return parse_history(data, asof=end_day)
+    quality = quality_counts(data, end_day)
+    # Refuse chronology errors, large corporate-action-like jumps and excessive gaps.
+    bad = quality["missing_or_bad_field"] + quality["invalid_ohlc"]
+    maximum = min(5, max(2, int(quality["rows"] * 0.015)))
+    if (not quality["rows"] or quality["date_or_order"] or quality["excessive_jump"]
+            or bad > maximum):
+        raise ValueError("Historical data exceeded strict cleaning limits")
+    raw = (data.get("history") or {}).get("day")
+    if isinstance(raw, dict):
+        raw = [raw]
+    clean = []
+    discarded_run = 0
+    for row in raw:
+        try:
+            o, h, l, c = [safe_number(row[k]) for k in ("open", "high", "low", "close")]
+            v = int(row["volume"])
+            date.fromisoformat(row["date"])
+            valid = min(o,h,l,c) > 0 and h >= max(o,c,l) and l <= min(o,c,h) and v >= 0
+        except (ValueError, KeyError, TypeError, AttributeError, OverflowError):
+            valid = False
+        if not valid:
+            discarded_run += 1
+            if discarded_run > 2:
+                raise ValueError("Consecutive historical gaps too large")
+            continue
+        discarded_run = 0
+        clean.append(row)
+    parsed = parse_history({"history": {"day": clean}}, asof=end_day)
+    # Training must use transparent QA annotations; never silently interpolate bars.
+    return parsed, quality
 
 
 def signals_for(bars, strategy):
@@ -316,10 +345,10 @@ def main(argv=None):
                                              "start": args.start, "end": end})
                     print(json.dumps({"symbol": symbol, "quality": quality_counts(raw, date.fromisoformat(end))}))
                     continue
-                bars = sandbox_history(token, symbol, args.start, end)
+                bars, quality = sandbox_history(token, symbol, args.start, end)
                 report = analyze_symbol(bars, budget=args.budget,
                                         cost_bps=args.cost_bps, fee=args.fee)
-                print(json.dumps({"symbol": symbol, **report}, sort_keys=True,
+                print(json.dumps({"symbol": symbol, "data_quality": quality, **report}, sort_keys=True,
                                  separators=(",", ":"), allow_nan=False))
             except (ValueError, OSError, HTTPError, URLError) as error:
                 # Only fixed known diagnostic labels. Never print provider response,
@@ -333,7 +362,9 @@ def main(argv=None):
                              "Bars must be strictly chronological and unique": "UNSORTED_HISTORY",
                              "Impossible price, volume or future date": "INVALID_OHLC_OR_DATE",
                              "Malformed historical bar": "MALFORMED_BAR",
-                             "Non-object history bar": "MALFORMED_BAR"}
+                             "Non-object history bar": "MALFORMED_BAR",
+                             "Historical data exceeded strict cleaning limits": "QUALITY_LIMIT_EXCEEDED",
+                             "Consecutive historical gaps too large": "CONSECUTIVE_GAPS"}
                     code = known.get(str(error), "UNEXPECTED_HISTORY_FORMAT")
                 else:
                     code = "NETWORK_ERROR"
