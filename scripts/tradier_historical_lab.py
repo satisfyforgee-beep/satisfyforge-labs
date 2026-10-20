@@ -232,7 +232,10 @@ def walkforward_training_folds(bars, *, budget=30.0, cost_bps=20.0, fee=0.0):
     folds = []
     for train_end, test_end in zip(boundaries, boundaries[1:]):
         if train_end <= 100 or test_end - train_end < 30:
-            raise ValueError("Insufficient walkforward sample")
+            folds.append({"train_through": bars[train_end - 1].day.isoformat(),
+                          "test_through": bars[test_end - 1].day.isoformat(),
+                          "status": "ABSTAIN", "reason": "Insufficient training/fold bars"})
+            continue
         choices = []
         for strategy in STRATEGIES:
             sig = signals_for(bars[:train_end], strategy)
