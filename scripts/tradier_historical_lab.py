@@ -239,6 +239,41 @@ def analyze_symbol(bars, *, budget=30.0, cost_bps=20.0, fee=0.0):
     }
 
 
+
+def quality_counts(data, cutoff):
+    """Only aggregate public OHLC quality; never echo raw vendor responses."""
+    raw = (data.get("history") or {}).get("day") if isinstance(data, dict) else None
+    if isinstance(raw, dict):
+        raw = [raw]
+    out = {"rows": 0, "valid": 0, "missing_or_bad_field": 0, "invalid_ohlc": 0,
+           "date_or_order": 0, "excessive_jump": 0}
+    if not isinstance(raw, list):
+        return out
+    out["rows"] = len(raw)
+    prior_date = prior_close = None
+    for x in raw:
+        try:
+            d = date.fromisoformat(x["date"])
+            o, h, l, c = [safe_number(x[k]) for k in ("open", "high", "low", "close")]
+            v = int(x["volume"])
+        except (ValueError, KeyError, TypeError, AttributeError, OverflowError):
+            out["missing_or_bad_field"] += 1
+            continue
+        if (prior_date is not None and d <= prior_date) or d > cutoff:
+            out["date_or_order"] += 1
+        if min(o,h,l,c) <= 0 or h < max(o,c,l) or l > min(o,c,h) or v < 0:
+            out["invalid_ohlc"] += 1
+        if prior_close and abs(c / prior_close - 1.0) > 0.5:
+            out["excessive_jump"] += 1
+        if (out["date_or_order"] + out["invalid_ohlc"] + out["missing_or_bad_field"]) == 0:
+            out["valid"] += 1
+        else:
+            # Counters are aggregate diagnostics; exclude this bar from valid tally.
+            if (prior_date is None or d > prior_date) and d <= cutoff and min(o,h,l,c) > 0 and h >= max(o,c,l) and l <= min(o,c,h) and v >= 0:
+                out["valid"] += 1
+        prior_date, prior_close = d, c
+    return out
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Read-only Tradier historical holdout research")
     parser.add_argument("--symbols", default="SOFI,AAL,F")
@@ -249,6 +284,8 @@ def main(argv=None):
                         help="Per-side adverse execution cost in basis points")
     parser.add_argument("--fee", type=float, default=0.0,
                         help="Hypothetical fixed fee per order")
+    parser.add_argument("--quality-check", action="store_true",
+                        help="Report aggregate history field/range issues; never trade")
     parser.add_argument("--require-complete", action="store_true",
                         help="Fail CI when any requested symbol cannot be validated")
     args = parser.parse_args(argv)
@@ -271,6 +308,14 @@ def main(argv=None):
         failed = 0
         for symbol in symbols:
             try:
+                if args.quality_check:
+                    if not symbol.isalpha() or not symbol.isupper() or len(symbol) > 6:
+                        raise ValueError("Invalid uppercase stock ticker")
+                    raw = fetch_json("/markets/history", token,
+                                     params={"symbol": symbol, "interval": "daily",
+                                             "start": args.start, "end": end})
+                    print(json.dumps({"symbol": symbol, "quality": quality_counts(raw, date.fromisoformat(end))}))
+                    continue
                 bars = sandbox_history(token, symbol, args.start, end)
                 report = analyze_symbol(bars, budget=args.budget,
                                         cost_bps=args.cost_bps, fee=args.fee)
