@@ -69,8 +69,9 @@ class PreviewSmokeTests(unittest.TestCase):
         self.assertNotIn("Bearer", err.getvalue())
 
     def test_invalid_instructions_cannot_submit(self):
-        with self.assertRaises(SystemExit):
-            tradier_paper_cli.main(["--paper-submit"])
+        with patch("sys.stderr", new_callable=io.StringIO):
+            with self.assertRaises(SystemExit):
+                tradier_paper_cli.main(["--paper-submit"])
 
     def test_sanitized_connected_preview_report(self):
         with patch("tradier_paper_cli.TradierSandbox", return_value=DummyClient()):

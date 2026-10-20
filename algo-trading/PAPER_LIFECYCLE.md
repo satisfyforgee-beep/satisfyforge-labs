@@ -21,6 +21,18 @@ handling, or automatic strategy-triggered submission.
 | Live funds / live broker orders / options trading | **NOT implemented/authorized** |
 | Realtime live execution signal | **NOT available from sandbox**; delayed market data |
 
+**Latest integration status (October 20, 4:26 p.m. ET):** The prior
+read-only GitHub sandbox test had succeeded, but the subsequent protected
+preview workflow received **HTTP 401 at GET /user/profile**. That is a sandbox
+authentication/entitlement issue, not an order preview or trading result.
+The Actions secret is nonempty, but its current value is rejected. Only the
+account owner should inspect the present *Sandbox* key at
+https://web.tradier.com/user/api and securely update the
+`TRADIER_SANDBOX_TOKEN` repository Actions secret if it differs. Do not
+paste or screenshot the revealed token. Since the credential currently fails,
+a push runs only the offline tests; the broker-preview job requires a
+deliberate manual workflow dispatch after the key is corrected.
+
 ## Zero-cost verification in GitHub Actions
 
 The **existing** `.github/workflows/tradier-sandbox-readonly.yml` is extended,

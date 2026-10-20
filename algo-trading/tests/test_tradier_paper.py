@@ -251,6 +251,20 @@ class PaperLifecycleTests(unittest.TestCase):
         self.assertEqual(len([c for c in tr.calls if c[0] == "POST"]), 3)
         # Repeat gets a *new preview* before journal veto, but no second submit.
 
+    def test_account_daily_cap_still_blocks_different_symbol(self):
+        sb, transport = broker()
+        with patch.dict(os.environ, {
+                "SF_TRADIER_PAPER_ENABLE": "SANDBOX_ONLY_APPROVED"}):
+            sb.submit_paper("SOFI", 15, self.journal,
+                            explicitly_armed=True, now=NOW)
+            with self.assertRaises(PaperBlocked):
+                sb.submit_paper("AAL", 12, self.journal,
+                                explicitly_armed=True, now=NOW)
+        # Both previews are harmless but just ONE sandbox submission.
+        active = [c for c in transport.calls
+                  if c[0] == "POST" and c[3].get("preview") != "true"]
+        self.assertEqual(len(active), 1)
+
     def test_uncertain_submission_marks_unknown_never_retries(self):
         class Uncertain(SimulatedBroker):
             def __call__(self, method, path, query, form):
