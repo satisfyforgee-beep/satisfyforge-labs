@@ -6,6 +6,8 @@ on:
       - feature/tradier-sandbox-readonly-20261020
     paths:
       - .github/workflows/tradier-sandbox-readonly.yml
+      - scripts/tradier_sandbox_check.py
+      - tests/test_tradier_sandbox_check.py
   workflow_dispatch:
 
 permissions:
