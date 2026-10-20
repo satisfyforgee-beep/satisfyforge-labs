@@ -100,3 +100,6 @@ Run `python3 -m unittest discover -s tests -v` to test offline. See
 [`LIVE_TRADING_ROADMAP.md`](LIVE_TRADING_ROADMAP.md) for exact implemented
 features, data limitations, stop-loss gaps, free setup, and activation gates.
 **Do not arm paper or live broker orders from this branch.**
+
+Optional localhost AI advisor research is isolated in `zerocost_bot/ollama_advisors.py`:
+no local Ollama installation or live model inference has been verified.

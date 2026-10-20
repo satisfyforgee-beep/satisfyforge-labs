@@ -31,6 +31,17 @@ An eventual autonomous, owner-authorized real-money trading service with:
    fills and partial fills, cancelled/rejected status, reconnect/reconcile
    broker state, stale/connection-loss circuit breakers, audit logs.
 
+## Optional free local AI (advisory only)
+
+`zerocost_bot/ollama_advisors.py` adds three parallel local-model research
+roles: a technical skeptic, catalyst reviewer, and risk challenger. The code
+contacts **localhost only**, filters broker/private keys out of its input, and
+labels every response as non-executable commentary. It can run after an owner
+installs and authorizes a compatible free Ollama model separately. No local
+model binary/server was found in the connected Mac on October 20; no install
+or launch was attempted. Local inference can be slow; it will **never** block
+or overrule the fast deterministic broker gate.
+
 ## What v0.2 actually implements
 
 - `zerocost_bot/agents.py`: completed-bar evidence review, strict freshness,
@@ -47,6 +58,8 @@ An eventual autonomous, owner-authorized real-money trading service with:
   consumer with reauth/reconnect; parses real quotes and completed 1-minute
   bars, validates benchmark, prints research candidates. No order endpoint.
 - `stream_research.py`: explicit foreground research-only entrypoint.
+- `zerocost_bot/ollama_advisors.py`: optional free localhost AI commentary;
+  three separate advisory roles, NO trading authority or paid requests.
 - Unit tests include duplicate replay, stale quote, partial bar, low capital,
   bad regime, non-finite prices, duplicate journal, uncertain outcome.
 
