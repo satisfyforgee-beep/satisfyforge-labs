@@ -81,11 +81,38 @@ class HistoryTests(unittest.TestCase):
             return response_from(data)
         got = m.sandbox_history("fake-key", "SOFI", data[0].day.isoformat(),
                                 data[-1].day.isoformat(), getter=fake)
-        self.assertEqual(len(got), 190)
+        cleaned, quality = got
+        self.assertEqual(len(cleaned), 190)
+        self.assertEqual(quality["valid"], 190)
         self.assertEqual(seen[0][0], "/markets/history")
         self.assertEqual(seen[0][1]["interval"], "daily")
         with self.assertRaises(ValueError):
             m.sandbox_history("fake", "SPY/../../orders", "2025-01-01", "2025-11-01", getter=fake)
+
+    def test_sparse_bad_bars_cleaned_with_visible_counts(self):
+        dataset = enough(220)
+        payload = response_from(dataset)
+        payload["history"]["day"][110]["volume"] = None
+        payload["history"]["day"][145]["high"] = 1.0
+        def fake(path, token, params):
+            return payload
+        cleaned, quality = m.sandbox_history("fake", "SOFI",
+                        dataset[0].day.isoformat(), dataset[-1].day.isoformat(), getter=fake)
+        self.assertEqual(len(cleaned), 218)
+        self.assertEqual(quality["missing_or_bad_field"], 1)
+        self.assertEqual(quality["invalid_ohlc"], 1)
+
+    def test_excessive_or_consecutive_gaps_rejected(self):
+        dataset = enough(220)
+        for missing in ([40,41,42], [20,60,80,110,145,175]):
+            payload = response_from(dataset)
+            for n in missing:
+                payload["history"]["day"][n]["open"] = None
+            def fake(path, token, params):
+                return payload
+            with self.subTest(missing=missing), self.assertRaises(ValueError):
+                m.sandbox_history("fake", "F", dataset[0].day.isoformat(),
+                                  dataset[-1].day.isoformat(), getter=fake)
 
     def test_prefix_invariance_prevents_future_data_leak(self):
         b = enough(250)
