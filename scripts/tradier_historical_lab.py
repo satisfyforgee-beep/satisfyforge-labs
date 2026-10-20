@@ -303,6 +303,39 @@ def quality_counts(data, cutoff):
         prior_date, prior_close = d, c
     return out
 
+
+def training_score(metrics):
+    """Return identical risk-adjusted score to individual train-only selection."""
+    return (metrics["return_pct"] - 1.5 * metrics["max_dd_pct"]
+            - 0.15 * metrics["entries"])
+
+
+def portfolio_research_decision(reports):
+    """Pick ticker+strategy by TRAINING ONLY, never holdout performance."""
+    ranking = []
+    for symbol, r in reports.items():
+        selected = r.get("selected")
+        if selected:
+            train = r["training"][selected]
+            ranking.append({"symbol": symbol, "strategy": selected,
+                            "train_score": round(training_score(train), 3),
+                            "train_return_pct": train["return_pct"]})
+    ranking.sort(key=lambda x: (-x["train_score"], x["symbol"]))
+    if not ranking:
+        return {"status": "PASS", "reason": "No training-eligible strategy",
+                "training_ranking": []}
+    choice = ranking[0]
+    chosen = reports[choice["symbol"]]
+    test = chosen.get("test")
+    status = ("PASS" if not test or test["gate"] != "RESEARCH ONLY - NOT VERIFIED EDGE"
+              else "RESEARCH ONLY - NEEDS INDEPENDENT CONFIRMATION")
+    return {"status": status, "reason": "Top candidate chosen without seeing any holdout results",
+            "training_ranking": ranking,
+            "precommitted_candidate": choice,
+            "candidate_holdout_result": test,
+            "out_of_sample_benchmark": chosen["buyhold_holdout"],
+            "no_live_trading_authorized": True}
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Read-only Tradier historical holdout research")
     parser.add_argument("--symbols", default="SOFI,AAL,F")
@@ -335,6 +368,7 @@ def main(argv=None):
         if not 0 <= args.fee <= 50 or not math.isfinite(args.fee):
             raise ValueError("Invalid fee")
         failed = 0
+        completed = {}
         for symbol in symbols:
             try:
                 if args.quality_check:
@@ -348,6 +382,7 @@ def main(argv=None):
                 bars, quality = sandbox_history(token, symbol, args.start, end)
                 report = analyze_symbol(bars, budget=args.budget,
                                         cost_bps=args.cost_bps, fee=args.fee)
+                completed[symbol] = report
                 print(json.dumps({"symbol": symbol, "data_quality": quality, **report}, sort_keys=True,
                                  separators=(",", ":"), allow_nan=False))
             except (ValueError, OSError, HTTPError, URLError) as error:
@@ -369,6 +404,9 @@ def main(argv=None):
                 else:
                     code = "NETWORK_ERROR"
                 print(json.dumps({"symbol": symbol, "status": "NO_RESULT", "reason": code}))
+        if not args.quality_check:
+            print(json.dumps({"system_decision": portfolio_research_decision(completed)},
+                             sort_keys=True, separators=(",", ":"), allow_nan=False))
         print("RESEARCH ONLY: no orders or live prices. Backtests can overfit; "
               "history may be unadjusted and $30 whole shares may prevent trades.")
         return 3 if (args.require_complete and failed) or failed == len(symbols) else 0
