@@ -173,6 +173,17 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(original["selected"], altered["selected"])
         self.assertEqual(original["training"], altered["training"])
 
+    def test_walkforward_fold_choices_exclude_future(self):
+        b = enough(240)
+        folds = m.walkforward_training_folds(b, budget=100)
+        self.assertEqual(len(folds), 2)
+        split = int(len(b) * .7)
+        self.assertLess(folds[-1]["test_through"], b[split].day.isoformat())
+        mutant = b[:split] + [m.Bar(x.day, x.open * 1.2, x.high * 3,
+                                    x.low, x.close * 2, x.volume)
+                              for x in b[split:]]
+        self.assertEqual(folds, m.walkforward_training_folds(mutant, budget=100))
+
     def test_refuses_small_history(self):
         with self.assertRaises(ValueError):
             m.analyze_symbol(enough(90))
@@ -200,7 +211,8 @@ class HistoryTests(unittest.TestCase):
                         "holdout": {"return_pct": 15}}
         reports = {
             "SOFI": {"selected": "breakout", "training": {"breakout": train_strong},
-                     "test": losing_test, "buyhold_holdout": {"return_pct": 2}},
+                     "test": losing_test, "buyhold_holdout": {"return_pct": 2},
+                     "walkforward_inside_training": [{"status": "POSITIVE"}, {"status": "POSITIVE"}]},
             "F": {"selected": "reversion", "training": {"reversion": train_weak},
                   "test": winning_test, "buyhold_holdout": {"return_pct": -10}}}
         r = m.portfolio_research_decision(reports)
