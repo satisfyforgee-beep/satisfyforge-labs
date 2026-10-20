@@ -13,6 +13,7 @@ import math
 import os
 import statistics
 import sys
+from urllib.error import HTTPError, URLError
 from zoneinfo import ZoneInfo
 
 from tradier_sandbox_check import fetch_json
@@ -248,6 +249,8 @@ def main(argv=None):
                         help="Per-side adverse execution cost in basis points")
     parser.add_argument("--fee", type=float, default=0.0,
                         help="Hypothetical fixed fee per order")
+    parser.add_argument("--require-complete", action="store_true",
+                        help="Fail CI when any requested symbol cannot be validated")
     args = parser.parse_args(argv)
     token = os.environ.get("TRADIER_SANDBOX_TOKEN", "").strip()
     try:
@@ -265,6 +268,7 @@ def main(argv=None):
             raise ValueError("Invalid execution cost")
         if not 0 <= args.fee <= 50 or not math.isfinite(args.fee):
             raise ValueError("Invalid fee")
+        failed = 0
         for symbol in symbols:
             try:
                 bars = sandbox_history(token, symbol, args.start, end)
@@ -272,13 +276,26 @@ def main(argv=None):
                                         cost_bps=args.cost_bps, fee=args.fee)
                 print(json.dumps({"symbol": symbol, **report}, sort_keys=True,
                                  separators=(",", ":"), allow_nan=False))
-            except (ValueError, OSError):
-                # NO URLs/HTTP exception bodies; no tokens or private account data.
-                print(json.dumps({"symbol": symbol, "status": "NO_RESULT",
-                                  "reason": "Historical data unavailable or invalid"}))
+            except (ValueError, OSError, HTTPError, URLError) as error:
+                # Only fixed known diagnostic labels. Never print provider response,
+                # account details, token, full exception string, URL or headers.
+                failed += 1
+                if isinstance(error, HTTPError):
+                    code = "HTTP_" + str(error.code) if error.code in (400,401,403,404,429,500,502,503) else "HTTP_ERROR"
+                elif isinstance(error, ValueError):
+                    known = {"Insufficient observations for valid holdout": "TOO_FEW_BARS",
+                             "Missing/invalid historical data": "MISSING_HISTORY",
+                             "Bars must be strictly chronological and unique": "UNSORTED_HISTORY",
+                             "Impossible price, volume or future date": "INVALID_OHLC_OR_DATE",
+                             "Malformed historical bar": "MALFORMED_BAR",
+                             "Non-object history bar": "MALFORMED_BAR"}
+                    code = known.get(str(error), "UNEXPECTED_HISTORY_FORMAT")
+                else:
+                    code = "NETWORK_ERROR"
+                print(json.dumps({"symbol": symbol, "status": "NO_RESULT", "reason": code}))
         print("RESEARCH ONLY: no orders or live prices. Backtests can overfit; "
               "history may be unadjusted and $30 whole shares may prevent trades.")
-        return 0
+        return 3 if (args.require_complete and failed) or failed == len(symbols) else 0
     except (ValueError, TypeError):
         print("Invalid input or sandbox configuration; no trades placed.", file=sys.stderr)
         return 2
