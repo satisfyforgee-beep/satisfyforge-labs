@@ -103,3 +103,8 @@ features, data limitations, stop-loss gaps, free setup, and activation gates.
 
 Optional localhost AI advisor research is isolated in `zerocost_bot/ollama_advisors.py`:
 no local Ollama installation or live model inference has been verified.
+
+`zerocost_bot/coordinator.py` is the additional gated paper-only integration:
+broker account readback, fresh risk checks, journal-before-submit and broker
+uncertainty stop. Tests mock broker responses; no simulated or live orders were
+sent to Alpaca. The live-trading activation path remains unimplemented.

@@ -135,3 +135,21 @@ moves. Network failures and stale quotes must yield *no entries*.
    pretrade checks, account restrictions, audit trails or the kill switch.
 
 **No real-money execution is enabled by this branch.**
+
+## Additional reviewed paper-only order coordination
+
+`zerocost_bot/coordinator.py` connects deterministic consensus with a
+readback of the Alpaca **paper** broker account, independent cash/position
+checks, an idempotency reservation, and the existing paper bracket adapter.
+`prepare()` is read-only. `submit()` is disabled unless a separate
+`explicitly_armed=True` parameter and the exact
+`SF_PAPER_ORDER_ENABLE=PAPER_ONLY_APPROVED` environment gate are both set.
+It reconfirms broker state before any paper request. On an uncertain transport
+outcome it journals UNKNOWN and will **not retry**. Tests use an entirely
+mocked broker; no broker was contacted and no actual paper/live trade occurred.
+61 total unit tests passed on October 20, 2026.
+
+This coordinator is **not** activated by the stream research CLI; integration
+into a securely hosted, authorized paper-forward runner remains a separate
+acceptance gate. It rejects non-PaperBroker adapters. A real-money adapter
+remains absent, by design.
