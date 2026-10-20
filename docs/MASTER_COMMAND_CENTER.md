@@ -262,11 +262,12 @@ Roblox Studio/device testing remains a genuine local/desktop requirement unless 
 
 ## Tradier sandbox research lab (read-only)
 
-- Draft PR #72 adds a Tradier sandbox API authentication check, a delayed stock/ETF watchlist screen and an **offline-only hypothetical share ledger** with bid/ask fill assumptions, cash-only limits and synthetic test examples.
-- The read-only API is pinned to `sandbox.tradier.com`. No orders, live brokerage calls, funding, or recurring scans. Credentials belong exclusively in GitHub Actions repository secrets, never this **public** repository.
-- 2026-10-20 21:25 UTC: **latest GitHub Actions retry passed** (run 39490048375): sandbox authentication, delayed stock/ETF scanner, and all 12 offline tests. All screened quotes were flagged stale after the market close, so these are not live signals. Previous HTTP 401 was resolved at this check; recheck authentication on later runs.
-- No real or paper broker trades have been submitted by this subsystem. The simulated ledger is **not** verified brokerage performance. Keep PR draft pending code review; connection/tests now passed on latest retry.
-- Detailed owner instructions and status: `docs/TRADIER_SANDBOX_SETUP.md`.
+- Draft PR #72 contains the verified GET-only sandbox API connection, delayed stock/ETF scanner, local hypothetical bid/ask share ledger and historical strategy research. It never calls live brokerage endpoints or submits paper/real orders.
+- 2026-10-20 ~21:57 UTC: GitHub Actions run 39504442695 **PASS**: authentication, delayed quotes, sandbox daily historical data retrieval, data-quality diagnostics and **30 offline tests** (4 connection + 8 local ledger + 18 historical).
+- Historical engine: 3 explicitly defined trend/breakout/reversion strategies, completed daily OHLC bars, next-session-open fills, adverse cost/slippage/fee assumptions, $30 cash-only whole-share cap, stop loss and circuit breaker, chronological 70/30 train/untouched holdout, two earlier anchored walk-forward folds, and precommitted training-only ranking across stocks. Missing/malformed vendor bars are counted and cleaned only within strict limits; no synthetic market data.
+- Date-scoped historical research (2025-01-02 through 2026-10-19) outcome: training-selected SOFI breakout lost **19.568%** hypothetical on untouched holdout; AAL mean reversion lost **5.9333%**; Ford mean reversion gained **10.9763%** but was not the training-selected stock and is not independently validated. **SYSTEM DECISION: PASS / NO TRADE.** No promise of future performance, AI prediction claim or real recommendation. The 30 offline test pass is separate from the strategy decision.
+- This is a **public repository**; credentials in GitHub Actions secret only. No personal trading records, automatic real/paper orders, recurring scheduled scans, purchases, financial transfers, or unrestricted external account actions. Keep the PR draft pending owner review.
+- Setup and limitations: `docs/TRADIER_SANDBOX_SETUP.md`; research methods and result evidence: `docs/TRADIER_HISTORICAL_RESEARCH.md`.
 
 ## Automation policy
 
