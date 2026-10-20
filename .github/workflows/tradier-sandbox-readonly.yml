@@ -8,6 +8,8 @@ on:
       - .github/workflows/tradier-sandbox-readonly.yml
       - scripts/tradier_sandbox_check.py
       - tests/test_tradier_sandbox_check.py
+      - scripts/tradier_paper_lab.py
+      - tests/test_tradier_paper_lab.py
   workflow_dispatch:
 
 permissions:
@@ -23,7 +25,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run offline allowlist and privacy tests
-        run: python3 -m unittest discover -s tests -p 'test_tradier_sandbox_check.py' -v
+        run: |
+          python3 -m unittest discover -s tests -p 'test_tradier_sandbox_check.py' -v
+          python3 -m unittest discover -s tests -p 'test_tradier_paper_lab.py' -v
 
       - name: Verify Tradier sandbox authentication (GET only)
         env:
@@ -34,3 +38,8 @@ jobs:
             exit 1
           fi
           python3 scripts/tradier_sandbox_check.py --symbol SPY
+
+      - name: Screen delayed sandbox stock quotes (research only)
+        env:
+          TRADIER_SANDBOX_TOKEN: ${{ secrets.TRADIER_SANDBOX_TOKEN }}
+        run: python3 scripts/tradier_paper_lab.py --scan --symbols SOFI,AAL,F,PLTR,SPY --budget 30
