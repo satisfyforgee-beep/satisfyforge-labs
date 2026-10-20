@@ -95,7 +95,73 @@ def _read_report(path):
         return None, "Unable to read or parse report"
 
 
-def build_snapshot(report_path=None, now=None):
+def read_paper_monitor(report_path, now):
+    """Allowlisted local heartbeat; never implies trade authorization.
+
+    A stale or fabricated heartbeat must not be shown as running. The
+    dashboard never reads API secrets or arbitrary raw brokerage payloads.
+    """
+    empty = {
+        "status": "NOT_CONNECTED",
+        "brokerage_state": "UNKNOWN",
+        "checked_at_utc": None,
+        "message": "No private paper order monitor report found",
+        "paper_order_submission_enabled": False,
+        "live_order_enabled": False,
+        "can_trade": False,
+    }
+    if report_path is None:
+        return empty
+    payload, err = _read_report(report_path)
+    if err:
+        return empty
+    states = {"MONITORING", "STOPPED", "HALTED"}
+    broker_states = {
+        "AWAITING_ENTRY", "ENTRY_NOT_FILLED", "HALT_AND_RECONCILE",
+        "PROTECTED_PAPER_POSITION", "CLOSED_PAPER_POSITION", "UNKNOWN",
+    }
+    supervisor_state = payload.get("supervisor_state")
+    brokerage_state = payload.get("brokerage_state")
+    if (type(payload.get("schema_version")) is not int
+        or payload.get("schema_version") != 1
+        or payload.get("environment") != "TRADIER_SANDBOX_ONLY"
+        or not isinstance(supervisor_state, str)
+        or supervisor_state not in states
+        or not isinstance(brokerage_state, str)
+        or brokerage_state not in broker_states
+        or (supervisor_state == "MONITORING" and
+            brokerage_state not in ("AWAITING_ENTRY", "PROTECTED_PAPER_POSITION"))
+        or (supervisor_state == "STOPPED" and
+            brokerage_state not in ("ENTRY_NOT_FILLED", "CLOSED_PAPER_POSITION"))
+        or (supervisor_state == "HALTED" and
+            brokerage_state not in ("UNKNOWN", "HALT_AND_RECONCILE"))
+        or payload.get("live_order_enabled") is not False
+        or payload.get("paper_order_submission_enabled") is not False
+        or payload.get("can_trade") is not False):
+        return dict(empty, status="INVALID", message="Invalid private monitor status")
+    stamped = _time(payload.get("checked_at_utc"))
+    if stamped is None:
+        return dict(empty, status="INVALID", message="Missing monitor timestamp")
+    age = (now - stamped).total_seconds()
+    if not 0 <= age <= 30:
+        return dict(empty, status="STALE", checked_at_utc=stamped.isoformat(),
+                    message="Monitor has not reported recently")
+    state = payload["supervisor_state"]
+    if state == "MONITORING":
+        message = "Read-only paper order monitoring; no trading actions"
+    elif state == "HALTED":
+        message = "Broker uncertainty: manual reconciliation required"
+    else:
+        message = "Paper order monitoring has ended"
+    return {
+        "status": state, "brokerage_state": payload["brokerage_state"],
+        "checked_at_utc": stamped.isoformat(), "message": message,
+        "paper_order_submission_enabled": False,
+        "live_order_enabled": False, "can_trade": False,
+    }
+
+
+def build_snapshot(report_path=None, now=None, monitor_report_path=None):
     """Never present synthetic/stale prices as executable quotes.
 
     Returns only allowlisted fields. Raw market files, account identifiers,
@@ -172,6 +238,7 @@ def build_snapshot(report_path=None, now=None):
             "verified_win_rate_pct": None,
             "status": "NO_VERIFIED_FORWARD_TRADES",
         },
+        "paper_monitor": read_paper_monitor(monitor_report_path, now),
         "components": [dict(c) for c in _COMPONENTS],
         "notice": (
             "Private, read-only research dashboard. No live order controls, "

@@ -22,7 +22,7 @@ ROUTES = {
 }
 
 
-def make_handler(report_path=None):
+def make_handler(report_path=None, monitor_report_path=None):
     """Inject explicit path dependency for tests; user requests cannot set paths."""
 
     class PrivateHandler(BaseHTTPRequestHandler):
@@ -66,7 +66,8 @@ def make_handler(report_path=None):
                 return self._send(200, b'{"state":"ok","mode":"local_read_only"}',
                                   "application/json")
             if parsed.path == "/api/status":
-                view = build_snapshot(report_path)
+                view = build_snapshot(
+                    report_path, monitor_report_path=monitor_report_path)
                 payload = json.dumps(view, allow_nan=False, separators=(",", ":"))
                 return self._send(200, payload.encode("utf-8"),
                                   "application/json; charset=utf-8")
@@ -107,11 +108,15 @@ def main(argv=None):
                         help="local-only port (default 8765)")
     parser.add_argument("--report", default=None,
                         help="optional explicitly supplied market-data JSON report")
+    parser.add_argument("--monitor-report", default=None,
+                        help="owner-local read-only sandbox heartbeat JSON")
     args = parser.parse_args(argv)
     if not 1024 <= args.port <= 65535:
         parser.error("port must be between 1024 and 65535")
     server = ThreadingHTTPServer(("127.0.0.1", args.port),
-                                 make_handler(report_path=args.report))
+                                 make_handler(
+                                     report_path=args.report,
+                                     monitor_report_path=args.monitor_report))
     print("SatisfyForge Trading Lab (READ ONLY)")
     print("Open http://127.0.0.1:{}/ in a browser on THIS computer".format(
         server.server_address[1]))

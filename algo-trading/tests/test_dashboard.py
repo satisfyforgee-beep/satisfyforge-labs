@@ -110,6 +110,78 @@ class SnapshotTests(unittest.TestCase):
         self.assertNotIn("<script>", json.dumps(view))
 
 
+class PrivatePaperMonitorTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+
+    def _paper_path(self, *, state="MONITORING", broker="AWAITING_ENTRY",
+                    at=NOW, **overrides):
+        obj = {
+            "schema_version": 1,
+            "environment": "TRADIER_SANDBOX_ONLY",
+            "supervisor_state": state, "brokerage_state": broker,
+            "checked_at_utc": at.isoformat(),
+            "paper_order_submission_enabled": False,
+            "live_order_enabled": False, "can_trade": False,
+            "user_account": "PRIVATE-NOT-FOR-DASHBOARD",
+            "order_id": "PRIVATE-NOT-FOR-DASHBOARD",
+            "secret_api_key": "PRIVATE-NOT-FOR-DASHBOARD",
+            "reason": "PRIVATE-NOT-FOR-DASHBOARD",
+        }
+        obj.update(overrides)
+        f = self.root / "paper-status.json"
+        f.write_text(json.dumps(obj))
+        return str(f)
+
+    def test_absent_monitor_is_not_connected(self):
+        d = build_snapshot(now=NOW)
+        self.assertEqual(d["paper_monitor"]["status"], "NOT_CONNECTED")
+        self.assertFalse(d["paper_monitor"]["live_order_enabled"])
+
+    def test_fresh_readonly_monitor_is_sanitized(self):
+        d = build_snapshot(
+            now=NOW, monitor_report_path=self._paper_path())
+        item = d["paper_monitor"]
+        self.assertEqual(item["status"], "MONITORING")
+        self.assertEqual(item["brokerage_state"], "AWAITING_ENTRY")
+        self.assertFalse(item["can_trade"])
+        self.assertNotIn("PRIVATE-NOT-FOR-DASHBOARD", json.dumps(d))
+        self.assertNotIn("user_account", json.dumps(d))
+
+    def test_stale_monitor_never_appears_active(self):
+        older = NOW - timedelta(seconds=31)
+        d = build_snapshot(now=NOW,
+            monitor_report_path=self._paper_path(at=older))
+        self.assertEqual(d["paper_monitor"]["status"], "STALE")
+        self.assertFalse(d["paper_monitor"]["live_order_enabled"])
+
+    def test_halted_monitor_preserves_halt(self):
+        d = build_snapshot(now=NOW,
+            monitor_report_path=self._paper_path(
+                state="HALTED", broker="HALT_AND_RECONCILE"))
+        self.assertEqual(d["paper_monitor"]["status"], "HALTED")
+        self.assertIn("manual", d["paper_monitor"]["message"].lower())
+
+    def test_invalid_mode_or_execution_flag_rejected(self):
+        variations = (
+            {"environment": "PRODUCTION"},
+            {"live_order_enabled": True},
+            {"paper_order_submission_enabled": True},
+            {"can_trade": True},
+            {"supervisor_state": ["MONITORING"]},
+            {"brokerage_state": {"status": "AWAITING_ENTRY"}},
+            {"schema_version": True},
+            {"supervisor_state": "STOPPED"},
+        )
+        for k in variations:
+            with self.subTest(k=k):
+                path = self._paper_path(**k)
+                self.assertEqual(
+                    build_snapshot(now=NOW,monitor_report_path=path)
+                    ["paper_monitor"]["status"], "INVALID")
+
 class LocalServerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

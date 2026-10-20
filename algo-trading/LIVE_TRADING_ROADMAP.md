@@ -192,3 +192,12 @@ submissions UNKNOWN. The default CLI and GitHub Actions workflow do not
 submit even simulated orders; no real-money transport or continuous runner
 has been added. Fill confirmations and OTOCO child-exit activation need
 further real broker tests. See [PAPER_LIFECYCLE.md](PAPER_LIFECYCLE.md).
+
+## v0.6 order reconciliation / local fail-closed supervisor
+
+Strict read-only sandbox parent/child OTOCO verification, anonymous
+heartbeat files, finite owner-operated polling with crash/error halt,
+and the existing local dashboard's stale-status display are
+implemented and tested. No always-on hosted execution service, live
+market-data entitlement, paper fill, real-money adapter, proven returns
+or customer app exists. See [READ_ONLY_MONITOR.md](READ_ONLY_MONITOR.md).
