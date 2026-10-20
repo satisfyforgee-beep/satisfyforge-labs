@@ -181,3 +181,14 @@ autonomous broker order routes, customer onboarding or revenue.
 It provides an accurate readiness view while Tradier account approval
 and paper-forward validation remain prerequisites.
 See [DASHBOARD.md](DASHBOARD.md).
+
+## v0.5 Tradier sandbox-only order preview and independent paper broker adapter
+
+An isolated Tradier SANDBOX adapter now constructs native OTOCO brackets
+for one-share, max-$20 simulated equity trials. Account/balance/position/order
+readback and preview=true checks precede ANY separately armed sandbox write.
+A durable account/day idempotency journal blocks repeats and marks uncertain
+submissions UNKNOWN. The default CLI and GitHub Actions workflow do not
+submit even simulated orders; no real-money transport or continuous runner
+has been added. Fill confirmations and OTOCO child-exit activation need
+further real broker tests. See [PAPER_LIFECYCLE.md](PAPER_LIFECYCLE.md).

@@ -148,3 +148,18 @@ No credentials are required. It does not operate from a phone across
 the internet, place any orders, or create a continuous trading bot.
 See [DASHBOARD.md](DASHBOARD.md) for optional offline/real
 read-only quote reports, security details and next milestones.
+
+## v0.5 Tradier SANDBOX broker order preview and paper lifecycle
+
+Added `zerocost_bot/tradier_paper.py` for a hard-coded SANDBOX-only
+one-share, $20-cap equity OTOCO bracket with independent cash, position and
+daily-order checks; pre-submission broker preview; durable journal; exact order
+readback; and unknown-outcome shutdown. **Paper submission is disabled unless
+separately authorized and explicitly armed**; no continuous runner exists.
+The default `tradier_paper_cli.py` has NO submission switch and only calls
+read-only endpoints or `POST preview=true`.
+
+The proven Tradier sandbox GitHub Actions workflow is extended to run this
+protected preview using the **existing** repository secret. See
+[PAPER_LIFECYCLE.md](PAPER_LIFECYCLE.md) for incomplete child-exit
+reconciliation, market-data limitations, security and next tests.

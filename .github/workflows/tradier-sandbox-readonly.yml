@@ -1,0 +1,56 @@
+name: Tradier Sandbox Validation and Protected Order Preview
+
+on:
+  push:
+    branches:
+      - feature/tradier-paper-lifecycle-20261020
+    paths:
+      - .github/workflows/tradier-sandbox-readonly.yml
+      - scripts/tradier_sandbox_check.py
+      - tests/test_tradier_sandbox_check.py
+      - algo-trading/tradier_paper_cli.py
+      - algo-trading/zerocost_bot/tradier_paper.py
+      - algo-trading/tests/test_tradier_paper.py
+      - algo-trading/tests/test_tradier_paper_cli.py
+  workflow_dispatch:
+
+# THIS WORKFLOW NEVER PLACES A PAPER OR LIVE ORDER.
+# It reuses the EXISTING repository Sandbox secret; zero added credentials.
+permissions:
+  contents: read
+
+jobs:
+  sandbox-validation:
+    name: Offline tests, sandbox authentication, OTOCO preview=true
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Checkout review branch
+        uses: actions/checkout@v4
+
+      - name: Confirm original Tradier read-only safety tests
+        run: python3 -m unittest discover -s tests -p 'test_tradier_sandbox_check.py' -q
+
+      - name: Run all Trading Lab offline safety tests
+        working-directory: algo-trading
+        run: |
+          python3 -m unittest discover -s tests -q
+          python3 -m compileall -q zerocost_bot tradier_paper_cli.py
+
+      - name: Confirm Tradier sandbox identity and delayed quote (GET only)
+        env:
+          TRADIER_SANDBOX_TOKEN: ${{ secrets.TRADIER_SANDBOX_TOKEN }}
+        run: |
+          unset SF_TRADIER_PAPER_ENABLE
+          if [ -z "$TRADIER_SANDBOX_TOKEN" ]; then
+            echo "Existing Tradier sandbox secret unavailable."
+            exit 1
+          fi
+          python3 scripts/tradier_sandbox_check.py --symbol SPY
+
+      - name: Validate simulated 1-share OTOCO order parameters (preview=true only)
+        env:
+          TRADIER_SANDBOX_TOKEN: ${{ secrets.TRADIER_SANDBOX_TOKEN }}
+        run: |
+          unset SF_TRADIER_PAPER_ENABLE
+          python3 algo-trading/tradier_paper_cli.py --symbol SOFI --preview
