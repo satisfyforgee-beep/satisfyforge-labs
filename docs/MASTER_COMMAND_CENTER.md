@@ -83,6 +83,7 @@ This file is the canonical non-sensitive operating index for work that used to b
 - 2026-10-13 live sending-window diagnosis: `docs/OUTREACH_AUDIT_2026-10-13.md`.
 - Wix request/form flow remains the safe intake route while checkout verification is paused.
 - `sales/OUTREACH_REPLY_FULFILLMENT_KIT.md` contains the response/sample system.
+- 2026-10-20: the four-page buyer-facing `SatisfyForge_Home_Service_Lead_Rescue_Sample.pdf` was created, rendered, text-checked, visually inspected, and uploaded to Google Drive for genuine replies or explicit sample requests from sequence 904604. It uses a clearly fictional business, contains no performance claims or client data, and includes a sample audit, 10-day sequence, stop rules, minimum tracker, and scope-first CTA. SHA-256 `147bd9e7ffc0cdac4d8b0ff54b336ccfe82550ef71ebed007d960e3096bd553d`; manifest: `sales/HOME_SERVICE_LEAD_RESCUE_SAMPLE_ASSET.md`. Do not mass-send it, present it as a case study, or route it to a quarantined checkout.
 - `sales/SCOPING_AND_CLOSE_KIT.md` contains truthful offer boundaries, qualification and close/scoping rules so an interested prospect can move to written scope without invented results or an unverified payment link.
 
 ### Business communications identity gate
