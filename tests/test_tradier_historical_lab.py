@@ -192,6 +192,32 @@ class HistoryTests(unittest.TestCase):
         self.assertNotIn("method=\"POST\"", source)
         self.assertIn('"/markets/history"', source)
 
+    def test_global_selection_ignores_holdout_winners(self):
+        train_strong = {"return_pct": 20, "max_dd_pct": 4, "entries": 5}
+        train_weak = {"return_pct": 7, "max_dd_pct": 9, "entries": 4}
+        losing_test = {"gate": "FAIL", "holdout": {"return_pct": -25}}
+        winning_test = {"gate": "RESEARCH ONLY - NOT VERIFIED EDGE",
+                        "holdout": {"return_pct": 15}}
+        reports = {
+            "SOFI": {"selected": "breakout", "training": {"breakout": train_strong},
+                     "test": losing_test, "buyhold_holdout": {"return_pct": 2}},
+            "F": {"selected": "reversion", "training": {"reversion": train_weak},
+                  "test": winning_test, "buyhold_holdout": {"return_pct": -10}}}
+        r = m.portfolio_research_decision(reports)
+        self.assertEqual(r["precommitted_candidate"]["symbol"], "SOFI")
+        self.assertEqual(r["status"], "PASS")
+        self.assertTrue(r["no_live_trading_authorized"])
+        reports["SOFI"]["test"] = winning_test
+        reports["F"]["test"] = losing_test
+        r2 = m.portfolio_research_decision(reports)
+        self.assertEqual(r2["precommitted_candidate"]["symbol"], "SOFI")
+        self.assertNotEqual(r2["status"], "PASS")
+
+    def test_global_rejects_empty_candidates(self):
+        r = m.portfolio_research_decision({"AAL": {"selected": None}})
+        self.assertEqual(r["status"], "PASS")
+        self.assertEqual(r["training_ranking"], [])
+
     def test_zero_budget_does_not_select_investment(self):
         b = enough(230)
         r = m.analyze_symbol(b, budget=1)
