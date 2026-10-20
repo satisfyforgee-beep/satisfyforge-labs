@@ -52,3 +52,8 @@ jobs:
           TRADIER_SANDBOX_TOKEN: ${{ secrets.TRADIER_SANDBOX_TOKEN }}
         run: |
           python3 scripts/tradier_historical_lab.py --symbols SOFI,AAL,F --start 2025-01-02 --budget 30 --cost-bps 20 --fee 0
+
+      - name: Aggregate vendor history QA (no account or key output)
+        env:
+          TRADIER_SANDBOX_TOKEN: ${{ secrets.TRADIER_SANDBOX_TOKEN }}
+        run: python3 scripts/tradier_historical_lab.py --quality-check --symbols SOFI,AAL,F --start 2025-01-02
