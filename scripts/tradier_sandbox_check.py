@@ -55,8 +55,14 @@ def main():
         parser.error("--symbol must have 1-6 letters")
     try:
         check(token, symbol)
-    except (HTTPError, URLError, ValueError, TimeoutError, json.JSONDecodeError):
-        print("Sandbox check failed: verify the SANDBOX token and network access. No orders submitted.", file=sys.stderr)
+    except HTTPError as exc:
+        # Never print provider response bodies, full URLs, tokens or private account data.
+        route = str(getattr(exc, "url", "")).split("?")[0]
+        stage = "profile" if route == BASE_URL + "/user/profile" else "quote" if route == BASE_URL + "/markets/quotes" else "request"
+        print(f"Tradier sandbox {stage} returned HTTP {exc.code}; no orders submitted.", file=sys.stderr)
+        return 1
+    except (URLError, ValueError, TimeoutError, json.JSONDecodeError):
+        print("Sandbox check failed (network or response format); no orders submitted.", file=sys.stderr)
         return 1
     return 0
 
