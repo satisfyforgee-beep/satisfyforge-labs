@@ -17,6 +17,16 @@ Purpose: fulfill the free samples promised by the active Hunter sequences quickl
 
 Use for replies to sequence 904604.
 
+## Approved reusable PDF sample
+
+For a genuine reply or explicit sample request, the neutral four-page PDF below can be delivered immediately before deeper personalization:
+
+- **Home Service Lead Rescue Sample:** https://drive.google.com/file/d/1zhvGL4cWKIuly6pTArgJ6RDhqFG6cqb2/view?usp=drivesdk
+- SHA-256: `147bd9e7ffc0cdac4d8b0ff54b336ccfe82550ef71ebed007d960e3096bd553d`
+- Manifest and QA record: `sales/HOME_SERVICE_LEAD_RESCUE_SAMPLE_ASSET.md`
+
+The company in the PDF is fictional and clearly labeled. Do not present it as a client result or case study. Do not mass-send it or add it to another sequence. If the prospect names a specific leak, use the PDF as a structure and tailor the response only with verified public facts and information the prospect supplied.
+
 ## What to send
 
 ### 1) Fast first-response message
