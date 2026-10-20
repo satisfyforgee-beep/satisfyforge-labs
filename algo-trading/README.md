@@ -128,3 +128,23 @@ Tradier live quotes require a separately created eligible brokerage
 account, a locally stored production data token, and an explicit read-only
 enable gate. They have NOT been connected or retrieved. The base v0.2
 trading/paper constraints above remain fully in force.
+
+
+## v0.4 private local research dashboard (read-only, NOT online)
+
+A zero-subscription, local-only dashboard has been added in
+`dashboard_server.py` with a mobile-responsive UI and a sanitized
+status API. It shows broker connection **OFF**, actual source coverage
+and staleness, agent software readiness, and an **empty verified
+performance ledger**. Never mistake synthetic fixtures for real trading.
+
+```bash
+cd algo-trading
+python3 -m unittest discover -s tests -q
+python3 dashboard_server.py  # http://127.0.0.1:8765/ on this computer
+```
+
+No credentials are required. It does not operate from a phone across
+the internet, place any orders, or create a continuous trading bot.
+See [DASHBOARD.md](DASHBOARD.md) for optional offline/real
+read-only quote reports, security details and next milestones.

@@ -167,3 +167,17 @@ account/tokens and all live-money order transports remain absent.
 See [DATA_COVERAGE.md](DATA_COVERAGE.md) and do not treat broad source
 support as unrestricted full market coverage, profit evidence, or live
 authorization.
+
+
+## v0.4 local private dashboard (separate stacked review)
+
+Added local-only, zero-subscription HTML/CSS/JavaScript status page and
+Python HTTP service, read-only `/api/status` endpoint, explicitly
+synthetic/stale/quote-quality labels, hardcoded execution disabled,
+strict local Host validation, static asset allowlist and security tests.
+The dashboard does not connect to a brokerage account or authenticate
+remote users. No actual market-monitoring daemon, mobile app publication,
+autonomous broker order routes, customer onboarding or revenue.
+It provides an accurate readiness view while Tradier account approval
+and paper-forward validation remain prerequisites.
+See [DASHBOARD.md](DASHBOARD.md).

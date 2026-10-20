@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Local read-only SatisfyForge trading research dashboard">
+  <title>SatisfyForge Trading | Local Research</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"><span>SF</span></div>
+        <div><p class="brand-name">SATISFYFORGE</p><p class="brand-subtitle">TRADING LAB</p></div>
+      </div>
+      <div class="topbar-actions">
+        <div class="pill pill-warning"><span class="status-pulse"></span> REAL-MONEY TRADING OFF</div>
+        <button id="refresh-button" type="button" class="button-light">Refresh <span aria-hidden="true">↻</span></button>
+      </div>
+    </header>
+    <main>
+      <section class="hero">
+        <p class="eyebrow">PRIVATE WORKSPACE · v0.4</p>
+        <h1>Your research command center<span class="hero-dot">.</span></h1>
+        <p>Market coverage, strategy components, safety gates and test readiness—all in one place. No live trades, deposits, or subscriptions are controlled here.</p>
+        <div class="hero-meta">
+          <span class="dot-label"><span class="mini-circle cyan"></span> Local-only dashboard</span>
+          <span class="dot-label"><span class="mini-circle violet"></span> Read-only data</span>
+          <span class="dot-label"><span class="mini-circle amber"></span> Strategies not proven profitable</span>
+        </div>
+      </section>
+      <div id="message" class="message" aria-live="polite"></div>
+      <section class="metrics" aria-label="System metrics">
+        <article class="metric">
+          <div class="metric-label">Trade execution <span class="metric-icon">↗</span></div>
+          <div id="execution-state" class="metric-value">Disabled</div>
+          <div class="metric-note">Owner activation not configured</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Feed status <span class="metric-icon">◎</span></div>
+          <div id="feed-state" class="metric-value">Checking…</div>
+          <div id="feed-note" class="metric-note">Waiting for local report</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Verified live trades <span class="metric-icon">▤</span></div>
+          <div id="trade-count" class="metric-value">0</div>
+          <div class="metric-note">No validated performance results</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Broker connected <span class="metric-icon">◇</span></div>
+          <div id="broker-state" class="metric-value">No</div>
+          <div class="metric-note">Tradier approval/setup pending</div>
+        </article>
+      </section>
+      <div class="panels">
+        <section class="panel feeds">
+          <div class="panel-title">
+            <div><p class="eyebrow">MARKET INTELLIGENCE</p><h2>Quote coverage</h2></div>
+            <span id="market-status" class="panel-pill">No feed</span>
+          </div>
+          <p id="market-explainer" class="panel-intro">Market-data connections have not been activated yet.</p>
+          <div class="table-wrap">
+            <table aria-label="Read-only market feed quality">
+              <thead><tr><th>Symbol</th><th>Source / Coverage</th><th>Bid / Ask</th><th>Readiness</th></tr></thead>
+              <tbody id="quotes-table">
+                <tr><td colspan="4" class="empty">No feed data available yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-footer">
+            <span>Source freshness and discrepancies are evaluated before a quote is shown.</span>
+            <span id="data-time">Not connected</span>
+          </div>
+        </section>
+        <section class="panel engine">
+          <div class="panel-title">
+            <div><p class="eyebrow">MULTI-AGENT PLATFORM</p><h2>Agent readiness</h2></div>
+          </div>
+          <div id="components" class="components" aria-label="Agent and infrastructure readiness"></div>
+        </section>
+        <section class="panel performance">
+          <div class="panel-title">
+            <div><p class="eyebrow">VERIFIED PERFORMANCE</p><h2>Results ledger</h2></div>
+            <span class="panel-pill">Awaiting tests</span>
+          </div>
+          <div class="placeholder-chart" aria-hidden="true">
+            <span class="chart-line"></span>
+            <span class="chart-line"></span>
+            <span class="chart-line"></span>
+            <span class="chart-line"></span>
+          </div>
+          <div class="empty-state">
+            <div class="empty-mark" aria-hidden="true">▤</div>
+            <h3>No proven profit data yet</h3>
+            <p id="performance-note">The system needs realistic out-of-sample backtests and forward paper trades before we report a win rate or return.</p>
+          </div>
+        </section>
+        <section class="panel roadmap">
+          <div class="panel-title">
+            <div><p class="eyebrow">DEVELOPMENT ROADMAP</p><h2>Next milestones</h2></div>
+          </div>
+          <ol class="steps">
+            <li><span class="step-num completed">✓</span><div><strong>Multi-feed core</strong><p>Source validation, risk checks, research models and diagnostics.</p></div></li>
+            <li><span class="step-num current">2</span><div><strong>Broker paper connection</strong><p>Owner finishes Tradier setup; connect eligible data and sandbox safely.</p></div></li>
+            <li><span class="step-num">3</span><div><strong>Forward tests and reconciliation</strong><p>Verify paper orders, trade lifecycle, latency, outage recovery and net results.</p></div></li>
+            <li><span class="step-num">4</span><div><strong>Real-money pilot</strong><p>Separate explicit authorization, tiny limits, supervised testing and kill switch.</p></div></li>
+          </ol>
+        </section>
+      </div>
+    </main>
+    <footer><span>© SatisfyForge Trading Lab · Private prototype</span><span id="last-updated">Awaiting local status</span></footer>
+  </div>
+</body>
+</html>
