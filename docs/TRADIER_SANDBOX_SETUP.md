@@ -2,7 +2,7 @@
 
 **Verified baseline (2026-10-20):** GitHub Actions run 39474133636 completed successfully: sandbox token authenticated, one paper account detected, SPY delayed quote retrieved, four offline smoke tests passed. The token is stored as a GitHub Actions repository secret `TRADIER_SANDBOX_TOKEN`; **it is not in GitHub source control.**
 
-**Latest authenticated recheck (2026-10-20 20:12 UTC): FAILED with HTTP 401 from the sandbox profile endpoint, while 12 offline tests passed.** The quote-screen step was skipped because authentication failed. The token might have been rotated or revoked, but this is not confirmed. Do not overwrite a secret without verifying it is the SANDBOX token. Re-run once after checking the secret's value through the owner-only GitHub Actions Secrets UI. A past successful run does not prove current access. The live brokerage margin-to-cash request is separate from the sandbox.
+**Latest authenticated recheck (2026-10-20 21:25 UTC): SUCCESS** in GitHub Actions run 39490048375 (retry attempt). All 12 offline tests passed; sandbox authentication and delayed stock/ETF quote scanner both succeeded. All five screened quotes were correctly flagged stale after market close, not executable trading signals. No brokerage orders, account changes or transfers occurred. A past success does not guarantee future token availability. The live brokerage margin-to-cash request is separate from the sandbox.
 
 ## Scope and safeguards
 
