@@ -62,12 +62,15 @@ def _items(data, group, singular):
     if not isinstance(data, dict) or group not in data:
         raise BrokerUncertain("broker response has no " + group + " field")
     section = data[group]
-    if section is None:
+    # Tradier returns the literal JSON string "null" for empty
+    # positions and orders on some brokerage/sandbox accounts.
+    # Accept only the documented empty sentinel, never arbitrary text.
+    if section is None or section == "null":
         return []
     if not isinstance(section, dict) or singular not in section:
         raise BrokerUncertain("invalid broker " + group + " data")
     rows = section[singular]
-    if rows is None:
+    if rows is None or rows == "null":
         return []
     if isinstance(rows, dict):
         rows = [rows]

@@ -116,6 +116,11 @@ class BuilderTests(unittest.TestCase):
 
     def test_empty_nested_records_and_broker_malformation(self):
         self.assertEqual(_items({"orders": None}, "orders", "order"), [])
+        self.assertEqual(_items({"positions": "null"}, "positions", "position"), [])
+        self.assertEqual(_items({"orders": "null"}, "orders", "order"), [])
+        self.assertEqual(_items({"orders": {"order": "null"}}, "orders", "order"), [])
+        with self.assertRaises(BrokerUncertain):
+            _items({"positions": "unknown"}, "positions", "position")
         self.assertEqual(_items({"orders": {"order": {"status": "open"}}},
                                 "orders", "order"), [{"status": "open"}])
         with self.assertRaises(BrokerUncertain):
