@@ -1,0 +1,34 @@
+name: Tradier Sandbox Read-Only Verification
+
+on:
+  push:
+    branches:
+      - feature/tradier-sandbox-readonly-20261020
+    paths:
+      - .github/workflows/tradier-sandbox-readonly.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox-readonly:
+    name: Sandbox authentication and delayed quote
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout trusted branch
+        uses: actions/checkout@v4
+
+      - name: Run offline allowlist and privacy tests
+        run: python3 -m unittest discover -s tests -p 'test_tradier_sandbox_check.py' -v
+
+      - name: Verify Tradier sandbox authentication (GET only)
+        env:
+          TRADIER_SANDBOX_TOKEN: ${{ secrets.TRADIER_SANDBOX_TOKEN }}
+        run: |
+          if [ -z "$TRADIER_SANDBOX_TOKEN" ]; then
+            echo "TRADIER_SANDBOX_TOKEN secret is unavailable. Check Actions secret name and repository access."
+            exit 1
+          fi
+          python3 scripts/tradier_sandbox_check.py --symbol SPY
