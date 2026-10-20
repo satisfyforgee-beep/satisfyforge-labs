@@ -96,6 +96,15 @@ function update(data) {
   const market = data.market || {};
   const execution = data.execution || {};
   const performance = data.performance || {};
+  const paperMonitor = data.paper_monitor || {};
+  setText("paper-monitor-state", paperMonitor.status || "Not connected");
+  setText("paper-monitor-note", paperMonitor.message ||
+    "No private paper monitor report available");
+  setText("paper-monitor-broker",
+    "Brokerage state: " + (paperMonitor.brokerage_state || "UNKNOWN"));
+  setText("paper-monitor-time", paperMonitor.checked_at_utc
+    ? "Checked " + clock.format(new Date(paperMonitor.checked_at_utc))
+    : "No verified heartbeat");
   setText("execution-state", execution.live_enabled ? "On" : "Disabled");
   setText("broker-state", execution.broker_connected ? "Yes" : "No");
   setText("feed-state", ({

@@ -167,3 +167,19 @@ reconciliation, market-data limitations, security and next tests.
 **Broker milestone verified, October 20, 2026:** Sandbox OTOCO order preview
 returned PREVIEW_OK with no simulated or real order submitted. GitHub
 [verification run](https://github.com/satisfyforgee-beep/satisfyforge-labs/actions/runs/39500872171).
+
+## v0.6 read-only Tradier paper-order reconciliation and private supervisor
+
+The existing Tradier SANDBOX connection and preview test remain verified. New
+`zerocost_bot/tradier_reconciliation.py` evaluates filled parent orders
+against **two independently fetched linked protective exits** and the
+brokerage position. `tradier_watch.py` offers a bounded, fail-closed
+owner-operated read-only monitor that stores anonymous status reports with
+local file permissions. The existing local dashboard optionally displays
+that heartbeat and marks it STALE after 30 seconds.
+
+Neither the monitor nor the dashboard can create/cancel/modify trades.
+This is NOT a running autonomous trader, profitable system, or hosted
+mobile app. Real Tradier SANDBOX OTOCO child schemas still require a
+separately approved paper fill to verify; mock tests cannot supply that
+evidence. See [READ_ONLY_MONITOR.md](READ_ONLY_MONITOR.md).
