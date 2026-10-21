@@ -1,6 +1,6 @@
 # Rift Raiders — Finish Line / Public Launch Quality Gates
 
-**Status as of v0.30 (2026-10-19): PROTOTYPE / PRIVATE.** Do not report the game as fully completed until all gates below have objective evidence. No public publishing, paid imports, licensing violations, or Robux activation without owner authorization.
+**Status as of v0.31 (2026-10-21): PROTOTYPE / PRIVATE.** Do not report the game as fully completed until all gates below have objective evidence. No public publishing, paid imports, licensing violations, or Robux activation without owner authorization.
 
 ## 1. Player fun — core experience
 - [x] Clear first-time objective in under 30 seconds, with one-tap access to first interesting region.

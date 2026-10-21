@@ -457,7 +457,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.30.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.31.0","version mismatch")
 assert(world:GetAttribute("StudioSavesIsolated")==true,
  "Studio must never write a production profile data store")
 local function count(name)
