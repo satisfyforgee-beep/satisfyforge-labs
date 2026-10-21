@@ -74,12 +74,12 @@ This file is the canonical non-sensitive operating index for work that used to b
   - Lead Follow-Up Automation
   - Gym Membership Growth
 - Hunter business sender: `satisfyforgee@gmail.com`.
-- Active Hunter sequences:
+- Existing Hunter sequences (all three observed completed by 2026-10-19; do not blindly restart):
   - 904604 — Home Service Lead Rescue - Eastern Window
   - 904608 — Lead Follow-Up Automation - Eastern Window
   - 904610 — Gym Membership Growth - Eastern Window
 - Older 904584 / 904585 / 904586 are paused test sequences.
-- Current sending account is active; do not create duplicate outreach sequences for the same offer/audience without evidence the existing ones are exhausted.
+- The `satisfyforgee@gmail.com` sender account is active, but the three sequences above are completed. On 2026-10-21 a fresh Hunter stats check confirmed 15 recipient-sends total, 14 delivered, 2 distinct opens, 0 replies, 1 pre-existing bounce; no new outreach was initiated. Do not create duplicate sequences or resend without reviewing prior deliveries, prospects and consent.
 - 2026-10-13 live sending-window diagnosis: `docs/OUTREACH_AUDIT_2026-10-13.md`.
 - Wix request/form flow remains the safe intake route while checkout verification is paused.
 - `sales/OUTREACH_REPLY_FULFILLMENT_KIT.md` contains the response/sample system.
@@ -99,7 +99,7 @@ This file is the canonical non-sensitive operating index for work that used to b
 - Canonical live site is the existing free Wix Headless deployment.
 - Preserve the full production file set on every redeploy; do not rebuild from only the smaller historical repo subset.
 - Follow `docs/LIVE_WIX_SITE_INVENTORY.md` before updating the site.
-- Wix Forms is the live lead intake source.
+- Wix Forms is the live lead intake source. On 2026-10-21, the official *Query Submissions By Namespace* API successfully returned **0** submissions for `SatisfyForge Growth Request` (site `b237555c-446a-4958-a2df-6c7b186e7d80`, namespace `wix.form_app.form`, form `7632c6db-2dec-4fdc-ace7-3dd72ad81478`). This is a timestamped live read, not a permanent zero; the hourly Outreach Watch baseline was corrected. This verifies a read-capable route exists and confirms inbound lead generation is the immediate bottleneck.
 - 2026-10-14 live verification: one enabled form, `SatisfyForge Growth Request` (ID `7632c6db-2dec-4fdc-ace7-3dd72ad81478`), is present with advanced spam protection and required email, business/project name, price-range interest and problem-description fields. The submission query returned **0 submissions**. The intake mechanism is configured; traffic and qualified response generation are the current bottlenecks.
 - Tool Vault purchase CTAs remain in a safe paused/request state. The $49 public price is now verified; the remaining blockers are unfinished public page copy, authenticated seller-identity verification, and transaction/fulfillment verification.
 - Lead Rescue Sprint ($299) and Custom Platform / Licensing ($5,000) are also quarantined from direct promotion because their public Payhip pages still show default coaching-template copy.
@@ -185,6 +185,13 @@ Use old production packets/performance only as research/reference; do not recrea
 - Recovered browser-game source such as Forge Frenzy.
 
 ## Roblox
+
+### Active development: Rift Raiders — Chaos Islands (PRIVATE)
+- 2026-10-21: the original suburban blinds/courier reach improvement passed a fresh **49,843,809-byte Rojo build**, **real Roblox Studio smoke** (`SF_RIFT_CHECK original_furnished_window_blinds PASS 21`, `SF_RIFT_SMOKE_PASS`), and a **real two-client multiplayer regression** (`SF_RIFT_MP_CHECK original_furnished_window_blinds_shared_physical_motion PASS`, `SF_RIFT_MP_SERVER_PASS players=2`, `SF_RIFT_MP_RESULT ok=true result=PASS:rift_multiplayer`).
+- Draft PR [#76](https://github.com/satisfyforgee-beep/satisfyforge-labs/pull/76) was reviewed and **squash-merged into `feature/rift-raiders`**, commit `868315e` (not `main`; not publicly released). This integrates 21 raised/lowered real prefab blind assemblies, their 422 original slats, and the correct courier reach while preserving the original furnished prefab houses.
+- A new clean Mac worktree `SatisfyForge/worktrees/rift-post-blinds-20261021` was created from that merged branch. The **older local** `SatisfyForge/worktrees/rift-raiders` contains modified historical `.rbxlx` and `.lock` files plus an untracked earlier `SuburbanWindowBlinds.lua`; do not reset or overwrite. Future development should use isolated clean worktrees until this is reconciled.
+- Shipping gates still open: low-end real mobile UX/performance, first-person traversal of all furnishings/stairs, private leave/rejoin DataStore evidence, source asset permission audit and observed fresh-player human playtests. `src/roblox/rift-raiders/SHIP_CRITERIA.md` is the definitive gate list. This is not a public release or revenue source.
+
 
 ### Primary: Brainrot Rush v0.3
 - Current primary game unless later evidence changes that choice.
