@@ -865,6 +865,45 @@ if not Lighting.Toggle(a,lightA) or
  fail("original_room_light_cannot_turn_back_on") return
 end
 print("SF_RIFT_MP_CHECK original_furnished_room_lights_shared_server_validated PASS")
+-- Move actual source blind slats, not just a label or fake light switch.
+local Blinds=require(ServerScriptService:WaitForChild("SuburbanWindowBlinds"))
+local blindKeys=Blinds.List()
+if #blindKeys~=21 then fail("original_window_blinds_missing") return end
+local blindKey=blindKeys[1]
+local blind=Blinds.Inspect(blindKey)
+if not blind or blind.slats<18 or not blind.lastSlat then
+ fail("original_window_blind_has_no_movable_slats") return
+end
+a.Character:PivotTo(CFrame.new(0,8,3425))
+b.Character:PivotTo(CFrame.new(0,8,3425))
+task.wait(.3)
+if Blinds.Toggle(a,blindKey) or Blinds.Toggle(b,blindKey) then
+ fail("remote_window_blind_control_allowed") return
+end
+local startingSlat=blind.lastSlat.CFrame
+local blindCoins=a:GetAttribute("RRCoins")
+a.Character:PivotTo(CFrame.new(blind.rod.Position+Vector3.new(0,-2,0)))
+task.wait(.4)
+if not Blinds.Toggle(a,blindKey) or Blinds.Toggle(a,blindKey) then
+ fail("window_blind_toggle_or_cooldown_failed") return
+end
+task.wait(.55)
+if not blind.model:GetAttribute("BlindsRaised") or
+ (blind.lastSlat.Position-startingSlat.Position).Magnitude<1 or
+ a:GetAttribute("RRCoins")~=blindCoins then
+ fail("window_blind_slats_did_not_physically_raise") return
+end
+b.Character:PivotTo(CFrame.new(blind.rod.Position+Vector3.new(0,-2,0)))
+task.wait(.25)
+if not Blinds.Toggle(b,blindKey) then
+ fail("second_player_cannot_lower_shared_blinds") return
+end
+task.wait(.55)
+if blind.model:GetAttribute("BlindsRaised") or
+ (blind.lastSlat.Position-startingSlat.Position).Magnitude>.15 then
+ fail("window_blind_original_slats_not_restored") return
+end
+print("SF_RIFT_MP_CHECK original_furnished_window_blinds_shared_physical_motion PASS")
 a.Character:PivotTo(CFrame.new(0,8,3425))
 task.wait(.25)
 
@@ -1182,8 +1221,13 @@ if lifeService.Process(a,"CourierPickup",wrongParcel) then
 end
 a.Character:PivotTo(CFrame.new(correctBin.Position+Vector3.new(0,4,0)))
 task.wait(.5)
-if not lifeService.Process(a,"CourierPickup",parcel) or
- a:GetAttribute("RRLifeTaskStep")~=1 then
+local courierRoot=a.Character and a.Character:FindFirstChild("HumanoidRootPart")
+local courierPickupDistance=courierRoot and (courierRoot.Position-correctBin.Position).Magnitude or -1
+local courierPickupAccepted=lifeService.Process(a,"CourierPickup",parcel)
+print("SF_RIFT_COURIER_DIAG accepted",courierPickupAccepted,"distance",courierPickupDistance,
+ "root",courierRoot and tostring(courierRoot.Position),"bin",tostring(correctBin.Position),
+ "step",a:GetAttribute("RRLifeTaskStep"),"parcel",parcel)
+if not courierPickupAccepted or a:GetAttribute("RRLifeTaskStep")~=1 then
  fail("courier_actual_pickup_rejected") return
 end
 local held=a.Character:FindFirstChild("Courier Carry Package")

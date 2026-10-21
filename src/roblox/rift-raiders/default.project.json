@@ -58,6 +58,9 @@
       "SuburbanHomeLights": {
         "$path": "SuburbanHomeLights.lua"
       },
+      "SuburbanWindowBlinds": {
+        "$path": "SuburbanWindowBlinds.lua"
+      },
       "ProgressionGoals": {
         "$path": "ProgressionGoals.lua"
       },

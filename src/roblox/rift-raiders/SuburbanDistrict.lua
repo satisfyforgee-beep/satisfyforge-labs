@@ -3,6 +3,7 @@
 local ServerStorage=game:GetService("ServerStorage")
 local Access=require(script.Parent:WaitForChild("SuburbanAccess"))
 local HomeLights=require(script.Parent:WaitForChild("SuburbanHomeLights"))
+local Blinds=require(script.Parent:WaitForChild("SuburbanWindowBlinds"))
 local Suburbs={}
 local arrivals=Vector3.new(0,8,3425)
 local layout={
@@ -152,6 +153,7 @@ function Suburbs.Build(world,options)
  -- Rebind the safe, existing ceiling fixtures to working public room
  -- light controls; never resurrect imported Toolbox scripts.
  local restoredRoomLights=HomeLights.Build(folder,{tell=options.tell})
+ local restoredBlinds=Blinds.Build(folder,{tell=options.tell})
  -- Accessible, non-teleporting sloped footpaths lead from real ground
  -- into both houses. Source doorway panels and frames remain intact.
  local approachCount=0
@@ -361,6 +363,7 @@ function Suburbs.Build(world,options)
  folder:SetAttribute("MicroDecorOptimized",optimizedDecor)
  folder:SetAttribute("OriginalDoorControllersRepaired",restoredEntrances)
  folder:SetAttribute("InteractiveOriginalHouseLightGroups",restoredRoomLights)
+ folder:SetAttribute("InteractiveOriginalWindowBlinds",restoredBlinds)
  folder:SetAttribute("ActualFloorAlignedHouses",floorAlignedHomes)
  folder:SetAttribute("SlopedFrontWalkways",approachCount)
  folder:SetAttribute("InertImportedClickDetectorsRemoved",deadClickDetectors)
