@@ -143,11 +143,24 @@ def _normalize_preview(response):
         raise PaperBlocked("sandbox preview declined the request")
     if order.get("warnings") or order.get("errors") or order.get("error"):
         raise PaperBlocked("sandbox preview requires further review")
-    for field in ("commission", "fees", "cost"):
+    # The owner's $20 cap applies to TOTAL simulated debit, including
+    # commissions and fees, not just the quoted share limit.
+    if "cost" not in order:
+        raise PaperBlocked("sandbox preview did not provide total debit")
+    try:
+        total = Decimal(str(order["cost"]))
+    except (InvalidOperation, ValueError, TypeError):
+        raise PaperBlocked("sandbox preview total debit invalid") from None
+    if not total.is_finite() or total <= 0 or total > Decimal("20.00"):
+        raise PaperBlocked("sandbox preview exceeds $20 total virtual-money cap")
+    for field in ("commission", "fees"):
         if field in order:
-            value = Decimal(str(order[field]))
-            if not value.is_finite():
-                raise PaperBlocked("sandbox preview cost data invalid")
+            try:
+                value = Decimal(str(order[field]))
+            except (InvalidOperation, ValueError, TypeError):
+                raise PaperBlocked("sandbox preview cost data invalid") from None
+            if not value.is_finite() or value < 0:
+                raise PaperBlocked("sandbox preview fees invalid")
     return {
         "status": "PREVIEW_OK", "simulated_only": True,
         "commission_reported": str(order.get("commission", "unavailable")),
@@ -186,7 +199,8 @@ class TradierSandbox:
         return result
 
     def _request(self, method, path, query=None, form=None, paper_armed=False):
-        readonly = path == "/user/profile" or path == "/markets/quotes"
+        readonly = path in ("/user/profile", "/markets/quotes",
+                            "/markets/clock")
         readonly = readonly or bool(re.fullmatch(
             r"/accounts/VA[A-Z0-9]{5,18}/(?:balances|positions|orders(?:/[0-9]{1,18})?)", path
         ))
@@ -274,6 +288,15 @@ class TradierSandbox:
             "positions": positions, "orders": orders, "pending": pending,
         }
 
+    def verify_market_open(self, *, expected_date):
+        """The sandbox broker clock must agree with the approved ET date."""
+        reply = self._request("GET", "/markets/clock")
+        clock = reply.get("clock") if isinstance(reply, dict) else None
+        if (not isinstance(clock, dict) or clock.get("state") != "open"
+                or clock.get("date") != expected_date.isoformat()):
+            raise PaperBlocked("Tradier sandbox does not confirm the market is open")
+        return True
+
     @staticmethod
     def _flat(snap, price, symbol):
         if snap["positions"] or snap["orders"] or snap["pending"]:
@@ -320,6 +343,7 @@ class TradierSandbox:
         et = now.astimezone(_ET)
         if et.weekday() >= 5 or not (9 * 60 + 35 <= et.hour * 60 + et.minute < 14 * 60 + 45):
             raise PaperBlocked("outside approved regular-market paper entry window")
+        self.verify_market_open(expected_date=et.date())
         snap = self.state(account_selector)
         entry = _money(price)
         self._flat(snap, entry, symbol)
@@ -333,6 +357,7 @@ class TradierSandbox:
         self._flat(next_state, entry, symbol)
         if next_state["cash"] < entry:
             raise PaperBlocked("paper cash changed after preview")
+        self.verify_market_open(expected_date=et.date())
         midnight = et.replace(hour=0, minute=0, second=0, microsecond=0)
         # ONE order per SANDBOX ACCOUNT per session, even across symbols.
         # The account is hashed before use in the journal's strategy name.

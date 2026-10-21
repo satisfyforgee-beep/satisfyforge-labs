@@ -1,0 +1,50 @@
+name: SOFI Sandbox Order Reconciliation — READ ONLY
+
+on:
+  push:
+    branches:
+      - feature/tradier-one-share-paper-20261021
+    paths:
+      - .github/workflows/tradier-sofi-readonly-audit-once.yml
+      - algo-trading/tradier_sandbox_audit_once.py
+      - algo-trading/tests/test_tradier_sandbox_audit_once.py
+
+# One-off read-only audit after the Oct 21 authorized simulated order.
+# No schedule, order placement, retries, or access to production secrets.
+permissions:
+  contents: read
+concurrency:
+  group: satisfyforge-sofi-sandbox-readonly-inspection-20261021
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    name: Offline safety tests then sandbox GETs ONLY
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify full paper engine offline safety checks
+        working-directory: algo-trading
+        run: |
+          python3 -m unittest discover -s tests -q
+          python3 -m compileall -q tradier_sandbox_audit_once.py
+          # The diagnostic script itself must have NO POST invocation.
+          if grep -E '"POST"|\x27POST\x27|submit_paper\(' tradier_sandbox_audit_once.py; then
+            echo "Unsafe HTTP write instruction detected in read-only script"
+            exit 1
+          fi
+
+      - name: Inspect existing Tradier SANDBOX orders and positions only
+        env:
+          TRADIER_SANDBOX_TOKEN: ${{ secrets.TRADIER_SANDBOX_TOKEN }}
+        working-directory: algo-trading
+        run: |
+          unset SF_TRADIER_PAPER_ENABLE
+          unset SF_ONE_SHARE_TRIAL_APPROVAL
+          if [ -z "$TRADIER_SANDBOX_TOKEN" ]; then
+            echo "Existing sandbox token unavailable."
+            exit 1
+          fi
+          python3 tradier_sandbox_audit_once.py

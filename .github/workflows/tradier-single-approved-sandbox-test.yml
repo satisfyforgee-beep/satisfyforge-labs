@@ -1,0 +1,55 @@
+name: One Authorized SOFI SANDBOX One-Share Test
+
+on:
+  push:
+    branches:
+      - feature/tradier-one-share-paper-20261021
+    paths:
+      - .github/workflows/tradier-single-approved-sandbox-test.yml
+      - algo-trading/tradier_one_share_test.py
+      - algo-trading/tests/test_one_share_paper.py
+      - algo-trading/zerocost_bot/tradier_paper.py
+
+# Not a hosted trading bot. The first push before market hours executes
+# zero orders. The approved once-only job may be re-run DURING the Oct 21
+# regular market hours, after independent safety checks.
+permissions:
+  contents: read
+concurrency:
+  group: satisfyforge-onepaper-sofi-20261021
+  cancel-in-progress: false
+
+jobs:
+  offline-safety:
+    name: Before-any-order offline tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run repo-level sandbox safety tests
+        run: python3 -m unittest discover -s tests -p 'test_tradier_sandbox*.py' -q
+      - name: Run complete Trading Lab tests
+        working-directory: algo-trading
+        run: |
+          python3 -m unittest discover -s tests -q
+          python3 -m compileall -q zerocost_bot tradier_one_share_test.py
+
+  once-only-sandbox-order:
+    name: Owner-approved, one SOFI paper share only
+    needs: offline-safety
+    if: github.repository == 'satisfyforgee-beep/satisfyforge-labs'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute ONE owner-approved SANDBOX share test if within time window
+        working-directory: algo-trading
+        env:
+          TRADIER_SANDBOX_TOKEN: ${{ secrets.TRADIER_SANDBOX_TOKEN }}
+          SF_TRADIER_PAPER_ENABLE: SANDBOX_ONLY_APPROVED
+          SF_ONE_SHARE_TRIAL_APPROVAL: SOFI-20261021-SANDBOX-ONE-SHARE-20USD
+        run: |
+          # The Python program rejects attempts outside Oct 21, 2026,
+          # 9:35 a.m.–2:44 p.m. NY time or if the brokerage clock is closed.
+          # No live API key and NO live broker endpoint exist in this job.
+          python3 tradier_one_share_test.py --execute-approved-sandbox-test

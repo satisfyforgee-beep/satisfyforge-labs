@@ -232,6 +232,116 @@ def assess_bracket(parent, candidates, positions, *, expected_symbol):
                     parent_status, len(children))
 
 
+def assess_native_otoco(group, positions, *, expected_symbol="SOFI"):
+    """Verify actual Tradier OTOCO schema: group-level id + embedded leg[].
+
+    Unlike independent basic stock orders, Tradier returns native OTOCO
+    orders as a group containing three legs, with no top-level symbol or
+    quantity. This representation was verified in the user's real SANDBOX
+    (READ ONLY) October 21, 2026. It is not safe to infer protection from
+    a group-level "open" status alone.
+    """
+    if not isinstance(group, dict) or group.get("class") != "otoco":
+        return _blocked("not a native OTOCO group")
+    try:
+        _id(group.get("id"))
+    except BrokerUncertain:
+        return _blocked("native OTOCO group has no valid order ID")
+    if not isinstance(positions, list):
+        return _blocked("positions missing for native OTOCO group")
+    legs = group.get("leg")
+    if isinstance(legs, dict):
+        legs = [legs]
+    if not isinstance(legs, list) or len(legs) != 3:
+        return _blocked("native OTOCO must have exactly three broker-linked legs")
+    if any(not isinstance(leg, dict) for leg in legs):
+        return _blocked("malformed broker-native OTOCO leg")
+    qty = Decimal(0)
+    for pos in positions:
+        if not isinstance(pos, dict) or pos.get("symbol") != expected_symbol:
+            return _blocked("sandbox account has unrelated or malformed position")
+        try:
+            qty += _number(pos.get("quantity"), "position quantity")
+        except BrokerUncertain:
+            return _blocked("position quantity cannot be trusted")
+    if qty not in (Decimal(0), Decimal(1)):
+        return _blocked("unexpected sandbox position size")
+    first, target, stop = legs
+    for leg in legs:
+        if leg.get("symbol") != expected_symbol:
+            return _blocked("native OTOCO symbol mismatch")
+        try:
+            requested = _number(leg.get("quantity"), "leg quantity")
+            if requested != 1:
+                return _blocked("native OTOCO leg not one share")
+            if leg.get("errors") or leg.get("error"):
+                return _blocked("broker-native OTOCO reports order errors")
+        except BrokerUncertain:
+            return _blocked("native OTOCO quantities incomplete")
+    if (first.get("side") != "buy" or first.get("type") != "limit"
+        or target.get("side") != "sell" or target.get("type") != "limit"
+        or stop.get("side") != "sell" or stop.get("type") != "stop"):
+        return _blocked("native OTOCO is not a supported buy-target-stop bracket")
+    try:
+        entry_px = _number(first.get("price"), "entry limit")
+        target_px = _number(target.get("price"), "target limit")
+        stop_px = _number(
+            stop.get("stop") if stop.get("stop") is not None
+            else stop.get("stop_price"), "protective stop")
+    except BrokerUncertain:
+        return _blocked("native OTOCO entry or exit price missing")
+    if not (Decimal(1) <= entry_px <= Decimal(20)
+            and Decimal(0) < stop_px < entry_px < target_px):
+        return _blocked("native OTOCO price geometry unsafe")
+
+    statuses = []
+    quantities = []
+    for leg in legs:
+        try:
+            legstatus, required, executed = _order_fill(leg)
+            statuses.append(legstatus)
+            quantities.append(executed)
+        except BrokerUncertain:
+            return _blocked("native OTOCO status and executed quantities disagree")
+    entry_status, target_status, stop_status = statuses
+    group_status = group.get("status")
+    if group_status not in _STATES:
+        return _blocked("native OTOCO group status unrecognized", entry_status)
+    if (entry_status in ("open", "pending") and quantities[0] == 0
+            and qty == 0 and quantities[1] == 0 and quantities[2] == 0):
+        return BracketAssessment("AWAITING_ENTRY",
+                                 "native OTOCO entry has not filled",
+                                 entry_status, 0)
+    if (entry_status == "rejected" and qty == 0 and quantities[0] == 0):
+        return BracketAssessment("ENTRY_NOT_FILLED",
+                                 "native OTOCO entry rejected before fill",
+                                 entry_status, 0)
+    if (entry_status == "filled" and quantities[0] == 1 and qty == 1
+            and group_status in ("open", "pending")
+            and target_status in _MARKET_WORKING
+            and stop_status in _MARKET_WORKING
+            and quantities[1] == 0 and quantities[2] == 0):
+        return BracketAssessment(
+            "PROTECTED_PAPER_POSITION",
+            "native Tradier OTOCO group shows filled entry and two working exits",
+            entry_status, 2,
+        )
+    if (entry_status == "filled" and quantities[0] == 1 and qty == 0
+            and ((target_status == "filled" and quantities[1] == 1
+                  and stop_status == "canceled" and quantities[2] == 0)
+                 or (stop_status == "filled" and quantities[2] == 1
+                     and target_status == "canceled" and quantities[1] == 0))):
+        return BracketAssessment(
+            "CLOSED_PAPER_POSITION",
+            "one native OTOCO exit filled and sibling canceled; position closed",
+            entry_status, 2,
+        )
+    return _blocked(
+        "native OTOCO order legs/positions not safely reconciled",
+        entry_status, 2,
+    )
+
+
 class SandboxReconciler:
     """GET-only; never changes brokerage state. No credential/ID disclosure."""
 
@@ -254,6 +364,20 @@ class SandboxReconciler:
             raise BrokerUncertain("specific parent order is unavailable")
         if _id(parent.get("id")) != order_id:
             raise BrokerUncertain("specific order ID mismatch")
+        # Tradier returns OTOCO as ONE composite group with three
+        # embedded leg objects. Parent symbol/qty are absent at top-level.
+        # Validate the group and its parent ID against the just-read
+        # session orders list; use the group's native leg[] relationships.
+        if parent.get("class") == "otoco":
+            matching = [
+                row for row in snapshot["orders"]
+                if isinstance(row, dict) and str(row.get("id")) == order_id
+            ]
+            if len(matching) != 1 or matching[0].get("class") != "otoco":
+                raise BrokerUncertain("native OTOCO group absent from order inventory")
+            result = assess_native_otoco(
+                parent, snapshot["positions"], expected_symbol=symbol)
+            return result.as_report()
         # Order LIST records are not independently sufficient to certify
         # child protection. Resolve each explicitly linked child using an
         # exact GET, then verify the relationship again on that response.
