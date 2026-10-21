@@ -56,6 +56,8 @@ class SimulatedBroker:
         self.calls.append((method, path, query, form))
         if method == "GET" and path == "/user/profile":
             return profile()
+        if method == "GET" and path == "/markets/clock":
+            return {"clock": {"state": "open", "date": "2026-10-20"}}
         if method == "GET" and path.endswith("/balances"):
             return balance(self.pending, self.cash)
         if method == "GET" and path.endswith("/positions"):
@@ -215,6 +217,32 @@ class PaperLifecycleTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.journal = OrderJournal(str(Path(self.tmp.name) / "trades.sqlite3"))
+
+    def test_broker_clock_must_confirm_open_market(self):
+        sb, transport = broker()
+        class ClosedClock(SimulatedBroker):
+            def __call__(self, method, path, query, form):
+                if path == "/markets/clock":
+                    return {"clock": {"state": "closed", "date": "2026-10-20"}}
+                return super().__call__(method, path, query, form)
+        fake = ClosedClock()
+        sb = TradierSandbox(token="fake", transport=fake)
+        with patch.dict(os.environ, {"SF_TRADIER_PAPER_ENABLE": "SANDBOX_ONLY_APPROVED"}):
+            with self.assertRaises(PaperBlocked):
+                sb.submit_paper("SOFI", 15, self.journal,
+                                explicitly_armed=True, now=NOW)
+        self.assertFalse(any(c[0]=="POST" for c in fake.calls))
+
+    def test_broker_clock_must_match_trading_date(self):
+        sb, fake = broker()
+        with self.assertRaises(PaperBlocked):
+            sb.verify_market_open(expected_date=__import__("datetime").date(2026, 10, 21))
+
+    def test_preview_total_debit_must_not_exceed_twenty_dollars(self):
+        with self.assertRaises(PaperBlocked):
+            _normalize_preview({"order": {"result": True, "status": "ok", "cost": 20.01}})
+        with self.assertRaises(PaperBlocked):
+            _normalize_preview({"order": {"result": True, "status": "ok"}})
 
     def test_no_paper_submit_without_two_gates(self):
         sb, tr = broker()

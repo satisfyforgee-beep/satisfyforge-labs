@@ -201,3 +201,11 @@ and the existing local dashboard's stale-status display are
 implemented and tested. No always-on hosted execution service, live
 market-data entitlement, paper fill, real-money adapter, proven returns
 or customer app exists. See [READ_ONLY_MONITOR.md](READ_ONLY_MONITOR.md).
+
+## One approved SANDBOX engineering trade (Oct 21, 2026)
+
+A one-time fixed SOFI 1-share paper trial with total $20 simulated
+debit cap and native 2%/3.5% bracket is prepared for 9:35–14:44 ET.
+An initial before-hours run skips brokerage. Confirm the actual
+future market-hours GitHub run before claiming any broker order.
+Documentation: [ONE_SHARE_TRIAL_2026-10-21.md](ONE_SHARE_TRIAL_2026-10-21.md).

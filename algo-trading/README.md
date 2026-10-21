@@ -183,3 +183,12 @@ This is NOT a running autonomous trader, profitable system, or hosted
 mobile app. Real Tradier SANDBOX OTOCO child schemas still require a
 separately approved paper fill to verify; mock tests cannot supply that
 evidence. See [READ_ONLY_MONITOR.md](READ_ONLY_MONITOR.md).
+
+## One owner-approved October 21 SOFI SANDBOX test
+
+Separate date-locked GitHub Actions job for exactly one simulated SOFI
+share, <=$20 total virtual debit, 2% stop, and 3.5% profit target.
+Premarket build is a NO-ORDER dry preflight. A single future rerun
+during the regular market session is required for the authorized
+paper POST. No live-money trading. See
+[ONE_SHARE_TRIAL_2026-10-21.md](ONE_SHARE_TRIAL_2026-10-21.md).
