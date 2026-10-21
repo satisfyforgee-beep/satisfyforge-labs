@@ -129,6 +129,17 @@ Use this replacement in a future paused or draft revision of sequence 904608. It
 
 Use for replies to sequence 904610.
 
+
+## Approved reusable PDF sample
+
+For a genuine reply or explicit sample request, the four-page sample below can be delivered immediately before deeper personalization:
+
+- **Gym Membership Growth Sample:** https://drive.google.com/file/d/13Y8Jd5fLBe_RMiojQaUMLxGP5DNvIxaZ/view?usp=drivesdk
+- SHA-256: `7ddda39d1be027d9dab4578343458093bd97680849b7b3b804913388031dd9e6`
+- Manifest and QA record: `sales/GYM_MEMBERSHIP_GROWTH_SAMPLE_ASSET.md`
+
+The gym in the PDF is fictional and clearly labeled. Do not present it as a client result, transformation, or case study. Do not mass-send it or add it to another sequence. Tailor it only with verified facts, the prospect's real offer, and information the prospect supplied.
+
 ## Short-form video concept: "The workout you don't need to be in shape to start"
 
 **Goal:** remove the intimidation objection and create a local membership inquiry.
