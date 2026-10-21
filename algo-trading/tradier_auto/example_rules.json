@@ -1,0 +1,14 @@
+{
+  "enabled": false,
+  "underlying": "T",
+  "option_symbol": "T261030P00021500",
+  "direction": "down",
+  "underlying_trigger": "21.80",
+  "quantity": 2,
+  "entry_limit": "0.22",
+  "profit_limit": "0.27",
+  "stop_trigger": "0.17",
+  "max_spread": "0.03",
+  "max_cost": "60.00",
+  "min_underlying_volume": 100000
+}
