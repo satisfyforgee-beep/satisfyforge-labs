@@ -130,6 +130,33 @@ class SandboxAuditTests(unittest.TestCase):
         self.assertEqual(_group_view(group, "one")["state"],
                          "CHILD_LEGS_UNVERIFIED")
 
+    def test_real_reconciler_on_one_composite_otoco(self):
+        group = {
+            "id": 191100, "class": "otoco", "status": "open",
+            "leg": [
+                {"symbol": "SOFI", "side": "buy", "type": "limit",
+                 "price": "14.84", "quantity": 1, "exec_quantity": 1,
+                 "status": "filled"},
+                {"symbol": "SOFI", "side": "sell", "type": "limit",
+                 "price": "15.36", "quantity": 1, "exec_quantity": 0,
+                 "status": "open"},
+                {"symbol": "SOFI", "side": "sell", "type": "stop",
+                 "stop_price": "14.54", "quantity": 1, "exec_quantity": 0,
+                 "status": "open"},
+            ],
+        }
+        tr = FakeTransport(positions=[{"symbol": "SOFI", "quantity": 1}],
+                           orders=[group])
+        report = examine(TradierSandbox(token="FAKE", transport=tr))
+        self.assertEqual(
+            report["native_reconciler"]["readiness"],
+            "PROTECTED_PAPER_POSITION")
+        self.assertEqual(
+            report["native_reconciler"]["verified_protective_exits"], 2)
+        self.assertEqual(report["native_reconciler"]["actions_sent"], 0)
+        self.assertTrue(all(x[0] == "GET" for x in tr.calls))
+        self.assertNotIn("191100", json.dumps(report))
+
     def test_broker_error_remains_sanitized(self):
         class Broken(FakeTransport):
             def __call__(self, method, path, query, form):

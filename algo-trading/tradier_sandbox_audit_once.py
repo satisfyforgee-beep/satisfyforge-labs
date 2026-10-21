@@ -294,6 +294,27 @@ def examine(client):
             except Exception as error:
                 groups.append(_safe_failure("otoco_group_detail", error))
         report["otoco_group_inspections"] = groups
+        # Run the REAL read-only reconciliation adapter against the actual
+        # composite Tradier group, not merely this diagnostics-only parser.
+        groups_in_inventory = [x for x in orders if x.get("class") == "otoco"]
+        if len(groups_in_inventory) == 1:
+            try:
+                from zerocost_bot.tradier_reconciliation import SandboxReconciler
+                order_id = groups_in_inventory[0].get("id")
+                if isinstance(order_id, bool) or not str(order_id).isdigit():
+                    raise ValueError("invalid group identifier")
+                result = SandboxReconciler(client).inspect(
+                    str(order_id), symbol="SOFI")
+                report["native_reconciler"] = {
+                    "readiness": result.get("readiness"),
+                    "verified_protective_exits":
+                        result.get("verified_protective_exits"),
+                    "live_order_enabled": False,
+                    "actions_sent": 0,
+                }
+            except Exception as error:
+                report["native_reconciler"] = _safe_failure(
+                    "native_group_reconciliation", error)
     except Exception as error:
         report["order_failure"] = _safe_failure("sandbox_orders", error)
     return report
