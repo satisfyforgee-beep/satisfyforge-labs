@@ -3,7 +3,7 @@ import json
 import unittest
 
 from zerocost_bot.tradier_paper import TradierSandbox
-from tradier_sandbox_audit_once import examine, _view_order, _listify_envelope
+from tradier_sandbox_audit_once import examine, _view_order, _listify_envelope, _group_view
 
 
 class FakeTransport:
@@ -93,6 +93,42 @@ class SandboxAuditTests(unittest.TestCase):
         self.assertEqual(row["nested_children_count_max25"], 2)
         self.assertNotIn("42", json.dumps(row))
         self.assertNotIn("private", json.dumps(row))
+
+    def test_three_native_otoco_group_legs_protected_on_realistic_schema(self):
+        group = {
+            "id": 987654321, "class": "otoco", "status": "open",
+            "num_legs": 3,
+            "leg": [
+                {"id": 1, "symbol": "SOFI", "side": "buy", "type": "limit",
+                 "quantity": 1, "exec_quantity": 1, "status": "filled",
+                 "price": "14.84"},
+                {"id": 2, "symbol": "SOFI", "side": "sell", "type": "limit",
+                 "quantity": 1, "exec_quantity": 0, "status": "open",
+                 "price": "15.36"},
+                {"id": 3, "symbol": "SOFI", "side": "sell", "type": "stop",
+                 "quantity": 1, "exec_quantity": 0, "status": "open",
+                 "stop_price": "14.54"},
+            ],
+        }
+        view = _view_order(group)
+        self.assertEqual(view["nested_children_count_max25"], 3)
+        self.assertEqual(view["nested_legs"][2]["stop"], "14.54")
+        self.assertEqual(_group_view(group, "one")["state"],
+                         "PAPER_ENTRY_FILLED_EXITS_ACTIVE")
+        self.assertEqual(_group_view(group, "zero")["state"],
+                         "UNVERIFIED")
+        self.assertNotIn("987654321", json.dumps(view))
+
+    def test_incomplete_otoco_group_not_called_protected(self):
+        group = {
+            "class": "otoco",
+            "leg": [
+                {"symbol": "SOFI", "side": "buy", "type": "limit",
+                 "quantity": 1, "exec_quantity": 1, "status": "filled"},
+            ],
+        }
+        self.assertEqual(_group_view(group, "one")["state"],
+                         "CHILD_LEGS_UNVERIFIED")
 
     def test_broker_error_remains_sanitized(self):
         class Broken(FakeTransport):

@@ -26,7 +26,7 @@ _SAFE_DETAIL_KEYS = frozenset((
     "remaining_quantity", "symbol", "price", "stop", "order",
     "parent_id", "parent_order_id", "avg_fill_price", "tag",
     "create_date", "duration", "errors", "error", "legs",
-    "result", "partner_id",
+    "result", "partner_id", "leg", "num_legs",
 ))
 
 
@@ -73,19 +73,90 @@ def _listify_envelope(root, key, member):
     return [], "malformed_records"
 
 
+def _positive_price(value):
+    if isinstance(value, bool):
+        return None
+    try:
+        dec = Decimal(str(value))
+        if dec.is_finite() and 0 < dec <= Decimal("50.00"):
+            return str(dec.quantize(Decimal("0.01")))
+    except (InvalidOperation, ValueError, TypeError):
+        pass
+    return None
+
+
+def _view_leg(leg):
+    if not isinstance(leg, dict):
+        return {"shape": "invalid"}
+    return {
+        "sofi": leg.get("symbol") == "SOFI",
+        "status": _enum(leg.get("status"), _STATES),
+        "side": _enum(leg.get("side"), _SIDES),
+        "type": _enum(leg.get("type"), _TYPES),
+        "quantity": _quantity(leg.get("quantity")),
+        "executed": _quantity(leg.get("exec_quantity")),
+        "price": _positive_price(leg.get("price")),
+        "stop": _positive_price(
+            leg.get("stop") if leg.get("stop") is not None else
+            leg.get("stop_price")),
+        "has_errors": any(leg.get(k) is not None
+                          for k in ("errors", "error")),
+    }
+
+
+def _group_view(group, position_count):
+    """Classify a native OTOCO only from its exact broker GET and 3 legs."""
+    if not isinstance(group, dict) or group.get("class") != "otoco":
+        return {"state": "NOT_AN_OTOCO"}
+    details = group.get("leg")
+    if isinstance(details, dict):
+        details = [details]
+    if not isinstance(details, list) or len(details) != 3:
+        return {"state": "CHILD_LEGS_UNVERIFIED",
+                "reason": "group_has_no_three_legs"}
+    parts = [_view_leg(x) for x in details]
+    entry, target, stop = parts
+    if any(leg["has_errors"] for leg in parts):
+        return {"state": "UNVERIFIED", "reason": "leg_error_present"}
+    if not all(x["sofi"] and x["quantity"] == "one" for x in parts):
+        return {"state": "UNVERIFIED", "reason": "symbol_or_quantity_mismatch"}
+    if (entry["side"] != "buy" or entry["type"] != "limit"
+        or target["side"] != "sell" or target["type"] != "limit"
+        or stop["side"] != "sell" or stop["type"] != "stop"):
+        return {"state": "UNVERIFIED", "reason": "leg_geometry_mismatch"}
+    if not target["price"] or not stop["stop"]:
+        return {"state": "UNVERIFIED", "reason": "exit_prices_missing"}
+    if (entry["status"] == "filled" and entry["executed"] == "one"
+        and target["status"] in ("open", "pending")
+        and stop["status"] in ("open", "pending")
+        and position_count == "one"):
+        return {"state": "PAPER_ENTRY_FILLED_EXITS_ACTIVE",
+                "reason": "broker_group_3_legs_and_position_agree"}
+    if (entry["status"] in ("open", "pending")
+        and entry["executed"] == "zero" and position_count == "zero"):
+        return {"state": "PAPER_ENTRY_WAITING",
+                "reason": "entry_not_filled"}
+    if (entry["status"] == "filled" and entry["executed"] == "one"
+        and position_count == "one"):
+        return {"state": "FILLED_BUT_EXITS_NOT_VERIFIED",
+                "reason": "exit_leg_status_uncertain"}
+    return {"state": "UNVERIFIED", "reason": "group_or_position_inconsistent"}
+
+
 def _view_order(order):
     if not isinstance(order, dict):
         return {"shape": "not_object"}
-    inner = order.get("order")
+    inner = order.get("leg", order.get("order"))
     if isinstance(inner, dict):
         nested = "dict"
-        nested_count = 1
+        children = [inner]
     elif isinstance(inner, list):
         nested = "list"
-        nested_count = min(len(inner), 25)
+        children = inner[:5]
     else:
         nested = "none"
-        nested_count = 0
+        children = []
+    nested_count = len(children)
     return {
         "sofi_symbol": order.get("symbol") == "SOFI",
         "status": _enum(order.get("status"), _STATES),
@@ -103,6 +174,8 @@ def _view_order(order):
         "has_errors": any(order.get(k) is not None for k in ("errors", "error")),
         "nested_children_type": nested,
         "nested_children_count_max25": nested_count,
+        "group_num_legs": _quantity(order.get("num_legs")),
+        "nested_legs": [_view_leg(x) for x in children],
         "known_field_names": sorted(set(order.keys()) & _SAFE_DETAIL_KEYS),
         "unrecognized_field_count": len(set(order.keys()) - _SAFE_DETAIL_KEYS),
     }
@@ -198,6 +271,29 @@ def examine(client):
             except Exception as error:
                 detail.append(_safe_failure("sofi_order_detail", error))
         report["sofi_order_detail_views"] = detail
+        # Composite OTOCO orders have no top-level SOFI symbol, so they
+        # must be inspected as a GROUP by exact ID before deciding whether
+        # the entry and both protective legs are working.
+        groups = []
+        for item in orders:
+            if item.get("class") != "otoco" or len(groups) >= 3:
+                continue
+            ident = item.get("id")
+            if isinstance(ident, bool) or not str(ident).isdigit():
+                groups.append({"state": "MALFORMED_GROUP_ID"})
+                continue
+            try:
+                raw = client._request(
+                    "GET", base + "/orders/" + str(ident),
+                    query={"includeTags": "true"})
+                group = raw.get("order")
+                groups.append({
+                    "detail": _view_order(group),
+                    "protection": _group_view(group, report.get("sofi_quantity")),
+                })
+            except Exception as error:
+                groups.append(_safe_failure("otoco_group_detail", error))
+        report["otoco_group_inspections"] = groups
     except Exception as error:
         report["order_failure"] = _safe_failure("sandbox_orders", error)
     return report
