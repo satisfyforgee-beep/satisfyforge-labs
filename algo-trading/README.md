@@ -192,3 +192,17 @@ Premarket build is a NO-ORDER dry preflight. A single future rerun
 during the regular market session is required for the authorized
 paper POST. No live-money trading. See
 [ONE_SHARE_TRIAL_2026-10-21.md](ONE_SHARE_TRIAL_2026-10-21.md).
+
+### Oct 21 SOFI sandbox order result
+
+One strictly approved, one-share paper SOFI OTOCO was submitted at
+$14.84 and the broker's native grouped `leg[]` order readback confirmed
+the entry filled and two exits were OPEN (target $15.36 / stop $14.54).
+The prior one-share test job reports a FAILED **readback parser** after
+its successful submit and must **never be rerun**. The successful
+read-only follow-up proves the separate fill and exits:
+https://github.com/satisfyforgee-beep/satisfyforge-labs/actions/runs/39621609697 .
+
+The native OTOCO group parser is now integrated into the read-only
+reconciler. This does not constitute evidence of a completed/ profitable
+trade or a 24-hour autonomous trading engine. No real-money route is on.

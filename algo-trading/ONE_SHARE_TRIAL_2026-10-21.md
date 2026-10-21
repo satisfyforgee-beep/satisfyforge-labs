@@ -82,10 +82,31 @@ readonly GitHub permissions, short timeout and only the existing
 - Simulated fills don't show real-world spread, slippage or live
   execution performance. This test is NOT expected to make money.
 
-**Evidence required next:** Actual sandbox job output showing its broker
-accepted one paper order, entry fill status and child-order linkage
-with the proper protected/closed/unverified classification. Until then
-report **prepared/scheduled**, NOT traded.
+**ACTUAL RESULT VERIFIED October 21, 2026 (10:58 a.m. EDT):** The
+single user-authorized sandbox submission received a Tradier order
+acknowledgement with entry limit **$14.84**. The first workflow
+reported `STOP_AND_RECONCILE` after the submission because its
+single-equity-order readback cannot understand native grouped OTOCO
+orders. We did NOT retry the paper order.
+
+A subsequent **GET-only** broker reconciliation showed exactly ONE
+SOFI sandbox share held and ONE native composite OTOCO group with
+three broker legs: entry BUY one SOFI at $14.84 **filled**; target SELL
+one share at $15.36 **open**; stop SELL one share at $14.54 **open**.
+The group was `open`; none of the exits had executed at that inspection.
+The strict new native OTOCO verifier matched all three legs to the
+one-share position.
+
+Evidence (read-only audit):
+https://github.com/satisfyforgee-beep/satisfyforge-labs/actions/runs/39621609697
+
+The submission workflow's failure refers to an incompatible readback
+parser, **not a failed order entry**. No additional simulated buy order
+was placed. No live-money trade, deposit or purchase occurred.
+This is a broker connectivity/execution *engineering milestone*, not a
+profitable result or a completed trade cycle. Because order duration is
+`day`, the exits must be checked again around session close: they
+can expire while a virtual position remains.
 
 ## Owner review
 
