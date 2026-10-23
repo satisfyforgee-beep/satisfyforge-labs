@@ -106,6 +106,9 @@
     },
     "ReplicatedStorage": {
       "$className": "ReplicatedStorage",
+      "MobileLayout": {
+        "$path": "MobileLayout.lua"
+      },
       "PrestigeCatalog": {
         "$path": "PrestigeCatalog.lua"
       },

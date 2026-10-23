@@ -13,6 +13,12 @@ local activitySignal=ReplicatedStorage:WaitForChild("RiftActivitiesSignal")
 local world=workspace:WaitForChild("RiftRaidersWorld")
 local Catalog=require(ReplicatedStorage:WaitForChild("PrestigeCatalog"))
 local LifeCatalog=require(ReplicatedStorage:WaitForChild("LifeCatalog"))
+local MobileLayout=require(ReplicatedStorage:WaitForChild("MobileLayout"))
+local function guideWidth()
+ local camera=workspace.CurrentCamera
+ local viewportWidth=camera and camera.ViewportSize.X or 375
+ return MobileLayout.GuideWidth(viewportWidth,UserInputService.TouchEnabled)
+end
 local gui=Instance.new("ScreenGui"); gui.Name="RiftRaidersHUD"
 gui.ResetOnSpawn=false; gui.IgnoreGuiInset=false; gui.Parent=player:WaitForChild("PlayerGui")
 local function round(object,radius)
@@ -120,7 +126,7 @@ showActions()
 -- This uses server-issued goal state, not a local "free coins" command.
 local goalChip=Instance.new("Frame")
 goalChip.Name="FirstSessionGoals"
-goalChip.Size=UDim2.new(0,math.min(325,UserInputService.TouchEnabled and 265 or 325),0,103)
+goalChip.Size=UDim2.fromOffset(guideWidth(),103)
 -- Leave Roblox's top-left buttons clear, especially on mobile.
 goalChip.Position=UDim2.new(0,12,0,65)
 goalChip.BackgroundColor3=Color3.fromRGB(31,46,48)
@@ -167,14 +173,13 @@ goalQuick.Activated:Connect(function()
  else
   goalCollapsed=not goalCollapsed
   goalDescription.Visible=not goalCollapsed
-  goalChip.Size=UDim2.new(0,math.min(325,UserInputService.TouchEnabled and 265 or 325),
-   0,goalCollapsed and 70 or 103)
+  goalChip.Size=UDim2.fromOffset(guideWidth(),goalCollapsed and 70 or 103)
  end
 end)
 local dailyChip=Instance.new("TextLabel")
 dailyChip.Name="DailyGoalsProgress"
-dailyChip.Size=UDim2.new(0,270,0,28)
-dailyChip.Position=UDim2.new(0,14,0,174)
+dailyChip.Size=UDim2.fromOffset(guideWidth(),28)
+dailyChip.Position=UDim2.new(0,MobileLayout.LeftInset,0,174)
 dailyChip.BackgroundColor3=Color3.fromRGB(33,61,67)
 dailyChip.TextColor3=Color3.fromRGB(166,230,194)
 dailyChip.TextSize=12;dailyChip.TextWrapped=true
@@ -183,6 +188,21 @@ dailyChip.BorderSizePixel=0
 dailyChip.Text="DAILY ACTIVITIES • 0/4"
 dailyChip.Parent=gui
 round(dailyChip,9)
+local viewportConnection
+local function applyGuideLayout()
+ local width=guideWidth()
+ goalChip.Size=UDim2.fromOffset(width,goalCollapsed and 70 or 103)
+ dailyChip.Size=UDim2.fromOffset(width,28)
+end
+local function bindGuideViewport()
+ if viewportConnection then viewportConnection:Disconnect() end
+ local camera=workspace.CurrentCamera
+ viewportConnection=camera and
+  camera:GetPropertyChangedSignal("ViewportSize"):Connect(applyGuideLayout) or nil
+ applyGuideLayout()
+end
+bindGuideViewport()
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(bindGuideViewport)
 local goalLastStage=-1
 local function refreshGoals()
  local stage=player:GetAttribute("RRGoalsIntro") or 0

@@ -44,6 +44,21 @@ assert(sameDay.intro==3 and sameDay.completed==4,
 local prevDay=Goals.DayKey(os.time()-86400)
 local nextDay=Goals.DayKey(os.time())
 assert(nextDay>=prevDay,"day keys must increase monotonically")
+local MobileLayout=require(game:GetService("ReplicatedStorage"):
+ WaitForChild("MobileLayout"))
+for _,viewportWidth in ipairs({320,360,375,390,414}) do
+ local guideWidth=MobileLayout.GuideWidth(viewportWidth,true)
+ assert(MobileLayout.RightControlClearance(viewportWidth,guideWidth)>=
+  MobileLayout.MinimumClearance,
+  "mobile first-session guide overlaps right controls at "..viewportWidth.."px")
+end
+assert(MobileLayout.GuideWidth(375,true)==230,
+ "375px phone guide should shrink from the overlapping legacy width")
+assert(MobileLayout.GuideWidth(800,true)==265,
+ "wide touch device should retain the capped readable guide width")
+assert(MobileLayout.GuideWidth(800,false)==325,
+ "desktop first-session guide width changed unexpectedly")
+print("SF_RIFT_CHECK mobile_guidance_clearance PASS 320 360 375 390 414")
 -- Atomic DataStore locking and migration rules, exercised against a
 -- synchronous fake store. No owner account or live DataStore reads/writes.
 local Persistence=require(game:GetService("ServerScriptService"):WaitForChild("DataPersistence"))
@@ -457,7 +472,7 @@ assert(game:GetService("MaterialService"):FindFirstChild("PaintedBrick"),
  "official modern city material variants missing")
 assert((world:FindFirstChild("RiftRaidersSpawn").Position-Vector3.new(0,1.5,2215)).Magnitude<2,
  "downtown not the default spawn")
-assert(world:GetAttribute("Version")=="0.31.0","version mismatch")
+assert(world:GetAttribute("Version")=="0.32.0","version mismatch")
 assert(world:GetAttribute("StudioSavesIsolated")==true,
  "Studio must never write a production profile data store")
 local function count(name)

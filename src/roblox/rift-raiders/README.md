@@ -10,6 +10,8 @@ Spawn at the central hub. Use the WORLD menu or one of four skybridges to reach 
 
 ## Implemented
 
+- **v0.32 Phone Guide Clearance:** The first-session and daily-goal panels now derive their width from the current camera viewport. At 320, 360, 375, 390 and 414 px portrait widths, automated Studio assertions preserve at least 15 px between the left guide and the existing right-side controls; the layout also recomputes when the viewport changes. This is a bounded phone-UX improvement, not a claim of real-device performance or retention. See [V0_32_RELEASE_NOTES.md](V0_32_RELEASE_NOTES.md) and [V0_32_QA.md](V0_32_QA.md).
+
 - **v0.31 Original Suburban Window Blinds & Courier Range:** Integrated the real-Roblox-tested original 21 window blind controls across both imported furnished houses, moving 422 genuine noncolliding slats with secure proximity and cooldown logic. Corrected courier pickup server radius from 6 to the existing 8-stud prompt. Both fixes come from reviewed PR #76; no foreign prefab scripts, fake rewards, production saves, or public release. See [V0_31_RELEASE_NOTES.md](V0_31_RELEASE_NOTES.md) and [V0_31_QA.md](V0_31_QA.md).
 
 - **v0.30 Original House Light Controls:** The two original detailed, now-walkable furnished suburban homes have 20 usable room-light controls wired to their existing SpotLight fixtures. Player prompts toggle genuine room lights on/off for everyone; the server checks living-player proximity, switch cooldowns, and never awards fictional coins for lighting. No foreign prefab scripts reintroduced. See [V0_30_RELEASE_NOTES.md](V0_30_RELEASE_NOTES.md) and [V0_30_QA.md](V0_30_QA.md).
