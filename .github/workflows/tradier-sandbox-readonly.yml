@@ -5,6 +5,7 @@ on:
     branches:
       - feature/tradier-paper-lifecycle-20261020
       - feature/tradier-reconciliation-v06-20261020
+      - feature/tradier-one-share-paper-20261021
     paths:
       - .github/workflows/tradier-sandbox-readonly.yml
       - scripts/tradier_sandbox_check.py

@@ -4,7 +4,7 @@ import json
 import unittest
 
 from zerocost_bot.tradier_reconciliation import (
-    BracketAssessment, SandboxReconciler, assess_bracket,
+    BracketAssessment, SandboxReconciler, assess_bracket, assess_native_otoco,
 )
 from zerocost_bot.tradier_paper import (
     TradierSandbox, BrokerUncertain, PaperBlocked,
@@ -201,6 +201,101 @@ class StubBroker:
             if path.endswith("/orders/" + str(child["id"])):
                 return {"order": child}
         raise AssertionError("not an allowed broker endpoint")
+
+
+class NativeTradierOtocoTests(unittest.TestCase):
+    @staticmethod
+    def native(*, stop_status="open", profit_status="open",
+               position=1, group_status="open"):
+        group = {
+            "id": PID, "class": "otoco", "status": group_status,
+            "leg": [
+                {"symbol": SYMBOL, "side": "buy", "type": "limit", "price": "14.84",
+                 "quantity": 1, "exec_quantity": 1, "status": "filled"},
+                {"symbol": SYMBOL, "side": "sell", "type": "limit", "price": "15.36",
+                 "quantity": 1,
+                 "exec_quantity": int(profit_status == "filled"),
+                 "status": profit_status},
+                {"symbol": SYMBOL, "side": "sell", "type": "stop", "stop_price": "14.54",
+                 "quantity": 1,
+                 "exec_quantity": int(stop_status == "filled"),
+                 "status": stop_status},
+            ],
+        }
+        return group, holding(position)
+
+    def test_real_sandbox_group_shape_is_protected(self):
+        group, positions = self.native()
+        out = assess_native_otoco(group, positions)
+        self.assertEqual(out.readiness, "PROTECTED_PAPER_POSITION")
+        self.assertEqual(out.verified_children, 2)
+        self.assertFalse(out.live_order_enabled)
+
+    def test_native_group_without_two_exits_halts(self):
+        group, positions = self.native()
+        group["leg"].pop()
+        self.assertEqual(assess_native_otoco(group, positions).readiness,
+                         "HALT_AND_RECONCILE")
+
+    def test_native_group_with_expired_stop_halts(self):
+        group, positions = self.native(stop_status="expired")
+        self.assertEqual(assess_native_otoco(group, positions).readiness,
+                         "HALT_AND_RECONCILE")
+
+    def test_native_group_closed_requires_one_filled_exit_and_zero_position(self):
+        group, positions = self.native(
+            profit_status="filled", stop_status="canceled", position=0)
+        self.assertEqual(assess_native_otoco(group, positions).readiness,
+                         "CLOSED_PAPER_POSITION")
+        group, positions = self.native(
+            profit_status="filled", stop_status="canceled", position=1)
+        self.assertEqual(assess_native_otoco(group, positions).readiness,
+                         "HALT_AND_RECONCILE")
+
+    def test_native_group_unfilled_entry_does_not_claim_protection(self):
+        group, positions = self.native(position=0)
+        group["leg"][0].update(status="open", exec_quantity=0)
+        self.assertEqual(assess_native_otoco(group, positions).readiness,
+                         "AWAITING_ENTRY")
+
+    def test_native_group_bad_size_symbol_or_side_halts(self):
+        for change in (
+            {"symbol": "AAL"}, {"quantity": 2}, {"side": "sell_short"},
+            {"type": "market"}, {"status": "unknown"}
+        ):
+            group, positions = self.native()
+            group["leg"][2].update(change)
+            with self.subTest(change=change):
+                self.assertEqual(assess_native_otoco(group, positions).readiness,
+                                 "HALT_AND_RECONCILE")
+
+    def test_broker_native_group_exact_id_get_only(self):
+        group, positions = self.native()
+        class CompositeTransport(StubBroker):
+            def __call__(self, method, path, query, form):
+                self.calls.append((method, path, query, form))
+                if method != "GET":
+                    raise AssertionError("no writes")
+                if path == "/user/profile":
+                    return {"profile": {"account": {"account_number": "VA00001234"}}}
+                if path.endswith("/balances"):
+                    return {"balances": {"pending_orders_count": 2,
+                                         "total_cash": 99950}}
+                if path.endswith("/positions"):
+                    return {"positions": {"position": positions}}
+                if path.endswith("/orders"):
+                    return {"orders": {"order": group}}
+                if path.endswith("/orders/" + str(PID)):
+                    return {"order": group}
+                raise AssertionError("unexpected path")
+        source = CompositeTransport()
+        reporter = SandboxReconciler(
+            TradierSandbox(token="FAKE", transport=source))
+        report = reporter.inspect(PID, symbol=SYMBOL)
+        self.assertEqual(report["readiness"], "PROTECTED_PAPER_POSITION")
+        self.assertTrue(all(c[0] == "GET" for c in source.calls))
+        self.assertNotIn("VA00001234", json.dumps(report))
+        self.assertNotIn(str(PID), json.dumps(report))
 
 
 class ReadOnlyRemoteTests(unittest.TestCase):

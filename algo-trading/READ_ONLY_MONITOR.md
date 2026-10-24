@@ -37,14 +37,19 @@ The statuses are `AWAITING_ENTRY`, `ENTRY_NOT_FILLED`,
 unavailable evidence *halts*. The existing v0.5 trader remains
 paper-POST-disabled until separately armed.
 
-**IMPORTANT — actual Tradier advanced-order schema not yet verified with
-filled simulated orders.** Tradier may represent OTOCO children as
-nested order objects, or may omit the explicit parent relationships
-assumed by this strict first implementation. In either case v0.6 will
-report `HALT_AND_RECONCILE` until broker data confirms linkage. Tests use
-synthetic fixtures, not actual order fills. We must test one actual
-SANDBOX OTOCO, inspect its real child orders and adjust the parser
-safely before unattended paper entries.
+**Actual sandbox OTOCO group schema verified, October 21, 2026.**
+Tradier returned one composite `class=otoco` order group, with an
+embedded `leg` ARRAY of exactly three order records. The group itself
+has no top-level `symbol`, `quantity`, or `exec_quantity`; those live
+on the child legs. This explains why the earlier simple-order readback
+failed. The grouped-order schema was independently fetched using GET
+only and verified against a one-share sandbox position. The reconciler
+now detects native composite groups and checks each of its three
+broker-reported legs and the account position. **This confirms the
+test fill/protective legs at the inspection time, not permanent
+protection or guaranteed stop-price execution.** Additional session,
+partial-fill, expiration, restart, and live-data tests remain required.
+Evidence: https://github.com/satisfyforgee-beep/satisfyforge-labs/actions/runs/39621609697 .
 
 ## Run offline tests ($0, no broker secrets)
 
@@ -72,6 +77,23 @@ This does **ONE** read-only reconciliation and writes
 `~/.satisfyforge/trading/paper_order_status.json` with owner-only
 filesystem permissions. The report contains no order IDs, customer data,
 API credentials, raw broker payloads, or secret tokens.
+
+Every successful poll also appends the same sanitized state to
+`paper_order_journal.jsonl` in that owner-private directory. The journal:
+
+- is mode `0600` inside the mode-`0700` status directory;
+- uses a monotonic sequence and SHA-256 link to the prior event;
+- validates the complete chain before every append and refuses a truncated,
+  edited, symlinked, oversized, or schema-expanded file;
+- fsyncs each bounded append before monitoring continues;
+- contains no account/order identifiers, broker response, signal, token,
+  executable action, or enabled trading flag.
+
+This makes lifecycle changes and outages auditable during forward-paper
+testing. It is **tamper-evident, not magically immutable**: an owner with
+filesystem access can replace the whole directory, and loss of the computer
+still loses the local log. A journal integrity failure stops the watcher
+rather than starting a new chain or erasing evidence.
 
 To monitor while the **owner-controlled computer and this terminal
 remain running**:
