@@ -1,0 +1,59 @@
+name: Tradier Sandbox Read-Only Verification
+
+on:
+  push:
+    branches:
+      - feature/tradier-sandbox-readonly-20261020
+    paths:
+      - .github/workflows/tradier-sandbox-readonly.yml
+      - scripts/tradier_sandbox_check.py
+      - tests/test_tradier_sandbox_check.py
+      - scripts/tradier_paper_lab.py
+      - tests/test_tradier_paper_lab.py
+      - scripts/tradier_historical_lab.py
+      - tests/test_tradier_historical_lab.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox-readonly:
+    name: Sandbox authentication and delayed quote
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout trusted branch
+        uses: actions/checkout@v4
+
+      - name: Run offline allowlist and privacy tests
+        run: |
+          python3 -m unittest discover -s tests -p 'test_tradier_sandbox_check.py' -v
+          python3 -m unittest discover -s tests -p 'test_tradier_paper_lab.py' -v
+          python3 -m unittest discover -s tests -p 'test_tradier_historical_lab.py' -v
+
+      - name: Verify Tradier sandbox authentication (GET only)
+        env:
+          TRADIER_SANDBOX_TOKEN: ${{ secrets.TRADIER_SANDBOX_TOKEN }}
+        run: |
+          if [ -z "$TRADIER_SANDBOX_TOKEN" ]; then
+            echo "TRADIER_SANDBOX_TOKEN secret is unavailable. Check Actions secret name and repository access."
+            exit 1
+          fi
+          python3 scripts/tradier_sandbox_check.py --symbol SPY
+
+      - name: Screen delayed sandbox stock quotes (research only)
+        env:
+          TRADIER_SANDBOX_TOKEN: ${{ secrets.TRADIER_SANDBOX_TOKEN }}
+        run: python3 scripts/tradier_paper_lab.py --scan --symbols SOFI,AAL,F,PLTR,SPY --budget 30
+
+      - name: Research historical strategies with real SANDBOX daily bars only
+        env:
+          TRADIER_SANDBOX_TOKEN: ${{ secrets.TRADIER_SANDBOX_TOKEN }}
+        run: |
+          python3 scripts/tradier_historical_lab.py --symbols SOFI,AAL,F --start 2025-01-02 --budget 30 --cost-bps 20 --fee 0
+
+      - name: Aggregate vendor history QA (no account or key output)
+        env:
+          TRADIER_SANDBOX_TOKEN: ${{ secrets.TRADIER_SANDBOX_TOKEN }}
+        run: python3 scripts/tradier_historical_lab.py --quality-check --symbols SOFI,AAL,F --start 2025-01-02
