@@ -1,0 +1,24 @@
+name: Tradier paper-only bot offline tests
+
+on:
+  pull_request:
+    paths:
+      - "algo-trading/tradier_auto/**"
+      - "algo-trading/tests/test_tradier_auto.py"
+      - ".github/workflows/tradier-paper-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Tradier sandbox bot without brokerage credentials
+        working-directory: algo-trading
+        run: |
+          python3 -m compileall -q tradier_auto
+          python3 -m unittest discover -s tests -p test_tradier_auto.py -v
