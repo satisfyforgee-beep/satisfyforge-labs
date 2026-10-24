@@ -20,7 +20,8 @@ import time
 from zerocost_bot.tradier_paper import TradierSandbox
 from zerocost_bot.tradier_reconciliation import SandboxReconciler
 from zerocost_bot.paper_supervisor import (
-    PaperSupervisor, SupervisorReport, write_private_report,
+    PaperSupervisor, SupervisorReport, append_private_journal,
+    write_private_report,
 )
 
 _STOCK = re.compile(r"[A-Z]{1,5}$")
@@ -68,6 +69,7 @@ def run_watch(order_id, symbol, *, watch=False, interval_seconds=15,
         for index in range(limit):
             last = supervisor.poll()
             write_private_report(last, directory=root)
+            append_private_journal(last, directory=root)
             print(json.dumps(last.as_dict(), sort_keys=True), flush=True)
             if last.state != "MONITORING":
                 break
@@ -108,6 +110,7 @@ def main(argv=None):
             datetime.now(timezone.utc).isoformat())
         try:
             write_private_report(report, directory=_private_root())
+            append_private_journal(report, directory=_private_root())
         except (OSError, ValueError):
             pass
         print("Read-only monitor stopped by owner.", file=sys.stderr)

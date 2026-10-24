@@ -9,7 +9,8 @@ import unittest
 
 import tradier_watch
 from zerocost_bot.paper_supervisor import (
-    PaperSupervisor, SupervisorReport, write_private_report,
+    PaperSupervisor, SupervisorReport, append_private_journal,
+    verify_private_journal, write_private_report,
 )
 from zerocost_bot.tradier_paper import BrokerUncertain
 
@@ -192,6 +193,9 @@ class WatchCLIStateTests(unittest.TestCase):
         self.assertEqual(slept, [10, 10])
         obj = json.loads((self.root/"paper_order_status.json").read_text())
         self.assertEqual(obj["supervisor_state"], "STOPPED")
+        audit = verify_private_journal(directory=self.root)
+        self.assertTrue(audit["valid"])
+        self.assertEqual(audit["entries"], 3)
 
     def test_watch_halts_on_first_broker_uncertainty(self):
         count = []
@@ -236,6 +240,74 @@ class WatchCLIStateTests(unittest.TestCase):
             max_polls=3, sleep=lambda _ : None)
         self.assertEqual(ret, 0)
         self.assertEqual(len(called), 3)
+
+
+
+class DurableJournalTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)/"private"
+
+    def report(self, state="MONITORING", brokerage="AWAITING_ENTRY",
+               note="Verified read-only sandbox status; no orders allowed",
+               errors=0):
+        return SupervisorReport(
+            state, brokerage, note, NOW.isoformat(), errors)
+
+    def test_hash_chain_preserves_sanitized_lifecycle(self):
+        append_private_journal(self.report(), directory=self.root)
+        append_private_journal(self.report(
+            brokerage="PROTECTED_PAPER_POSITION"), directory=self.root)
+        result = verify_private_journal(directory=self.root)
+        self.assertTrue(result["valid"])
+        self.assertEqual(result["entries"], 2)
+        self.assertRegex(result["tail_hash"], r"^[0-9a-f]{64}$")
+        path = self.root/"paper_order_journal.jsonl"
+        self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+        rows = [json.loads(x) for x in path.read_text().splitlines()]
+        self.assertEqual([x["sequence"] for x in rows], [1, 2])
+        self.assertEqual(rows[1]["previous_hash"], rows[0]["event_hash"])
+        serialized = path.read_text().lower()
+        for forbidden in ("order_id", "account_number", "api_token", "client_tag"):
+            self.assertNotIn(forbidden, serialized)
+
+    def test_tampering_blocks_verify_and_future_append(self):
+        append_private_journal(self.report(), directory=self.root)
+        path = self.root/"paper_order_journal.jsonl"
+        row = json.loads(path.read_text())
+        row["event"]["brokerage_state"] = "CLOSED_PAPER_POSITION"
+        path.write_text(json.dumps(row, sort_keys=True)+"\n")
+        path.chmod(0o600)
+        with self.assertRaisesRegex(ValueError, "hash mismatch"):
+            verify_private_journal(directory=self.root)
+        with self.assertRaisesRegex(ValueError, "hash mismatch"):
+            append_private_journal(self.report(), directory=self.root)
+
+    def test_truncated_or_symlinked_journal_is_refused(self):
+        self.root.mkdir(mode=0o700)
+        path = self.root/"paper_order_journal.jsonl"
+        path.write_text('{"sequence":1}')
+        path.chmod(0o600)
+        with self.assertRaisesRegex(ValueError, "truncated"):
+            verify_private_journal(directory=self.root)
+        path.unlink()
+        outside = Path(self.tmp.name)/"outside"
+        outside.write_text("keep")
+        path.symlink_to(outside)
+        with self.assertRaisesRegex(ValueError, "symlinked"):
+            append_private_journal(self.report(), directory=self.root)
+        self.assertEqual(outside.read_text(), "keep")
+        outside.unlink()
+        with self.assertRaisesRegex(ValueError, "symlinked"):
+            verify_private_journal(directory=self.root)
+
+    def test_unsanitized_reason_never_enters_journal(self):
+        report = self.report(note="SECRET=should-not-be-stored")
+        with self.assertRaisesRegex(ValueError, "not sanitized"):
+            append_private_journal(report, directory=self.root)
+        self.assertFalse((self.root/"paper_order_journal.jsonl").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

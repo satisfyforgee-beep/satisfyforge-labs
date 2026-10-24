@@ -78,6 +78,23 @@ This does **ONE** read-only reconciliation and writes
 filesystem permissions. The report contains no order IDs, customer data,
 API credentials, raw broker payloads, or secret tokens.
 
+Every successful poll also appends the same sanitized state to
+`paper_order_journal.jsonl` in that owner-private directory. The journal:
+
+- is mode `0600` inside the mode-`0700` status directory;
+- uses a monotonic sequence and SHA-256 link to the prior event;
+- validates the complete chain before every append and refuses a truncated,
+  edited, symlinked, oversized, or schema-expanded file;
+- fsyncs each bounded append before monitoring continues;
+- contains no account/order identifiers, broker response, signal, token,
+  executable action, or enabled trading flag.
+
+This makes lifecycle changes and outages auditable during forward-paper
+testing. It is **tamper-evident, not magically immutable**: an owner with
+filesystem access can replace the whole directory, and loss of the computer
+still loses the local log. A journal integrity failure stops the watcher
+rather than starting a new chain or erasing evidence.
+
 To monitor while the **owner-controlled computer and this terminal
 remain running**:
 
