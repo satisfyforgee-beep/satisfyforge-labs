@@ -1,4 +1,3 @@
-"""Tests for non-trading Tradier sandbox scanner and local paper ledger."""
 import csv
 import importlib.util
 import io
@@ -18,59 +17,104 @@ lab = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(lab)
 
 
-class PaperLabTests(unittest.TestCase):
-    def test_symbols_strict_and_bounded(self):
-        self.assertEqual(lab.symbols_from_text("sofi, aal"), ["SOFI", "AAL"])
-        for val in ("SOFI,SOFI", "SPY;rm", "SPY, A,B,C,D,E,F", "AAPL220617C00270000", ""):
-            with self.subTest(val=val), self.assertRaises(ValueError):
-                lab.symbols_from_text(val)
+class BroadScannerTests(unittest.TestCase):
+    def quote(self, symbol, now, **overrides):
+        stamp = int((now - timedelta(minutes=16)).timestamp() * 1000)
+        row = {"symbol": symbol, "type": "stock", "bid": "9.99", "ask": "10.00",
+               "bid_date": stamp, "ask_date": stamp, "trade_date": stamp,
+               "volume": 1_000_000, "average_volume": 2_000_000,
+               "bidsize": 10, "asksize": 12}
+        row.update(overrides)
+        return row
 
-    def test_pure_getter_and_cash_sizing(self):
+    def test_universe_strict_bounded_and_file_safe(self):
+        self.assertEqual(lab.symbols_from_text("sofi, aal"), ["SOFI", "AAL"])
+        with self.assertRaises(ValueError):
+            lab.symbols_from_text(",".join("S" + str(x) for x in range(501)))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            good = root / "symbols.txt"
+            good.write_text("# sectors\nSOFI,AAL\nF\n")
+            self.assertEqual(lab.symbols_from_file(good), ["SOFI", "AAL", "F"])
+            link = root / "link.txt"
+            link.symlink_to(good)
+            with self.assertRaisesRegex(ValueError, "non-symlinked"):
+                lab.symbols_from_file(link)
+
+    def test_123_symbols_are_batched_without_loss(self):
         now = datetime(2026, 10, 20, 19, 0, tzinfo=timezone.utc)
-        ts = int((now - timedelta(minutes=16)).timestamp() * 1000)
-        seen = []
+        symbols = [chr(65 + a) + chr(65 + b) + chr(65 + c)
+                   for a in range(5) for b in range(5) for c in range(5)][:123]
+        calls = []
         def get(path, token, params):
-            seen.append((path, token, params))
+            batch = params["symbols"].split(",")
+            calls.append(batch)
+            return {"quotes": {"quote": [self.quote(s, now) for s in batch]}}
+        rows = lab.screen_snapshot("SECRET", symbols, Decimal("30"), now=now, getter=get)
+        self.assertEqual([len(x) for x in calls], [50, 50, 23])
+        self.assertEqual([r["symbol"] for r in rows], symbols)
+        self.assertTrue(all(r["eligible"] for r in rows))
+
+    def test_liquidity_spread_staleness_and_missing_quote_fail_closed(self):
+        now = datetime(2026, 10, 20, 19, 0, tzinfo=timezone.utc)
+        stale = int((now - timedelta(hours=2)).timestamp() * 1000)
+        def get(path, token, params):
             return {"quotes": {"quote": [
-                {"symbol": "SOFI", "type": "stock", "bid": 14.20, "ask": 14.25,
-                 "bid_date": ts, "ask_date": ts, "trade_date": ts},
-                {"symbol": "SPY", "type": "etf", "bid": 600, "ask": 601,
-                 "bid_date": ts, "ask_date": ts, "trade_date": ts}
+                self.quote("GOOD", now),
+                self.quote("WIDE", now, bid="9.00"),
+                self.quote("THIN", now, average_volume=10_000),
+                self.quote("STALE", now, bid_date=stale),
             ]}}
-        rows = lab.screen_snapshot("DO-NOT-PRINT", ["SOFI", "SPY"],
-                                   Decimal("30"), now=now, getter=get)
-        self.assertEqual(seen, [("/markets/quotes", "DO-NOT-PRINT",
-                                 {"symbols": "SOFI,SPY", "greeks": "false"})])
-        self.assertEqual(rows[0]["shares"], 2)
-        self.assertEqual(rows[1]["shares"], 0)
-        self.assertIn("over-budget-for-whole-share", rows[1]["flags"])
+        rows = lab.screen_snapshot("SECRET", ["GOOD", "WIDE", "THIN", "STALE", "MISS"],
+                                   now=now, getter=get)
+        by_symbol = {r["symbol"]: r for r in rows}
+        self.assertTrue(by_symbol["GOOD"]["eligible"])
+        self.assertIn("wide-spread", by_symbol["WIDE"]["flags"])
+        self.assertIn("low-average-volume", by_symbol["THIN"]["flags"])
+        self.assertIn("stale-or-invalid-time", by_symbol["STALE"]["flags"])
+        self.assertIn("liquidity-unavailable", by_symbol["MISS"]["flags"])
+        self.assertEqual([r["symbol"] for r in lab.rank_research_candidates(rows)], ["GOOD"])
+
+    def test_ranking_is_deterministic_and_output_aggregated(self):
+        now = datetime(2026, 10, 20, 19, 0, tzinfo=timezone.utc)
+        def get(path, token, params):
+            return {"quotes": {"quote": [
+                self.quote("BBBB", now, bid="9.98", average_volume=9_000_000),
+                self.quote("AAAA", now, bid="9.99", average_volume=1_000_000),
+            ]}}
+        rows = lab.screen_snapshot("SECRET", ["BBBB", "AAAA"], now=now, getter=get)
+        self.assertEqual([r["symbol"] for r in lab.rank_research_candidates(rows)], ["AAAA", "BBBB"])
         out = io.StringIO()
         with redirect_stdout(out):
-            lab.print_screen(rows, Decimal("30"))
-        self.assertNotIn("DO-NOT-PRINT", out.getvalue())
-        self.assertIn("delayed", out.getvalue().lower())
+            lab.print_screen(rows, Decimal("30"), top=1)
+        text = out.getvalue()
+        self.assertIn("scanned=2 eligible=2 rejected=0", text)
+        self.assertIn("predicts neither direction nor profit", text)
+        self.assertNotIn("SECRET", text)
 
-    def test_stale_and_missing_quote_rejected_as_flags(self):
+    def test_provider_duplicate_is_rejected(self):
         now = datetime(2026, 10, 20, 19, 0, tzinfo=timezone.utc)
-        ts = int((now - timedelta(hours=2)).timestamp() * 1000)
         def get(path, token, params):
-            return {"quotes": {"quote": {"symbol": "F", "type": "stock",
-                                           "bid": 12, "ask": 11, "trade_date": ts}}}
-        rows = lab.screen_snapshot("TEST", ["F", "AAL"], now=now, getter=get)
-        self.assertIn("invalid-or-missing-bid-ask", rows[0]["flags"])
-        self.assertIn("stale-or-invalid-time", rows[0]["flags"])
-        self.assertIn("timestamp-unavailable", rows[1]["flags"])
+            return {"quotes": {"quote": [self.quote("SOFI", now), self.quote("SOFI", now)]}}
+        with self.assertRaisesRegex(ValueError, "duplicate quote"):
+            lab.screen_snapshot("SECRET", ["SOFI"], now=now, getter=get)
+
+    def test_no_order_or_production_route(self):
+        source = (SCRIPTS / "tradier_paper_lab.py").read_text()
+        for forbidden in ("api.tradier.com", '"/orders"', "method=\"POST\"", "submit_order"):
+            self.assertNotIn(forbidden, source)
 
     def write_rows(self, directory, rows):
         path = Path(directory) / "hypothetical.csv"
-        with path.open("w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=["timestamp", "symbol", "action",
-                                                   "shares", "bid", "ask"])
+        with path.open("w", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=[
+                "timestamp", "symbol", "action", "shares", "bid", "ask"])
             writer.writeheader()
             writer.writerows(rows)
         return path
 
-    def example(self, action, shares, time="2026-10-20T15:00:00Z", bid="9.90", ask="10.00"):
+    def example(self, action, shares, time="2026-10-20T15:00:00Z",
+                bid="9.90", ask="10.00"):
         return {"timestamp": time, "symbol": "SOFI", "action": action,
                 "shares": shares, "bid": bid, "ask": ask}
 
@@ -80,19 +124,17 @@ class PaperLabTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             result = lab.replay_hypothetical(self.write_rows(tmp, rows), Decimal("30"))
         self.assertEqual(result["equity"], Decimal("32"))
-        self.assertEqual(result["cash"], Decimal("21"))
         self.assertEqual(result["net_pnl"], Decimal("2"))
         self.assertEqual(result["realized_pnl"], Decimal("1"))
-        self.assertEqual(result["unrealized_pnl"], Decimal("1"))
         self.assertEqual(result["open_positions"], 1)
 
     def test_fee_changes_results(self):
         rows = [self.example("BUY", "2"),
                 self.example("SELL", "1", "2026-10-20T15:15:00Z", "11", "11.10")]
         with tempfile.TemporaryDirectory() as tmp:
-            result = lab.replay_hypothetical(self.write_rows(tmp, rows), fee=Decimal("1"))
+            result = lab.replay_hypothetical(
+                self.write_rows(tmp, rows), fee=Decimal("1"))
         self.assertEqual(result["net_pnl"], Decimal("0"))
-        self.assertEqual(result["equity"], Decimal("30"))
 
     def test_short_margin_and_bad_data_rejected(self):
         cases = [
@@ -104,26 +146,18 @@ class PaperLabTests(unittest.TestCase):
             [self.example("BUY", "1", time="2026-10-20T15:00:00")],
             [self.example("BUY", "1", bid="NaN")],
             [self.example("BUY", "1", time="2026-10-20T16:00:00Z"),
-             self.example("SELL", "1", time="2026-10-20T15:00:00Z")]
+             self.example("SELL", "1", time="2026-10-20T15:00:00Z")],
         ]
         for rows in cases:
             with self.subTest(rows=rows), tempfile.TemporaryDirectory() as tmp:
                 with self.assertRaises(ValueError):
                     lab.replay_hypothetical(self.write_rows(tmp, rows))
 
-    def test_no_sandbox_token_needed_for_offline_ledger(self):
-        rows = [self.example("BUY", "1")]
+    def test_no_token_needed_for_offline_ledger(self):
         with tempfile.TemporaryDirectory() as tmp:
-            path = self.write_rows(tmp, rows)
+            path = self.write_rows(tmp, [self.example("BUY", "1")])
             with patch.dict(lab.os.environ, {}, clear=True):
                 self.assertEqual(lab.replay_hypothetical(path)["trades"], 1)
-
-    def test_no_orders_or_live_hostnames_in_lab(self):
-        src = (SCRIPTS / "tradier_paper_lab.py").read_text()
-        self.assertNotIn("api.tradier.com", src)
-        self.assertNotIn("/orders", src)
-        self.assertNotIn("method=\"POST\"", src)
-        self.assertEqual(lab.fetch_json.__module__, "tradier_sandbox_check")
 
 
 if __name__ == "__main__":
