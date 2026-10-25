@@ -10,6 +10,7 @@ on:
       - tests/test_tradier_sandbox_check.py
       - scripts/tradier_paper_lab.py
       - tests/test_tradier_paper_lab.py
+      - config/trading_universe_us_liquid.txt
       - scripts/tradier_historical_lab.py
       - tests/test_tradier_historical_lab.py
   workflow_dispatch:
@@ -45,7 +46,7 @@ jobs:
       - name: Screen delayed sandbox stock quotes (research only)
         env:
           TRADIER_SANDBOX_TOKEN: ${{ secrets.TRADIER_SANDBOX_TOKEN }}
-        run: python3 scripts/tradier_paper_lab.py --scan --symbols SOFI,AAL,F,PLTR,SPY --budget 30
+        run: python3 scripts/tradier_paper_lab.py --scan --symbols-file config/trading_universe_us_liquid.txt --budget 30 --top 25 --min-average-volume 500000 --max-spread-pct 1
 
       - name: Research historical strategies with real SANDBOX daily bars only
         env:
