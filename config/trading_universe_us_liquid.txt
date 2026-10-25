@@ -1,0 +1,117 @@
+# Fixed, reviewable US stock/ETF research universe. Not recommendations.
+# Broad benchmarks and sectors
+SPY
+QQQ
+IWM
+DIA
+VTI
+XLF
+XLE
+XLK
+XLV
+XLI
+XLP
+XLY
+XLU
+XLB
+XLC
+SMH
+KRE
+ARKK
+TLT
+GLD
+# Technology and communications
+AAPL
+MSFT
+NVDA
+AMZN
+GOOGL
+META
+TSLA
+AVGO
+ORCL
+CRM
+AMD
+INTC
+QCOM
+MU
+PLTR
+UBER
+ABNB
+NFLX
+SNAP
+PINS
+RBLX
+# Financials and payments
+JPM
+BAC
+WFC
+C
+GS
+MS
+SCHW
+AXP
+COF
+SOFI
+HOOD
+PYPL
+# Industrials, aerospace and transport
+CAT
+DE
+GE
+BA
+HON
+RTX
+LMT
+NOC
+UPS
+FDX
+AAL
+DAL
+UAL
+# Energy and materials
+XOM
+CVX
+COP
+SLB
+OXY
+HAL
+CLF
+NUE
+AA
+# Consumer and travel
+WMT
+COST
+HD
+LOW
+TGT
+NKE
+SBUX
+MCD
+KO
+PEP
+DIS
+CCL
+NCLH
+DKNG
+# Health care
+UNH
+JNJ
+LLY
+PFE
+MRK
+ABBV
+TMO
+BMY
+CVS
+# Telecom and vehicles
+T
+VZ
+TMUS
+F
+GM
+RIVN
+LCID
+# High-volume speculative research controls
+MARA
+RIOT
