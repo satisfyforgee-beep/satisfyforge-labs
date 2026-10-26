@@ -3,7 +3,7 @@ import json
 import unittest
 
 from zerocost_bot.tradier_paper import TradierSandbox
-from tradier_sandbox_audit_once import examine, _view_order, _listify_envelope, _group_view
+from tradier_sandbox_audit_once import examine, _view_order, _listify_envelope, _group_view, _paper_entry_preflight
 
 
 class FakeTransport:
@@ -172,6 +172,44 @@ class SandboxAuditTests(unittest.TestCase):
                                          "orders", "order")
         self.assertEqual(rows, [])
         self.assertEqual(state, "malformed_records")
+
+    def test_existing_share_with_no_orders_halts_paper_entry(self):
+        tr = FakeTransport(positions=[{"symbol": "SOFI", "quantity": 1}])
+        report = examine(TradierSandbox(token="FAKE", transport=tr))
+        self.assertEqual(report["paper_entry_preflight"], {
+            "orders_allowed": False, "state": "HALT_POSITION_EXITS_UNVERIFIED",
+        })
+        self.assertTrue(all(call[0] == "GET" for call in tr.calls))
+
+    def test_existing_protected_share_remains_ineligible_for_new_entry(self):
+        report = {
+            "positions_shape": "single_dict", "orders_shape": "list",
+            "pending_orders_count_class": "zero", "orders_count": 1,
+            "orders_pagination_flags": {"at_limit": False, "total_pages_more_than_one": False},
+            "total_position_count": 1,
+            "native_reconciler": {"readiness": "PROTECTED_PAPER_POSITION",
+                                  "verified_protective_exits": 2},
+        }
+        self.assertEqual(_paper_entry_preflight(report)["state"],
+                         "BLOCKED_EXISTING_PROTECTED_POSITION")
+        self.assertFalse(_paper_entry_preflight(report)["orders_allowed"])
+
+    def test_unknown_broker_inventory_and_pagination_fail_closed(self):
+        report = {
+            "positions_shape": "empty_positions", "orders_shape": "empty_orders",
+            "pending_orders_count_class": "zero", "orders_count": 0,
+            "orders_pagination_flags": {"at_limit": False, "total_pages_more_than_one": False},
+            "total_position_count": 0,
+        }
+        self.assertEqual(_paper_entry_preflight(report)["state"],
+                         "FLAT_ACCOUNT_READ_ONLY_NOT_AUTHORIZED")
+        report["orders_pagination_flags"]["total_pages_more_than_one"] = True
+        self.assertEqual(_paper_entry_preflight(report)["state"],
+                         "HALT_BROKER_STATE_UNVERIFIED")
+        report["orders_pagination_flags"]["total_pages_more_than_one"] = False
+        report["orders_shape"] = "malformed_records"
+        self.assertEqual(_paper_entry_preflight(report)["state"],
+                         "HALT_BROKER_STATE_UNVERIFIED")
 
 
 if __name__ == "__main__":

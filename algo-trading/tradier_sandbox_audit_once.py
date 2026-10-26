@@ -203,6 +203,9 @@ def examine(client):
         "at_utc": datetime.now(timezone.utc).isoformat(),
         "orders_submitted_by_audit": 0,
         "live_money_orders": 0,
+        "paper_entry_preflight": {
+            "orders_allowed": False, "state": "HALT_BROKER_STATE_UNVERIFIED",
+        },
     }
     try:
         profile = client._request("GET", "/user/profile")
@@ -317,7 +320,39 @@ def examine(client):
                     "native_group_reconciliation", error)
     except Exception as error:
         report["order_failure"] = _safe_failure("sandbox_orders", error)
+    report["paper_entry_preflight"] = _paper_entry_preflight(report)
     return report
+
+
+def _paper_entry_preflight(report):
+    """Read-only account evidence, NEVER permission to submit an order.
+
+    An existing holding with no verifiable broker-native exits must be
+    surfaced as a HALT even when every GET succeeded. Unknown/paginated
+    inventories also halt rather than pretending the account is flat.
+    """
+    blocked = {"orders_allowed": False, "state": "HALT_BROKER_STATE_UNVERIFIED"}
+    if any(k in report for k in ("failure", "balance_failure", "position_failure", "order_failure")):
+        return blocked
+    if (report.get("positions_shape") not in ("empty_positions", "list", "single_dict")
+            or report.get("orders_shape") not in ("empty_orders", "list", "single_dict")
+            or report.get("pending_orders_count_class") == "unknown"
+            or report.get("orders_count") is None):
+        return blocked
+    pages = report.get("orders_pagination_flags")
+    if (not isinstance(pages, dict) or pages.get("at_limit") is not False
+            or pages.get("total_pages_more_than_one") is not False):
+        return blocked
+    if report.get("total_position_count", 0) > 0:
+        reconciler = report.get("native_reconciler")
+        if (isinstance(reconciler, dict)
+                and reconciler.get("readiness") == "PROTECTED_PAPER_POSITION"
+                and reconciler.get("verified_protective_exits") == 2):
+            return {"orders_allowed": False, "state": "BLOCKED_EXISTING_PROTECTED_POSITION"}
+        return {"orders_allowed": False, "state": "HALT_POSITION_EXITS_UNVERIFIED"}
+    if report["orders_count"] > 0 or report["pending_orders_count_class"] != "zero":
+        return {"orders_allowed": False, "state": "BLOCKED_EXISTING_OR_PENDING_ORDERS"}
+    return {"orders_allowed": False, "state": "FLAT_ACCOUNT_READ_ONLY_NOT_AUTHORIZED"}
 
 
 def main():
