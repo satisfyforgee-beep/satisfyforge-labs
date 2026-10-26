@@ -11,8 +11,9 @@ from urllib.request import Request, urlopen
 BASE_URL = "https://sandbox.tradier.com/v1"
 
 def fetch_json(path, token, params=None, opener=urlopen):
-    """Only three read-only SANDBOX GET routes are allowed."""
-    if path not in ("/user/profile", "/markets/quotes", "/markets/history"):
+    """Only explicitly reviewed read-only SANDBOX GET routes are allowed."""
+    if path not in ("/user/profile", "/markets/quotes", "/markets/history",
+                    "/markets/clock"):
         raise ValueError("Route is not on the read-only allowlist")
     query = ("?" + urlencode(params)) if params else ""
     request = Request(BASE_URL + path + query, headers={
@@ -57,7 +58,9 @@ def main():
         check(token, symbol)
     except HTTPError as exc:
         # Never print provider response bodies, full URLs, tokens or private account data.
-        route = str(getattr(exc, "url", "")).split("?")[0]
+        # HTTPError.filename is reliable on older macOS Python versions where
+        # the inherited .url getter may raise an unrelated KeyError.
+        route = str(getattr(exc, "filename", "")).split("?")[0]
         stage = "profile" if route == BASE_URL + "/user/profile" else "quote" if route == BASE_URL + "/markets/quotes" else "history" if route == BASE_URL + "/markets/history" else "request"
         print(f"Tradier sandbox {stage} returned HTTP {exc.code}; no orders submitted.", file=sys.stderr)
         return 1
