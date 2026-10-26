@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/tradier-sandbox-readonly-20261020
+      - feature/tradier-forward-qa-20261026
     paths:
       - .github/workflows/tradier-sandbox-readonly.yml
       - scripts/tradier_sandbox_check.py
@@ -13,6 +14,10 @@ on:
       - config/trading_universe_us_liquid.txt
       - scripts/tradier_historical_lab.py
       - tests/test_tradier_historical_lab.py
+      - scripts/tradier_forward_qa.py
+      - scripts/run_tradier_forward_qa.sh
+      - tests/test_tradier_forward_qa.py
+      - docs/TRADIER_FORWARD_QA.md
   workflow_dispatch:
 
 permissions:
@@ -32,6 +37,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_tradier_sandbox_check.py' -v
           python3 -m unittest discover -s tests -p 'test_tradier_paper_lab.py' -v
           python3 -m unittest discover -s tests -p 'test_tradier_historical_lab.py' -v
+          python3 -m unittest discover -s tests -p 'test_tradier_forward_qa.py' -v
 
       - name: Verify Tradier sandbox authentication (GET only)
         env:
