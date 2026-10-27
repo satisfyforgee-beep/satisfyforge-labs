@@ -1,6 +1,8 @@
 name: Test content tools
 on:
   push:
+    branches:
+      - main
     paths:
       - 'tools/**'
       - 'tests/**'
