@@ -84,6 +84,7 @@ def build_video_filter(spec: RenderSpec) -> str:
     filters = [
         f"scale={spec.width}:{spec.height}:force_original_aspect_ratio=increase",
         f"crop={spec.width}:{spec.height}",
+        "setsar=1",  # Social formats need square pixels even for odd source aspect ratios.
         f"fps={spec.fps}",
         "format=yuv420p",
     ]
@@ -150,6 +151,7 @@ def analyze_probe(payload: dict[str, Any]) -> dict[str, Any]:
     facts = {
         "codec": video.get("codec_name"),
         "pixel_format": video.get("pix_fmt"),
+        "sample_aspect_ratio": video.get("sample_aspect_ratio"),
         "width": video.get("width"),
         "height": video.get("height"),
         "fps": fps,
@@ -164,6 +166,8 @@ def analyze_probe(payload: dict[str, Any]) -> dict[str, Any]:
         errors.append(f"Video codec is {facts['codec']!r}, expected H.264")
     if facts["pixel_format"] != "yuv420p":
         errors.append(f"Pixel format is {facts['pixel_format']!r}, expected yuv420p")
+    if facts["sample_aspect_ratio"] not in (None, "1:1", "0:1", "N/A"):
+        errors.append(f"Sample aspect ratio is {facts['sample_aspect_ratio']!r}, expected square pixels")
     if (facts["width"], facts["height"]) not in SUPPORTED_VERTICAL_RESOLUTIONS:
         errors.append(f"Resolution is {facts['width']}x{facts['height']}, expected 1080x1920 or 2160x3840")
     if fps is None or abs(fps - TARGET_FPS) > 0.05:
@@ -269,7 +273,7 @@ def render(spec: RenderSpec) -> dict[str, Any]:
     validate_inputs(spec)
     ffmpeg = require_binary("ffmpeg")
     cmd = build_render_command(spec, ffmpeg)
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True, capture_output=True, text=True)
     report = probe_file(spec.output_video)
     if not report["ok"]:
         raise RuntimeError("Render completed but QA failed: " + "; ".join(report["errors"]))

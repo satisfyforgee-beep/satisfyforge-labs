@@ -9,9 +9,50 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import json
 import os
+import re
 from .engine import Bar
 
 BASE = "https://data.alpaca.markets"
+
+
+def latest_equity_quotes(symbols, api_key=None, api_secret=None, transport=None):
+    """Fetch read-only IEX top-of-book equity quotes, never orders.
+
+    This is single-exchange market data, not consolidated SIP. A caller must
+    independently reject stale, crossed, delayed or wide-spread quotes.
+    `transport` is an optional test-only callable accepting a urllib Request.
+    """
+    key = api_key or os.getenv("ALPACA_PAPER_KEY")
+    secret = api_secret or os.getenv("ALPACA_PAPER_SECRET")
+    if not key or not secret:
+        raise RuntimeError("Missing Alpaca paper data credentials")
+    names = sorted(set(str(s).upper() for s in symbols))
+    if not 1 <= len(names) <= 10 or any(not re.fullmatch(r"[A-Z]{1,6}", s) for s in names):
+        raise ValueError("Expected 1–10 simple U.S. equity symbols")
+    url = BASE + "/v2/stocks/quotes/latest?" + urlencode({"symbols": ",".join(names), "feed": "iex"})
+    request = Request(url, headers={"APCA-API-KEY-ID": key,
+                                    "APCA-API-SECRET-KEY": secret,
+                                    "Accept": "application/json"})
+    if transport is None:
+        with urlopen(request, timeout=8) as response:
+            payload = json.load(response)
+    else:
+        payload = transport(request)
+    quotes = payload.get("quotes", {})
+    output = []
+    for symbol in names:
+        row = quotes.get(symbol)
+        if not row:
+            continue
+        bid, ask = str(row.get("bp", "0")), str(row.get("ap", "0"))
+        timestamp = datetime.fromisoformat(str(row["t"]).replace("Z", "+00:00"))
+        if timestamp.tzinfo is None:
+            raise ValueError("IEX quote timestamp must carry timezone")
+        # Decimal validation and spread checks occur in trading-lab. Do not
+        # round away a tight spread or silently replace missing market data.
+        output.append({"symbol": symbol, "bid": bid, "ask": ask,
+                       "asof": timestamp, "source": "ALPACA_IEX", "delayed": False})
+    return output
 
 
 def latest_bars(symbols, api_key=None, api_secret=None):

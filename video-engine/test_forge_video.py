@@ -15,6 +15,7 @@ class ForgeVideoTests(unittest.TestCase):
         vf = build_video_filter(spec)
         self.assertIn('scale=1080:1920', vf)
         self.assertIn('crop=1080:1920', vf)
+        self.assertIn('setsar=1', vf)
         self.assertIn('fps=30', vf)
         self.assertIn('format=yuv420p', vf)
 
@@ -46,6 +47,14 @@ class ForgeVideoTests(unittest.TestCase):
         report = analyze_probe(payload)
         self.assertFalse(report['ok'])
         self.assertTrue(any('frame rate' in err for err in report['errors']))
+
+    def test_probe_rejects_non_square_pixels(self):
+        report = analyze_probe({'streams': [
+            {'codec_type': 'video', 'codec_name': 'h264', 'pix_fmt': 'yuv420p',
+             'sample_aspect_ratio': '3491:3492', 'width': 1080, 'height': 1920,
+             'avg_frame_rate': '30/1'}], 'format': {'duration': '2'}})
+        self.assertFalse(report['ok'])
+        self.assertTrue(any('square pixels' in err for err in report['errors']))
 
     def test_4k_vertical_is_supported_without_changing_default(self):
         spec = RenderSpec(Path('in.mp4'), Path('out.mp4'), width=2160, height=3840)

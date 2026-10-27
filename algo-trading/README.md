@@ -29,9 +29,18 @@ cd algo-trading
 python3 -m unittest discover -s tests -v
 python3 cli.py --demo --starting-cash 39.41 --output /tmp/sf-paper-demo.json
 python3 cli.py --replay your_minute_bars.csv --starting-cash 1000
+python3 evaluate.py --demo
+python3 evaluate.py --csv your_minute_bars.csv --train-fraction 0.70
 ```
 
 CSV header: `symbol,time,open,high,low,close,volume`. Time must include timezone.
+
+`evaluate.py` splits one symbol's strictly ordered, nonduplicate OHLCV bars
+chronologically, restarts the simulated account on the holdout, and reports
+returns, trades, worst observed mark-to-market drawdown and price-only
+buy-and-hold changes. Parameters are fixed, **not optimized**, and the sample
+demo is entirely synthetic. Real research needs many separate periods,
+regimes and known transaction costs before a strategy is considered promising.
 
 ## Optional official paper data (read-only)
 1. Create an Alpaca **paper account** at https://app.alpaca.markets/paper/dashboard .
@@ -39,6 +48,9 @@ CSV header: `symbol,time,open,high,low,close,volume`. Time must include timezone
    `ALPACA_PAPER_KEY`, `ALPACA_PAPER_SECRET`.
 3. Query a current IEX minute without trading:
    `python3 cli.py --iex-latest SOFI AAL F`
+   An additional testable, read-only `zerocost_bot.alpaca.latest_equity_quotes`
+   helper retrieves timestamped IEX bid/ask quotes with provenance; it is not
+   a full-market scan and does not submit trades.
 4. Test historical IEX minute bars (availability depends on account/feed):
    `python3 cli.py --alpaca-history SOFI --from-utc 2026-10-19T13:30:00Z --to-utc 2026-10-19T20:00:00Z --starting-cash 1000`
 
@@ -65,14 +77,18 @@ CSV header: `symbol,time,open,high,low,close,volume`. Time must include timezone
 
 ## Strict limits
 - **No option contracts**, no short sales, no fractional shares, no leverage.
+- The connected `../trading-lab/pipeline.py` has its own cash-only SQLite
+  simulator and only supports equity breakouts; it does **not** call this
+  directory's unarmed paper broker adapter.
 - **No orders have been submitted**; the broker adapter is prepared for optional
   Alpaca paper-order tests but not enabled. Local demo/replay never sends orders.
 - Synthetic demo data is a wiring demonstration, **not a backtest result**.
 - OHLC stop/target collision assumes worst-case stop first. Market gaps and
   slippage can exceed modeled assumptions, and real bracket orders aren't
   guaranteed.
-- Backtesting a strategy on the data used to choose it overfits; add a
-  walk-forward/out-of-sample sample, trading costs, and paper forward test.
+- Backtesting a strategy on data used to choose it overfits. The fixed-settings
+  chronological holdout is an initial check, **not** a statistically sufficient
+  walk-forward study, real spread execution or a paper-forward test.
 - No guarantee of 90% wins, profits, or instant fills.
 - At $39.41, the default 20% allocation is insufficient to buy a single
   ~$14 SOFI share, deliberately preventing unsuitable oversized entries.

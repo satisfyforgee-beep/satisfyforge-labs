@@ -80,10 +80,13 @@ class PaperOrder:
     side: str  # buy or sell, no shorting
     quantity: Decimal
     limit_price: Decimal
+    signal_id: str = ""  # stable strategy decision identifier; optional for manual demos
 
     def __post_init__(self) -> None:
         if not self.client_id or len(self.client_id) > 128 or self.client_id.isspace():
             raise ValueError("A stable client_id is required for duplicate protection")
+        if len(self.signal_id) > 128 or any(c.isspace() for c in self.signal_id):
+            raise ValueError("Signal ID must be whitespace-free and at most 128 characters")
         if self.side not in {"buy", "sell"}:
             raise ValueError("Only buy and sell-to-close are supported")
         qty = amount(self.quantity)
@@ -138,9 +141,20 @@ class PaperEngine:
                     timestamp TEXT NOT NULL, symbol TEXT NOT NULL, asset TEXT NOT NULL,
                     side TEXT NOT NULL, quantity TEXT NOT NULL, status TEXT NOT NULL,
                     reason TEXT NOT NULL, fill_price TEXT, fee TEXT,
-                    realized_pnl TEXT NOT NULL DEFAULT '0'
+                    realized_pnl TEXT NOT NULL DEFAULT '0',
+                    signal_id TEXT, limit_price TEXT, quote_bid TEXT, quote_ask TEXT,
+                    quote_source TEXT, quote_asof TEXT, quote_delayed INTEGER
                 );
             """)
+            # Existing v0.1 SQLite journals must remain readable and recoverable.
+            current = {row["name"] for row in conn.execute("PRAGMA table_info(orders)")}
+            for name, column_type in {
+                "signal_id": "TEXT", "limit_price": "TEXT", "quote_bid": "TEXT",
+                "quote_ask": "TEXT", "quote_source": "TEXT", "quote_asof": "TEXT",
+                "quote_delayed": "INTEGER",
+            }.items():
+                if name not in current:
+                    conn.execute(f"ALTER TABLE orders ADD COLUMN {name} {column_type}")
             conn.execute("INSERT OR IGNORE INTO account(id, cash) VALUES(1, ?)",
                          (str(amount(starting_cash)),))
 
@@ -191,6 +205,8 @@ class PaperEngine:
             "multiplier": str(order.instrument.multiplier), "side": order.side,
             "quantity": str(order.quantity), "limit_price": str(order.limit_price),
         }
+        if order.signal_id:
+            canonical["signal_id"] = order.signal_id
         fingerprint = hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
@@ -224,11 +240,15 @@ class PaperEngine:
 
             conn.execute("""INSERT INTO orders
                 (client_id, fingerprint, timestamp, symbol, asset, side, quantity,
-                 status, reason, fill_price, fee, realized_pnl)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                 status, reason, fill_price, fee, realized_pnl, signal_id,
+                 limit_price, quote_bid, quote_ask, quote_source, quote_asof, quote_delayed)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (order.client_id, fingerprint, when.isoformat(), order.instrument.symbol,
                  order.instrument.asset, order.side, str(order.quantity), status, reason,
-                 str(fill) if fill is not None else None, str(fee), str(pnl)))
+                 str(fill) if fill is not None else None, str(fee), str(pnl),
+                 order.signal_id or None, str(order.limit_price), str(quote.bid),
+                 str(quote.ask), quote.source, _utc(quote.asof).isoformat(),
+                 int(quote.delayed)))
             return dict(conn.execute("SELECT * FROM orders WHERE client_id=?", (order.client_id,)).fetchone())
 
     def _execute(self, conn: sqlite3.Connection, order: PaperOrder, price: Decimal,
