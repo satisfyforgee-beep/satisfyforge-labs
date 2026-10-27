@@ -3,12 +3,13 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import json
+import os
 import unittest
 
 from zerocost_bot.paper_capital import PaperCapital
 from zerocost_bot.paper_status import (
-    get_virtual_snapshot, parse_monitor_log, parse_stock_qa_log,
-    build_status,
+    get_virtual_snapshot, get_stock_virtual_snapshot,
+    parse_monitor_log, parse_stock_qa_log, build_status,
 )
 
 T = datetime(2026, 10, 27, 10, 20, tzinfo=timezone.utc)
@@ -22,6 +23,56 @@ def record(ts=T, *, state="CHECK_COMPLETE", positions=3, liquidation="149.33"):
         "estimated_virtual_liquidation": liquidation,
         "virtual_realized_pnl": "0.00", "virtual_cash": "105.09",
     }
+
+
+def stock_book():
+    checked = (T - timedelta(minutes=2)).isoformat()
+    quoted = (T - timedelta(minutes=17)).isoformat()
+    return {
+        "version": 1, "initial_cash": "150.00", "cash": "139.47",
+        "entries": 2,
+        "positions": {
+            "F": {
+                "quantity": 1, "basis": "11.01", "entry_quote_at": quoted,
+                "stop_bid": "10.78", "target_bid": "11.38",
+            },
+        },
+        "events": [
+            {
+                "action": "BUY", "symbol": "AAL", "quantity": 1,
+                "virtual_price": "10.00", "fee": "0.01",
+                "virtual_debit": "10.01", "checked_at": checked,
+                "quote_at": quoted, "simulated_not_broker_fill": True,
+                "policy": "spread_liquidity_execution_QA_not_directional_signal",
+            },
+            {
+                "action": "BUY", "symbol": "F", "quantity": 1,
+                "virtual_price": "11.00", "fee": "0.01",
+                "virtual_debit": "11.01", "checked_at": checked,
+                "quote_at": quoted, "simulated_not_broker_fill": True,
+                "policy": "spread_liquidity_execution_QA_not_directional_signal",
+            },
+            {
+                "action": "SELL", "symbol": "AAL", "quantity": 1,
+                "virtual_price": "10.50", "fee": "0.01",
+                "realized_pnl": "0.48", "reason": "TARGET",
+                "checked_at": checked, "quote_at": quoted,
+                "simulated_not_broker_fill": True,
+            },
+        ],
+    }
+
+
+def stock_record(**updates):
+    row = {
+        "state": "VIRTUAL_FORWARD_STEP", "broker_orders_sent": 0,
+        "entries_total": 2, "positions_open": 1, "cash_virtual": "139.47",
+        "realized_pnl_virtual": "0.48",
+        "liquidation_equity_virtual_est": "150.11",
+        "net_pnl_virtual_est": "0.11",
+    }
+    row.update(updates)
+    return row
 
 
 class PaperDailyHealthTests(unittest.TestCase):
@@ -41,9 +92,12 @@ class PaperDailyHealthTests(unittest.TestCase):
             json.dumps(record(T - timedelta(minutes=15))) + "\n" +
             json.dumps(record(T - timedelta(minutes=1))) + "\n"
         )
-        (self.root / "forward_qa_stdout.log").write_text(
-            json.dumps({"state": "OUTSIDE_PAPER_SESSION",
-                        "broker_orders_sent": 0})+"\n")
+        stock_path = self.root / "forward_execution_qa.json"
+        stock_path.write_text(json.dumps(stock_book()) + "\n")
+        stock_log = self.root / "forward_qa_stdout.log"
+        stock_log.write_text(json.dumps(stock_record()) + "\n")
+        os.utime(stock_path, (T.timestamp(), T.timestamp()))
+        os.utime(stock_log, (T.timestamp(), T.timestamp()))
 
     def test_current_virtual_report_keeps_accounts_independent(self):
         got = build_status(self.root, now=T)
@@ -53,8 +107,16 @@ class PaperDailyHealthTests(unittest.TestCase):
         self.assertEqual(got["crypto_virtual_account"]["virtual_sells"], 0)
         self.assertEqual(got["crypto_virtual_account"]["current_settled_virtual_cash"],
                          "141.00")
-        self.assertEqual(got["stock_virtual_qa"]["status"], "OUTSIDE_PAPER_SESSION")
-        self.assertFalse(got["stock_virtual_qa"]["merged_crypto_profits"])
+        stock = got["stock_virtual_qa"]
+        self.assertEqual(stock["monitor_health"],
+                         "HEALTHY_RECONCILED_RECENT_CHECK")
+        self.assertEqual(stock["entries_lifetime"], 2)
+        self.assertEqual(stock["virtual_sells"], 1)
+        self.assertEqual(stock["realized_virtual_pnl"], "0.48")
+        self.assertEqual(stock["current_virtual_cash"], "139.47")
+        self.assertEqual([x["symbol"] for x in stock["open_positions"]], ["F"])
+        self.assertFalse(stock["entry_cap_reached"])
+        self.assertFalse(stock["merged_crypto_profits"])
         self.assertEqual(got["broker_orders_placed_by_this_report"], 0)
 
     def test_different_realized_pnl_log_and_ledger_warns(self):
@@ -99,13 +161,44 @@ class PaperDailyHealthTests(unittest.TestCase):
             get_virtual_snapshot(p)
         self.assertFalse(p.exists())
 
-    def test_truncated_and_missing_stock_log_are_flagged(self):
+    def test_truncated_and_missing_stock_log_fail_closed(self):
         bad = self.root / "bad.log"
         bad.write_text("garbage}\n")
-        self.assertEqual(parse_stock_qa_log(bad)["status"],
-                         "MALFORMED_STOCK_QA_LOG")
-        self.assertEqual(parse_stock_qa_log(self.root / "other.log")["status"],
-                         "LOG_UNAVAILABLE")
+        with self.assertRaises(ValueError):
+            parse_stock_qa_log(bad)
+        with self.assertRaises(ValueError):
+            parse_stock_qa_log(self.root / "other.log")
+
+    def test_stock_log_and_journal_mismatch_warns(self):
+        log = self.root / "forward_qa_stdout.log"
+        log.write_text(json.dumps(stock_record(positions_open=2)) + "\n")
+        os.utime(log, (T.timestamp(), T.timestamp()))
+        got = build_status(self.root, now=T)
+        self.assertEqual(
+            got["stock_virtual_qa"]["monitor_health"],
+            "LOG_AND_LEDGER_COUNTS_OR_PNL_DIVERGE",
+        )
+
+    def test_stock_journal_tamper_fails_report(self):
+        path = self.root / "forward_execution_qa.json"
+        book = stock_book()
+        book["cash"] = "150.00"
+        path.write_text(json.dumps(book))
+        with self.assertRaises(ValueError):
+            get_stock_virtual_snapshot(path)
+
+    def test_stock_log_refuses_claimed_broker_order(self):
+        path = self.root / "forward_qa_stdout.log"
+        path.write_text(json.dumps(stock_record(broker_orders_sent=1)) + "\n")
+        with self.assertRaises(ValueError):
+            parse_stock_qa_log(path)
+
+    def test_stock_journal_symlink_is_denied(self):
+        target = self.root / "forward_execution_qa.json"
+        link = self.root / "stock-link.json"
+        link.symlink_to(target)
+        with self.assertRaises(ValueError):
+            get_stock_virtual_snapshot(link)
 
     def test_symlinked_monitor_log_denied(self):
         target = self.root / "crypto_virtual_monitor.jsonl"
