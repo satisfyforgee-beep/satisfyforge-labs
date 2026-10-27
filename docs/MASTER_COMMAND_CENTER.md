@@ -2,6 +2,38 @@
 
 This file is the canonical non-sensitive operating index for work that used to be spread across multiple chats and threads. The active ChatGPT Master Command Center conversation is the human-facing control surface; this file is the persistent project-facing source of truth.
 
+## Current owner focus — 2026-10-24 onward
+
+The owner narrowed new development to two priorities:
+
+1. **Trading laboratory:** build and independently test a multi-asset, cash-only
+   system for stocks, long options and crypto. Start with historical evaluation
+   and paper trading. Any future real-money order, recurring execution or broker
+   credential activation still requires the applicable explicit approval and
+   risk controls; no claim of reliable profit is established.
+2. **Original, compelling videos:** researched strange stories, science and
+   mysteries using high-quality source media/animation, natural narration,
+   captions and cinematic editing. Human preview and specific final publish
+   authorization remain required. Quality over filler volume.
+
+Keep other projects as historical source and existing safety/maintenance
+obligations; do not interpret their older priorities as instructions to start
+new products, social text posts, outreach or unrelated revenue experiments.
+No live schedule or account setting changes are implied by this focus update.
+
+### Technical foundation added for review — 2026-10-27
+
+- `trading-lab/` introduces an isolated **offline**, cash-only, deterministic
+  paper-order and SQLite journaling component, with equity/options/crypto test
+  fixtures. No API key, live feed, broker connection, or signal strategy exists.
+- `video-engine/forge_video.py quality` extends the owned FFmpeg renderer with
+  black-screen, frozen-scene and silence review reports. It remains a technical
+  gate, not a substitute for watching/listening to the video.
+- Existing `test-content-tools.yml` also runs these subsystem unit tests on
+  matching source changes. This adds no scheduler or paid dependency.
+- Work is prepared on the review branch `feature/intelligence-foundation-20261027`;
+  local tests are not evidence of a running cloud system or actual paper fills.
+
 ## Core operating rules
 
 - One command center, not one automation per thread.
@@ -291,12 +323,13 @@ Keep old duplicated trend scans, upload loops, retry checks, one-time social pos
 ## Priority order
 
 1. Prevent lost money, broken checkout paths, missed leads, failed publishing, duplicate posts, or unsafe payment claims.
-2. Convert existing traffic/outreach into a first/next sale.
-3. Improve and sell existing products/services/tools.
-4. Expand owned infrastructure so paid external tools are less necessary.
-5. Continue content distribution and research.
-6. Advance Roblox/KDP and other blocked projects as far as cloud-side work permits.
-7. Develop additional business ideas only when they have a clear buyer, problem, price path, and distribution path.
+2. Advance the paper-only trading laboratory with defensible market-data provenance,
+   strategy evaluation, risk controls and broker-sandbox contract verification.
+3. Improve the original video production/QA pipeline and create review-ready,
+   fact-checked episodes; reconcile every publish target against prior posts.
+4. Maintain already-live critical infrastructure and existing safety gates.
+5. Keep unrelated monetization, games and experimental projects parked unless
+   the owner explicitly reprioritizes them.
 
 ## Thread consolidation rule
 
