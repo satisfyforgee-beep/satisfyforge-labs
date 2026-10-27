@@ -95,6 +95,26 @@ No live schedule or account setting changes are implied by this focus update.
   out-of-sample behavior and multi-asset exits; select and license footage,
   record natural narration and produce a review-ready original episode.
 
+### Safe market-data handshake preparation — 2026-10-27
+
+- After explicit owner authorization for a **read-only** Tradier sandbox and
+  Alpaca paper-data connection check, `algo-trading/data_preflight.py` was
+  prepared: offline readiness by default; opt-in Keychain-only access to three
+  exact named items; opt-in authenticated GETs on fixed sandbox, paper and IEX
+  endpoints. No order-path imports, live hosts, always-on worker, secrets in
+  logs or account identifiers in reports.
+- The connected Mac is online, but the current shell environment does not
+  expose `TRADIER_SANDBOX_TOKEN`, `ALPACA_PAPER_KEY`, or
+  `ALPACA_PAPER_SECRET`. An absent variable does **not** establish whether a
+  token exists inside Tradier/Alpaca accounts or elsewhere. No existing
+  credentials were extracted or altered. Provider authentication remains
+  unverified until the owner securely supplies the relevant sandbox/paper
+  credentials in macOS Keychain and the GET-only preflight succeeds.
+- The official Tradier sandbox base is `https://sandbox.tradier.com/v1/`
+  with delayed sandbox quotes; Alpaca paper identity is checked strictly on
+  `https://paper-api.alpaca.markets/` and latest IEX stock quotes on the
+  market-data host. Only primary-provider documented endpoints were chosen.
+
 ## Core operating rules
 
 - One command center, not one automation per thread.
