@@ -137,27 +137,205 @@ def parse_monitor_log(path, now):
     }
 
 
+def _stock_amount(value, label):
+    try:
+        amount = Decimal(str(value))
+    except (ValueError, TypeError) as exc:
+        raise ValueError("invalid stock virtual " + label) from exc
+    if not amount.is_finite() or amount != amount.quantize(Decimal("0.01")):
+        raise ValueError("invalid stock virtual " + label)
+    return amount
+
+
+def _aware_iso(value, label):
+    if not isinstance(value, str):
+        raise ValueError("missing stock virtual " + label)
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError("invalid stock virtual " + label) from exc
+    if parsed.tzinfo is None:
+        raise ValueError("naive stock virtual " + label)
+    return parsed.astimezone(timezone.utc)
+
+
+def get_stock_virtual_snapshot(path):
+    """Reconcile the bounded stock JSON journal without importing an order route."""
+    p = _private_file(path, max_size=128000)
+    try:
+        book = json.loads(p.read_text())
+    except (UnicodeError, ValueError) as exc:
+        raise ValueError("corrupt stock virtual journal") from exc
+    if (not isinstance(book, dict) or set(book) != {
+            "version", "initial_cash", "cash", "entries", "positions", "events"
+        } or book["version"] != 1 or book["initial_cash"] != "150.00"):
+        raise ValueError("unexpected stock virtual journal schema")
+    cash = _stock_amount(book["cash"], "cash")
+    if cash < 0 or cash > Decimal("300.00"):
+        raise ValueError("stock virtual cash outside policy")
+    if (type(book["entries"]) is not int or not 0 <= book["entries"] <= 5 or
+            not isinstance(book["positions"], dict) or len(book["positions"]) > 5 or
+            not isinstance(book["events"], list) or len(book["events"]) > 10):
+        raise ValueError("stock virtual inventory outside bounded pilot")
+
+    active, seen = {}, set()
+    reconstructed_cash = Decimal("150.00")
+    realized = Decimal("0.00")
+    buys = sells = 0
+    latest_event = None
+    for event in book["events"]:
+        if not isinstance(event, dict) or event.get("action") not in ("BUY", "SELL"):
+            raise ValueError("invalid stock virtual event")
+        symbol = event.get("symbol")
+        if (not isinstance(symbol, str) or not symbol.isalpha() or
+                not symbol.isupper() or len(symbol) > 6 or
+                event.get("quantity") != 1 or
+                event.get("simulated_not_broker_fill") is not True or
+                _stock_amount(event.get("fee"), "fee") != Decimal("0.01")):
+            raise ValueError("stock virtual event violates pilot policy")
+        checked = _aware_iso(event.get("checked_at"), "checked_at")
+        quoted = _aware_iso(event.get("quote_at"), "quote_at")
+        if quoted > checked + timedelta(seconds=30):
+            raise ValueError("stock virtual quote occurs after check")
+        latest_event = checked if latest_event is None else max(latest_event, checked)
+        price = _stock_amount(event.get("virtual_price"), "price")
+        if price <= 0:
+            raise ValueError("nonpositive stock virtual price")
+        if event["action"] == "BUY":
+            debit = _stock_amount(event.get("virtual_debit"), "debit")
+            if (symbol in seen or debit != price + Decimal("0.01") or
+                    debit > Decimal("30.00")):
+                raise ValueError("duplicate or over-cap stock virtual buy")
+            if event.get("policy") != "spread_liquidity_execution_QA_not_directional_signal":
+                raise ValueError("unexpected stock virtual selection policy")
+            seen.add(symbol)
+            active[symbol] = debit
+            reconstructed_cash -= debit
+            buys += 1
+        else:
+            if symbol not in active or event.get("reason") not in ("STOP", "TARGET", "EOD"):
+                raise ValueError("stock virtual sell lacks matching position")
+            proceeds = price - Decimal("0.01")
+            pnl = _stock_amount(event.get("realized_pnl"), "realized pnl")
+            if proceeds <= 0 or pnl != proceeds - active[symbol]:
+                raise ValueError("stock virtual sale does not reconcile")
+            reconstructed_cash += proceeds
+            realized += pnl
+            del active[symbol]
+            sells += 1
+
+    if (buys != book["entries"] or buys != sells + len(book["positions"]) or
+            reconstructed_cash != cash or set(active) != set(book["positions"])):
+        raise ValueError("stock virtual journal counts or cash do not reconcile")
+    positions = []
+    for symbol, position in sorted(book["positions"].items()):
+        if (not isinstance(position, dict) or set(position) != {
+                "quantity", "basis", "entry_quote_at", "stop_bid", "target_bid"
+            } or position["quantity"] != 1 or
+                _stock_amount(position["basis"], "position basis") != active[symbol] or
+                _stock_amount(position["stop_bid"], "stop") <= 0 or
+                _stock_amount(position["target_bid"], "target") <= 0):
+            raise ValueError("stock virtual position does not reconcile")
+        _aware_iso(position["entry_quote_at"], "position entry quote")
+        positions.append({
+            "symbol": symbol, "quantity": 1, "basis": position["basis"],
+            "stop_bid": position["stop_bid"], "target_bid": position["target_bid"],
+        })
+    return {
+        "opening_virtual_cash": "150.00",
+        "current_virtual_cash": str(cash),
+        "realized_virtual_pnl": str(realized),
+        "entries_lifetime": buys,
+        "virtual_sells": sells,
+        "entry_cap_reached": buys == 5,
+        "open_positions": positions,
+        "latest_journal_event_utc": latest_event.isoformat() if latest_event else None,
+        "journal_modified_utc": datetime.fromtimestamp(
+            p.stat().st_mtime, tz=timezone.utc).isoformat(),
+    }
+
+
 def parse_stock_qa_log(path):
-    """Separate control experiment, not fungible with the crypto bankroll."""
-    p = Path(path)
-    if not p.is_file() or p.is_symlink():
-        return {"status": "LOG_UNAVAILABLE", "merged_crypto_profits": False}
-    lines = p.read_text()[-20000:].splitlines()
+    """Latest stock control record; journal remains accounting authority."""
+    p = _private_file(path, max_size=MAX_LOG_SIZE)
+    try:
+        lines = p.read_text()[-20000:].splitlines()
+    except UnicodeError as exc:
+        raise ValueError("unreadable stock QA log") from exc
     if not lines:
-        return {"status": "NO_STOCK_QA_EVENTS", "merged_crypto_profits": False}
+        raise ValueError("no stock QA events")
     try:
         latest = json.loads(lines[-1])
-    except ValueError:
-        return {"status": "MALFORMED_STOCK_QA_LOG", "merged_crypto_profits": False}
-    state = latest.get("state")
-    if not isinstance(state, str) or len(state) > 80:
-        state = "UNKNOWN"
+    except ValueError as exc:
+        raise ValueError("malformed stock QA log") from exc
+    allowed = {
+        "VIRTUAL_FORWARD_STEP", "OUTSIDE_PAPER_SESSION",
+        "MARKET_CLOSED_OR_UNVERIFIED", "TRIAL_COMPLETE",
+    }
+    if (not isinstance(latest, dict) or latest.get("state") not in allowed or
+            latest.get("broker_orders_sent") != 0):
+        raise ValueError("unexpected stock QA log record")
     return {
-        "status": state,
-        "broker_orders_sent_reported": latest.get("broker_orders_sent")
-        if latest.get("broker_orders_sent") == 0 else "UNKNOWN",
+        "latest_state": latest["state"],
+        "broker_orders_sent_reported": 0,
+        "entries_total_from_log": latest.get("entries_total"),
+        "positions_open_from_log": latest.get("positions_open"),
+        "cash_virtual_from_log": latest.get("cash_virtual"),
+        "realized_pnl_virtual_from_log": latest.get("realized_pnl_virtual"),
+        "latest_liquidation_equity_virtual_est": latest.get(
+            "liquidation_equity_virtual_est"),
+        "latest_net_pnl_virtual_est": latest.get("net_pnl_virtual_est"),
+        "log_modified_utc": datetime.fromtimestamp(
+            p.stat().st_mtime, tz=timezone.utc).isoformat(),
+    }
+
+
+def reconcile_stock_status(book, log, now):
+    if not isinstance(now, datetime) or now.tzinfo is None:
+        raise ValueError("timezone-aware now required")
+    modified = datetime.fromisoformat(book["journal_modified_utc"])
+    age = (now.astimezone(timezone.utc) - modified).total_seconds()
+    if age < -30:
+        raise ValueError("stock journal clock mismatch")
+    health = "HEALTHY_RECONCILED_RECENT_CHECK" if age <= 2700 else "HALTED_OR_STALE"
+    if log["latest_state"] == "VIRTUAL_FORWARD_STEP":
+        try:
+            matches = (
+                log["entries_total_from_log"] == book["entries_lifetime"] and
+                log["positions_open_from_log"] == len(book["open_positions"]) and
+                Decimal(str(log["cash_virtual_from_log"])) ==
+                Decimal(book["current_virtual_cash"]) and
+                Decimal(str(log["realized_pnl_virtual_from_log"])) ==
+                Decimal(book["realized_virtual_pnl"])
+            )
+        except (ValueError, TypeError):
+            matches = False
+        if not matches:
+            health = "LOG_AND_LEDGER_COUNTS_OR_PNL_DIVERGE"
+    return {
+        "monitor_health": health,
+        "latest_state": log["latest_state"],
+        "minutes_since_journal_update": round(max(0, age) / 60, 1),
+        "opening_virtual_cash": book["opening_virtual_cash"],
+        "current_virtual_cash": book["current_virtual_cash"],
+        "realized_virtual_pnl": book["realized_virtual_pnl"],
+        "entries_lifetime": book["entries_lifetime"],
+        "virtual_sells": book["virtual_sells"],
+        "entry_cap_reached": book["entry_cap_reached"],
+        "open_positions": book["open_positions"],
+        "latest_journal_event_utc": book["latest_journal_event_utc"],
+        "journal_modified_utc": book["journal_modified_utc"],
+        "log_modified_utc": log["log_modified_utc"],
+        "latest_liquidation_equity_virtual_est":
+            log["latest_liquidation_equity_virtual_est"],
+        "latest_net_pnl_virtual_est": log["latest_net_pnl_virtual_est"],
+        "broker_orders_sent_reported": 0,
         "merged_crypto_profits": False,
-        "note": "Separate stock-only virtual experiment, not paper broker performance",
+        "note": (
+            "Delayed-quote stock simulation only; journal cash and realized P/L "
+            "are authoritative for this separate virtual experiment. Estimates "
+            "are not Tradier broker-paper fills or executable quotes."
+        ),
     }
 
 
@@ -167,7 +345,9 @@ def build_status(private_dir, *, now):
         raise ValueError("trading directory symlink denied")
     book = get_virtual_snapshot(root / "crypto_virtual_forward.sqlite3")
     clock = parse_monitor_log(root / "crypto_virtual_monitor.jsonl", now)
-    stock = parse_stock_qa_log(root / "forward_qa_stdout.log")
+    stock_book = get_stock_virtual_snapshot(root / "forward_execution_qa.json")
+    stock_log = parse_stock_qa_log(root / "forward_qa_stdout.log")
+    stock = reconcile_stock_status(stock_book, stock_log, now)
     snapshot = book["snapshot"]
     if clock["latest_state"] != "CHECK_HALTED":
         log_positions = clock["latest_open_virtual_positions"]

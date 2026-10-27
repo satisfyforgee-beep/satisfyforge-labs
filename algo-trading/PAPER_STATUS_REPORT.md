@@ -32,6 +32,11 @@ The output differentiates:
   current authoritative portfolio performance.
 - Separate stock-only virtual QA status. Its *different* experiment is
   NEVER counted into the crypto virtual bankroll or called a Tradier fill.
+  The report now strictly replays the private JSON event journal, reconstructs
+  cash and realized simulated P/L, validates each one-share buy/sell and its
+  $30 cap, enforces the five-entry lifetime ceiling, and compares the latest
+  scheduler summary against the journal. Corrupt/tampered books, symlinks,
+  claimed broker orders, cash/count mismatches or stale updates fail closed.
 - Known blockers: unresolved historical 2026-10-21 SOFI protective exits,
   no verified broker-paper crypto/options executions, and no repeatable
   demonstrated net-positive strategy.
@@ -41,6 +46,17 @@ PRIVATE_READ_ONLY_VIRTUAL_TRADING_STATUS. Neither the command nor the
 monitor log claims actual brokerage execution or money. No usernames,
 account numbers, keys, HTTP headers, or full raw logs are printed.
 
+### Verified stock-QA readback — October 27, 2026
+
+A read-only run against the existing owner-private files reconciled all five
+lifetime delayed-quote virtual entries, one virtual target exit, four open
+virtual positions, $58.60 remaining virtual cash and $0.44 realized simulated
+P/L. The most recent log and journal agreed and were recent enough for
+`HEALTHY_RECONCILED_RECENT_CHECK`. The separately logged $151.04 liquidation
+equity / $1.04 net P/L figures remain **time-stamped estimates**, not realized
+profit, Tradier broker-paper fills or executable quotes. The five-entry cap is
+reached, so the trial cannot open replacement positions.
+
 ## Tests & limitations
 
     cd algo-trading
@@ -49,8 +65,9 @@ account numbers, keys, HTTP headers, or full raw logs are printed.
 
 Tests cover read-only SQLite access, missing/invalid ledgers, stale/future
 monitor clocks, malformed log records, mismatched realized profits, symlink
-path rejection, settlement and virtual exits, and separation from the
-stock-only experiment.
+path rejection, settlement and virtual exits, strict stock-journal cash/count
+reconstruction, tamper detection, broker-order-claim rejection, stock
+log/journal divergence, and separation between the two virtual experiments.
 
 No new LaunchAgent was installed by this report feature. The previously
 authorized approximately 15-minute monitor for existing virtual BTC, ETH
