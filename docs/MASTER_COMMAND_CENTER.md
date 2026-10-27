@@ -83,6 +83,8 @@ No live schedule or account setting changes are implied by this focus update.
   FFmpeg smoke skipped in the ordinary no-media run), plus a real two-scene
   FFmpeg/audio integration pass; synthetic unified paper journal replay
   verified one fill after two identical runs. No paper-broker API order was sent.
+- `test-content-tools.yml` now checks matching pull requests as well as pushes,
+  making the full 4-suite test gate visible on connector-created branches.
 - Connected Mac's current runtime environment reported **no configured**
   `ALPACA_PAPER_KEY`, `ALPACA_PAPER_SECRET`, or `TRADIER_SANDBOX_TOKEN`.
   This does not prove no credential exists elsewhere; do not go hunting for

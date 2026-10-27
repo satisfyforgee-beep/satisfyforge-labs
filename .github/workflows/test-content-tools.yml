@@ -8,6 +8,14 @@ on:
       - 'algo-trading/**'
       - 'video-engine/**'
       - '.github/workflows/test-content-tools.yml'
+  pull_request:
+    paths:
+      - 'tools/**'
+      - 'tests/**'
+      - 'trading-lab/**'
+      - 'algo-trading/**'
+      - 'video-engine/**'
+      - '.github/workflows/test-content-tools.yml'
   workflow_dispatch:
 jobs:
   smoke:
