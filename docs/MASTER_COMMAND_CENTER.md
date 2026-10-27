@@ -26,11 +26,11 @@ No live schedule or account setting changes are implied by this focus update.
 - `trading-lab/` introduces an isolated **offline**, cash-only, deterministic
   paper-order and SQLite journaling component, with equity/options/crypto test
   fixtures. No API key, live feed, broker connection, or signal strategy exists.
-- The previously isolated `feature/zero-cost-paper-trader-20261020` branch is
-  being reconciled under `algo-trading/`: historical OHLCV replay, a simple
-  equity breakout strategy and an **unarmed**, paper-host-only Alpaca adapter.
-  Its 19 unit tests passed on the connected Mac on 2026-10-27. It is not wired
-  to `trading-lab/` yet. Never run two independent order paths simultaneously.
+- The previously isolated `feature/zero-cost-paper-trader-20261020` work was
+  consolidated under `algo-trading/` via PR #91: historical OHLCV replay, a
+  simple equity breakout strategy and an **unarmed**, paper-host-only Alpaca
+  adapter. It is not wired to `trading-lab/` yet. Never run two independent
+  order paths simultaneously.
 - `video-engine/forge_video.py quality` extends the owned FFmpeg renderer with
   black-screen, frozen-scene and silence review reports. It remains a technical
   gate, not a substitute for watching/listening to the video.
@@ -39,6 +39,26 @@ No live schedule or account setting changes are implied by this focus update.
 - The initial foundation was merged to `main` via PR #90 after its local
   tests and both applicable GitHub checks passed. Passing tests are not
   evidence of a running cloud system or actual paper fills.
+
+### Connected Mac verification — 2026-10-27
+
+- GitHub PR #91 was merged after the corrected content-tools CI and site
+  validation workflows passed; first CI import-path failure was fixed.
+- A detached clean checkout of main commit `c7f628b` was downloaded to
+  `~/SatisfyForge/worktrees/satisfyforge-intelligence-20261027`. The older
+  main Mac worktree remains dirty with unrelated Roblox changes; it was not
+  reset, pulled, overwritten or modified.
+- All **44** applicable unit tests passed on that isolated Mac checkout:
+  base 3, paper ledger 12, historical strategy/broker 19, video 10.
+- Synthetic offline buy tests filled one hypothetical stock, one hypothetical
+  standard option and one hypothetical fractional crypto position in SQLite.
+  These are **fictional prices and assets**, not real broker paper orders.
+- Real FFmpeg `quality` inspection of the existing 33.248-second Great Molasses
+  Flood v5 video returned 1080x1920/30fps H.264/AAC and zero black/frozen/silent
+  flagged intervals. Technical QA alone does not establish strong narration,
+  creative quality, accessibility or viewer retention.
+- No live data feed, Tradier/Alpaca credentials, always-on process, new paid
+  subscription, 4K production render, or live brokerage action was configured.
 
 ## Core operating rules
 
