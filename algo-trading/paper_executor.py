@@ -10,20 +10,7 @@ from datetime import datetime,timedelta,timezone
 from zerocost_bot.alpaca import get_historical_bars
 from zerocost_bot.engine import Settings,PaperEngine
 from zerocost_bot.paper_broker import PaperBroker,make_bracket
-
-
-def choose_signal(bars):
-    """Only completed bar compared to previous completed history."""
-    if len(bars)<15:
-        return None
-    bars=sorted(bars,key=lambda b:b.time)
-    current=bars[-1]
-    e=PaperEngine(Settings())
-    past=bars[-14:-1]  # 13 strictly prior completed bars; minimum warm-up
-    for b in past:
-        e.on_bar(b)
-    # Do not take trades on a signal that depends on the same bar's high.
-    return current if e._signal(current.symbol,current) else None
+from zerocost_bot.signals import choose_signal
 
 
 def proposed_order(broker,bars,now=None):

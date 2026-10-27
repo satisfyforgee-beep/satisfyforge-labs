@@ -60,6 +60,41 @@ No live schedule or account setting changes are implied by this focus update.
 - No live data feed, Tradier/Alpaca credentials, always-on process, new paid
   subscription, 4K production render, or live brokerage action was configured.
 
+### Follow-on intelligence and creator pipeline — 2026-10-27
+
+- The historical `algo-trading/` breakout decision is extracted into a
+  broker-free shared function; the one-shot `trading-lab/pipeline.py` now sends
+  **equity-only** decisions into the existing SQLite paper journal. The
+  signal/order ID is stable across retries, and the journal records limit,
+  quote bid/ask, feed, timestamp, delay flag and strategy identifier.
+- A reversible migration adds those fields to existing journals; emergency
+  pause `SF_TRADING_PAUSED=1`, bar-close timing, quote freshness, spread,
+  cash/exposure caps and duplicate fingerprints all remain enforced.
+- `algo-trading/zerocost_bot/alpaca.py` has a read-only IEX top-of-book
+  quote fetcher, and `algo-trading/evaluate.py` has a fixed-parameters
+  chronological historical train/holdout evaluator. Neither connects to an
+  order-entry endpoint. This is not a claim of optimized strategy returns.
+- `video-engine/storyboard.py` provides licensed-media scene planning,
+  source/uncertainty/rights disclosures, voiceover duration checks, a
+  multi-scene FFmpeg render, and technical output QA. The storyboard example
+  is only a **template**; actual well-sourced footage, narration, captions
+  and human creative preview must precede any publish approval.
+- Verification: 67 unit-test cases across the four suites (one optional
+  FFmpeg smoke skipped in the ordinary no-media run), plus a real two-scene
+  FFmpeg/audio integration pass; synthetic unified paper journal replay
+  verified one fill after two identical runs. No paper-broker API order was sent.
+- `test-content-tools.yml` now checks matching pull requests as well as pushes,
+  making the full 4-suite test gate visible on connector-created branches.
+- Connected Mac's current runtime environment reported **no configured**
+  `ALPACA_PAPER_KEY`, `ALPACA_PAPER_SECRET`, or `TRADIER_SANDBOX_TOKEN`.
+  This does not prove no credential exists elsewhere; do not go hunting for
+  tokens. No authenticated quote feed, event-driven watcher, permanent daemon,
+  bot upgrade installation, purchased API or live-money automation is active.
+- Next: connect an explicitly authorized paper-data identity through the
+  owner's secure credentials flow; research true sourced multi-session
+  out-of-sample behavior and multi-asset exits; select and license footage,
+  record natural narration and produce a review-ready original episode.
+
 ## Core operating rules
 
 - One command center, not one automation per thread.

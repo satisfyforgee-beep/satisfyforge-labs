@@ -1,0 +1,61 @@
+{
+  "title": "Research mystery — evidence versus speculation (illustrative template)",
+  "voiceover": "narration.wav",
+  "captions": "captions.srt",
+  "claims": [
+    {
+      "id": "official-page",
+      "text": "A claim to verify against the agency's primary source before recording",
+      "kind": "unverified"
+    },
+    {
+      "id": "rumor",
+      "text": "An imagined scenario, not established evidence",
+      "kind": "speculation"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "cold-open",
+      "asset": "shots/opening.mp4",
+      "license": "owned",
+      "rights_note": "REPLACE: identify where the original footage was recorded",
+      "duration_seconds": 5,
+      "visual_direction": "A sharp opening with real movement and cinematic contrast, not a static title card",
+      "narration": "A real research project. A strange internet theory. Here's how we tell them apart.",
+      "claim_ids": []
+    },
+    {
+      "id": "records",
+      "asset": "shots/archive.mp4",
+      "license": "licensed",
+      "rights_note": "REPLACE: keep a written source URL, license and attribution requirements",
+      "duration_seconds": 8,
+      "visual_direction": "Move through documents, prototype footage and annotated dates",
+      "narration": "First, let's pull apart what official records actually say. That evidence sets the boundaries of the story.",
+      "claim_ids": ["official-page"],
+      "uncertainty_disclosure": "Research needed: no factual claim approved yet"
+    },
+    {
+      "id": "reconstruction",
+      "asset": "shots/concept.png",
+      "license": "owned",
+      "rights_note": "REPLACE: original illustration created for this episode",
+      "duration_seconds": 8,
+      "visual_direction": "An unmistakably labeled illustration, with layered camera motion",
+      "narration": "Now imagine a possible explanation. It's interesting—but a possibility is not proof.",
+      "claim_ids": ["rumor"],
+      "uncertainty_disclosure": "Concept illustration / unproven hypothesis"
+    },
+    {
+      "id": "payoff",
+      "asset": "shots/conclusion.mp4",
+      "license": "owned",
+      "rights_note": "REPLACE: original footage or licensed media",
+      "duration_seconds": 5,
+      "visual_direction": "Return to real footage and end on a clean, memorable question",
+      "narration": "The real mystery is what the records leave unanswered. Which project should we investigate next?",
+      "claim_ids": []
+    }
+  ]
+}

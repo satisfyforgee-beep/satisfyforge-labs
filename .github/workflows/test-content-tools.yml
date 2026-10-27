@@ -1,6 +1,16 @@
 name: Test content tools
 on:
   push:
+    branches:
+      - main
+    paths:
+      - 'tools/**'
+      - 'tests/**'
+      - 'trading-lab/**'
+      - 'algo-trading/**'
+      - 'video-engine/**'
+      - '.github/workflows/test-content-tools.yml'
+  pull_request:
     paths:
       - 'tools/**'
       - 'tests/**'
