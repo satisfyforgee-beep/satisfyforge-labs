@@ -26,13 +26,19 @@ No live schedule or account setting changes are implied by this focus update.
 - `trading-lab/` introduces an isolated **offline**, cash-only, deterministic
   paper-order and SQLite journaling component, with equity/options/crypto test
   fixtures. No API key, live feed, broker connection, or signal strategy exists.
+- The previously isolated `feature/zero-cost-paper-trader-20261020` branch is
+  being reconciled under `algo-trading/`: historical OHLCV replay, a simple
+  equity breakout strategy and an **unarmed**, paper-host-only Alpaca adapter.
+  Its 19 unit tests passed on the connected Mac on 2026-10-27. It is not wired
+  to `trading-lab/` yet. Never run two independent order paths simultaneously.
 - `video-engine/forge_video.py quality` extends the owned FFmpeg renderer with
   black-screen, frozen-scene and silence review reports. It remains a technical
   gate, not a substitute for watching/listening to the video.
 - Existing `test-content-tools.yml` also runs these subsystem unit tests on
   matching source changes. This adds no scheduler or paid dependency.
-- Work is prepared on the review branch `feature/intelligence-foundation-20261027`;
-  local tests are not evidence of a running cloud system or actual paper fills.
+- The initial foundation was merged to `main` via PR #90 after its local
+  tests and both applicable GitHub checks passed. Passing tests are not
+  evidence of a running cloud system or actual paper fills.
 
 ## Core operating rules
 

@@ -5,6 +5,7 @@ on:
       - 'tools/**'
       - 'tests/**'
       - 'trading-lab/**'
+      - 'algo-trading/**'
       - 'video-engine/**'
       - '.github/workflows/test-content-tools.yml'
   workflow_dispatch:
@@ -22,4 +23,5 @@ jobs:
         run: |
           python -m unittest discover -s tests -v
           python -m unittest discover -s trading-lab -p 'test_*.py' -v
+          PYTHONPATH=algo-trading python -m unittest discover -s algo-trading/tests -p 'test_*.py' -v
           python -m unittest discover -s video-engine -p 'test_*.py' -v
