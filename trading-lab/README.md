@@ -5,6 +5,13 @@ predictor, live scanner or claim of profitability. It deliberately has **no
 network calls and no production trading entrypoint**. All quotes are caller-
 supplied; the included demo uses fictional symbols and synthetic values.
 
+The complementary `../algo-trading/` code contains an older, separately tested
+OHLCV signal-replay engine and a dual-gated Alpaca paper broker adapter. The
+two components are **not yet wired together**, and must not independently
+place the same simulated order. Future work should unify signal IDs, quote
+provenance, position state, and the single order journal before paper brokerage
+execution is enabled.
+
 ## What is implemented
 
 - Stocks, long standard 100-share options, and crypto (fractional crypto only).
