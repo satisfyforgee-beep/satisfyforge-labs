@@ -4,7 +4,8 @@ Owned, zero-cost-first vertical video normalization and QA built on FFmpeg. The 
 
 ## What v1 does
 
-- Converts a source video to 1080x1920 vertical output.
+- Converts a source video to 1080x1920 vertical output by default, or optional
+  2160x3840 vertical 4K (upscaling is not a substitute for true 4K source media).
 - Forces constant 30 fps to reduce social-publisher frame-rate validation failures.
 - Encodes H.264 with `yuv420p` and fast-start MP4 metadata.
 - Preserves source audio when present or replaces it with an optional voiceover.
@@ -35,6 +36,9 @@ python video-engine/forge_video.py render \
   --output publish-ready.mp4
 ```
 
+To render a 4K vertical master when source quality and available hardware justify it,
+add `--resolution 2160x3840`. Actual platform uploads may downsample it.
+
 ## Validate an existing file
 
 ```bash
@@ -42,6 +46,23 @@ python video-engine/forge_video.py validate --input publish-ready.mp4
 ```
 
 A successful validation exits `0`. A format problem exits non-zero and prints the exact failed checks.
+
+## Deeper technical and creative review checks
+
+```bash
+python video-engine/forge_video.py quality --input publish-ready.mp4
+python video-engine/forge_video.py quality --input publish-ready.mp4 --strict
+```
+
+The `quality` command also runs FFmpeg black-frame, frozen-scene and audio-silence
+detectors. It includes time-coded intervals in JSON output. In normal mode,
+detected intervals are review warnings because deliberate dramatic pauses,
+static footage and black transitions may be legitimate. `--strict` fails on
+any detected segment. An FFmpeg filter failure is always an error, not a pass.
+
+This improves technical screening but cannot judge storytelling, narration
+naturalness, factual accuracy, licensing, audience retention, or visual taste.
+**Listen and watch the completed preview before publishing.**
 
 ## Scope boundary
 

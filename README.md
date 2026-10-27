@@ -5,6 +5,8 @@ Shared workspace for the SatisfyForge project.
 ## Layout
 
 - `docs/` — notes, plans, and decisions
+- `trading-lab/` — offline paper-execution/risk test harness (no live broker)
+- `video-engine/` — owned FFmpeg video assembly and technical quality checks
 - `src/` — source code
 - `WORKSPACE.md` — how we collaborate in this repo
 

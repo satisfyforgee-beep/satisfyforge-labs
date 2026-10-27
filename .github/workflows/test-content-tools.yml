@@ -4,6 +4,8 @@ on:
     paths:
       - 'tools/**'
       - 'tests/**'
+      - 'trading-lab/**'
+      - 'video-engine/**'
       - '.github/workflows/test-content-tools.yml'
   workflow_dispatch:
 jobs:
@@ -17,4 +19,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Run content workflow tests
-        run: python -m unittest discover -s tests -v
+        run: |
+          python -m unittest discover -s tests -v
+          python -m unittest discover -s trading-lab -p 'test_*.py' -v
+          python -m unittest discover -s video-engine -p 'test_*.py' -v
