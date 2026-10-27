@@ -54,6 +54,55 @@ regimes and known transaction costs before a strategy is considered promising.
 4. Test historical IEX minute bars (availability depends on account/feed):
    `python3 cli.py --alpaca-history SOFI --from-utc 2026-10-19T13:30:00Z --to-utc 2026-10-19T20:00:00Z --starting-cash 1000`
 
+## Tradier sandbox + Alpaca paper connection preflight
+
+The zero-dependency `data_preflight.py` **never submits orders**. It prints
+only status categories, never tokens, names, account numbers or balances:
+
+```bash
+python3 algo-trading/data_preflight.py
+python3 algo-trading/data_preflight.py --keychain
+python3 algo-trading/data_preflight.py --keychain --network
+```
+
+- The default performs **no network calls or Keychain reads** and checks only
+  for existing `TRADIER_SANDBOX_TOKEN`, `ALPACA_PAPER_KEY`, and
+  `ALPACA_PAPER_SECRET` environment variables.
+- `--keychain` optionally checks **only three named macOS Keychain items**;
+  Keychain may ask the logged-in owner for permission. Environment variables
+  take precedence. There is no filesystem search for other passwords.
+- `--network` opts into fixed authenticated **GET-only** URLs:
+  `https://sandbox.tradier.com/v1/user/profile` and
+  `https://paper-api.alpaca.markets/v2/account`. If Alpaca paper identity
+  succeeds, it requests only a SOFI top-of-book IEX quote from
+  `https://data.alpaca.markets/v2/stocks/quotes/latest`. Redirects and all
+  non-allowlisted endpoints are blocked. Network/permission failures produce
+  sanitized statuses, not exception details or private data.
+- Tradier sandbox prices are delayed 15 minutes, so they are unsuitable for
+  deciding immediate entries. Alpaca Basic IEX is single-exchange data,
+  **not** consolidated market coverage. An API handshake is not proof of a
+  profitable or broker-ready strategy.
+
+### One-time secure setup on the owner's Mac
+
+Only the account owner should retrieve their sandbox token from
+https://web.tradier.com/user/api and their **paper-only** Alpaca keys from
+https://app.alpaca.markets/paper/dashboard . Never paste them into GitHub,
+chat, shell arguments, or scripts. From macOS Terminal, these commands ask
+for each secret interactively; the secret is not part of shell history:
+
+```bash
+security add-generic-password -U -a satisfyforge -s com.satisfyforge.tradier.sandbox -w
+security add-generic-password -U -a satisfyforge -s com.satisfyforge.alpaca.paper.key -w
+security add-generic-password -U -a satisfyforge -s com.satisfyforge.alpaca.paper.secret -w
+```
+
+Mac `security` explicitly documents that `-w` **as the last argument** prompts
+for the password. Only enter a sandbox or paper key into its corresponding
+item; never use live brokerage credentials. A provider login and possible
+Keychain access confirmation are owner actions. There is no paid requirement
+and no persistent watcher is installed.
+
 ## Optional paper-broker integration (NOT activated)
 - **Read-only preflight:** `python3 paper_executor.py --symbol SOFI` once a paper
   account's credentials are locally configured. It fetches IEX minute bars and
