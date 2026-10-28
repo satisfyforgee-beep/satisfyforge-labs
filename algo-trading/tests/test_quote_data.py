@@ -27,6 +27,14 @@ class QuoteDataTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             latest_equity_quotes(["SOFI/USD"], "test", "test", lambda request: {})
 
+    def test_iex_nanosecond_timestamp_is_supported_on_python_39(self):
+        rows = latest_equity_quotes(["SOFI"], "test", "test", lambda request: {
+            "quotes": {"SOFI": {"bp": 14.53, "ap": 14.55,
+                                "t": "2026-10-28T18:23:58.009248866Z"}}})
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["asof"].microsecond, 9248)
+        self.assertEqual(rows[0]["asof"].tzinfo, timezone.utc)
+
     def test_bad_quote_timestamp_is_rejected(self):
         with self.assertRaises(ValueError):
             latest_equity_quotes(["SOFI"], "test", "test", lambda request: {
