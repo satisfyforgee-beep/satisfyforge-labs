@@ -115,6 +115,23 @@ No live schedule or account setting changes are implied by this focus update.
   `https://paper-api.alpaca.markets/` and latest IEX stock quotes on the
   market-data host. Only primary-provider documented endpoints were chosen.
 
+### Verified paper-data handshake — 2026-10-28
+
+- The owner-supplied Keychain credentials now pass GET-only identity checks for
+  Tradier sandbox and Alpaca paper. Alpaca IEX's live nanosecond RFC3339 quote
+  timestamp exposed a Python 3.9 parser incompatibility; draft PR #96 fixes the
+  parser while keeping missing timezones and malformed timestamps fail-closed.
+- A fresh read-only provider check found the Alpaca paper account active with
+  zero positions and zero open orders. Its reported account multiplier is 4,
+  so any future adapter must enforce the owner's cash-only/no-margin policy
+  independently; connectivity is not execution authorization.
+- Tradier sandbox still holds one SOFI paper share and exposes zero orders in
+  its current-session inventory. The historical October 21 protective exits
+  remain unresolved, so Tradier entries stay halted with
+  `HALT_POSITION_EXITS_UNVERIFIED`.
+- No broker paper or real-money order, cancellation, transfer, credential
+  change, subscription, or new background job was created by this verification.
+
 ## Core operating rules
 
 - One command center, not one automation per thread.
