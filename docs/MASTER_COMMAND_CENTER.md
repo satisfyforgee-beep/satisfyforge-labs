@@ -21,6 +21,15 @@ obligations; do not interpret their older priorities as instructions to start
 new products, social text posts, outreach or unrelated revenue experiments.
 No live schedule or account setting changes are implied by this focus update.
 
+### Owner-facing mission board prepared for review — 2026-10-29
+
+- The existing Floot SatisfyForge Control Center project was edited in **preview only**, not republished: its owner-priority panels now center (1) the isolated trading laboratory and (2) original video production. It retains existing browser/mail infrastructure rather than creating a second dashboard.
+- A server-side read-only GitHub Actions query now checks the latest `test-content-tools.yml` workflow and surfaces the run link, status and conclusion. The UI explicitly distinguishes **CI test success** from live paper fills, active agents, creative approval, or successful publication; unknown state is not shown as healthy.
+- Historic outreach/commerce/Roblox/KDP priorities were moved out of the top actions in the draft UI; the top actions now track safe multi-asset research/testing, read-only paper credentials, episode production and human QA. Existing send/publish gates were not changed.
+- Preview project TypeScript typecheck passed and its existing theme spec passed (one file). An isolated, clean connected-Mac checkout passed **70 tests**, with **one optional test skipped**: trading-lab 21, algo-trading 32, video-engine 18 (one skipped). The first algo-trading invocation lacked its documented PYTHONPATH; rerunning with `PYTHONPATH=algo-trading` passed all 32. No worktree changes, paper-broker orders, live trades, posts or external outreach occurred.
+- A public GitHub API check returned the latest content-tools run completed successfully (run ID 40745392281). This does not imply the Floot preview is deployed or that actual trading/video production services are continuously running.
+- **Still pending:** owner review of the preview, mobile visual validation when the preview window is open, and specific permission before republishing the live dashboard. Data-identity handshake, strategy validation, final footage/voice, and human video review remain unverified.
+
 ### Technical foundation added for review — 2026-10-27
 
 - `trading-lab/` introduces an isolated **offline**, cash-only, deterministic
