@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<roblox version="4"><External>null</External><External>nil</External><Item class="MaterialVariant" referent="RBX7b78d8fa1b0945f9b99b87f72077a0d9">
+			<Properties>
+				<token name="AlphaMode">3</token>
+				<token name="BaseMaterial">816</token>
+				<Content name="ColorMap"><url>rbxassetid://9932977788</url></Content>
+				<PhysicalProperties name="CustomPhysicalProperties">
+					<CustomPhysics>false</CustomPhysics>
+				</PhysicalProperties>
+				<Content name="EmissiveMaskContent">
+					<null />
+				</Content>
+				<float name="EmissiveStrength">1</float>
+				<Color3 name="EmissiveTint">
+					<R>1</R>
+					<G>1</G>
+					<B>1</B>
+				</Color3>
+				<token name="MaterialPattern">0</token>
+				<Content name="MetalnessMap"><null /></Content>
+				<Content name="NormalMap"><url>rbxassetid://9932948078</url></Content>
+				<Content name="RoughnessMap"><url>rbxassetid://9932518345</url></Content>
+				<float name="StudsPerTile">20</float>
+				<Content name="TexturePack"><url>rbxassetid://9932978642</url></Content>
+				<string name="Name">Concrete_Tie_Holes_A</string>
+				</Properties>
+		</Item>
+		</roblox>
