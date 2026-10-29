@@ -213,8 +213,10 @@ def get_stock_virtual_snapshot(path):
             reconstructed_cash -= debit
             buys += 1
         else:
-            if symbol not in active or event.get("reason") not in ("STOP", "TARGET", "EOD"):
+            if symbol not in active:
                 raise ValueError("stock virtual sell lacks matching position")
+            if event.get("reason") not in ("STOP", "TARGET", "SESSION_END"):
+                raise ValueError("unsupported stock virtual exit reason")
             proceeds = price - Decimal("0.01")
             pnl = _stock_amount(event.get("realized_pnl"), "realized pnl")
             if proceeds <= 0 or pnl != proceeds - active[symbol]:
@@ -298,7 +300,18 @@ def reconcile_stock_status(book, log, now):
     if age < -30:
         raise ValueError("stock journal clock mismatch")
     health = "HEALTHY_RECONCILED_RECENT_CHECK" if age <= 2700 else "HALTED_OR_STALE"
-    if log["latest_state"] == "VIRTUAL_FORWARD_STEP":
+    if log["latest_state"] == "TRIAL_COMPLETE":
+        terminal_matches = (
+            log["entries_total_from_log"] == book["entries_lifetime"] == 5 and
+            book["entry_cap_reached"] and
+            book["virtual_sells"] == 5 and
+            not book["open_positions"]
+        )
+        health = (
+            "TRIAL_COMPLETE_RECONCILED" if terminal_matches else
+            "LOG_AND_LEDGER_COUNTS_OR_PNL_DIVERGE"
+        )
+    elif log["latest_state"] == "VIRTUAL_FORWARD_STEP":
         try:
             matches = (
                 log["entries_total_from_log"] == book["entries_lifetime"] and

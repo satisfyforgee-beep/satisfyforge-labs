@@ -63,6 +63,33 @@ def stock_book():
     }
 
 
+def completed_stock_book():
+    checked = (T - timedelta(hours=3)).isoformat()
+    quoted = (T - timedelta(hours=3, minutes=15)).isoformat()
+    symbols = ("PFE", "T", "CLF", "CCL", "RIOT")
+    events = []
+    for symbol in symbols:
+        events.append({
+            "action": "BUY", "symbol": symbol, "quantity": 1,
+            "virtual_price": "10.00", "fee": "0.01",
+            "virtual_debit": "10.01", "checked_at": checked,
+            "quote_at": quoted, "simulated_not_broker_fill": True,
+            "policy": "spread_liquidity_execution_QA_not_directional_signal",
+        })
+    for symbol in symbols:
+        events.append({
+            "action": "SELL", "symbol": symbol, "quantity": 1,
+            "virtual_price": "10.20", "fee": "0.01",
+            "realized_pnl": "0.18", "reason": "SESSION_END",
+            "checked_at": checked, "quote_at": quoted,
+            "simulated_not_broker_fill": True,
+        })
+    return {
+        "version": 1, "initial_cash": "150.00", "cash": "150.90",
+        "entries": 5, "positions": {}, "events": events,
+    }
+
+
 def stock_record(**updates):
     row = {
         "state": "VIRTUAL_FORWARD_STEP", "broker_orders_sent": 0,
@@ -169,6 +196,43 @@ class PaperDailyHealthTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_stock_qa_log(self.root / "other.log")
 
+    def test_completed_stock_pilot_reconciles_session_end_terminal(self):
+        stock_path = self.root / "forward_execution_qa.json"
+        stock_path.write_text(json.dumps(completed_stock_book()) + "\n")
+        stock_log = self.root / "forward_qa_stdout.log"
+        stock_log.write_text(json.dumps(stock_record(
+            state="TRIAL_COMPLETE", entries_total=5,
+            positions_open=None, cash_virtual=None,
+            realized_pnl_virtual=None,
+        )) + "\n")
+        stale = (T - timedelta(hours=2)).timestamp()
+        os.utime(stock_path, (stale, stale))
+        os.utime(stock_log, (stale, stale))
+
+        stock = build_status(self.root, now=T)["stock_virtual_qa"]
+        self.assertEqual(stock["monitor_health"], "TRIAL_COMPLETE_RECONCILED")
+        self.assertEqual(stock["entries_lifetime"], 5)
+        self.assertEqual(stock["virtual_sells"], 5)
+        self.assertEqual(stock["open_positions"], [])
+        self.assertEqual(stock["current_virtual_cash"], "150.90")
+        self.assertEqual(stock["realized_virtual_pnl"], "0.90")
+
+    def test_terminal_log_mismatch_remains_fail_closed(self):
+        stock_path = self.root / "forward_execution_qa.json"
+        stock_path.write_text(json.dumps(completed_stock_book()) + "\n")
+        stock_log = self.root / "forward_qa_stdout.log"
+        stock_log.write_text(json.dumps(stock_record(
+            state="TRIAL_COMPLETE", entries_total=4,
+        )) + "\n")
+        os.utime(stock_path, (T.timestamp(), T.timestamp()))
+        os.utime(stock_log, (T.timestamp(), T.timestamp()))
+
+        stock = build_status(self.root, now=T)["stock_virtual_qa"]
+        self.assertEqual(
+            stock["monitor_health"],
+            "LOG_AND_LEDGER_COUNTS_OR_PNL_DIVERGE",
+        )
+
     def test_stock_log_and_journal_mismatch_warns(self):
         log = self.root / "forward_qa_stdout.log"
         log.write_text(json.dumps(stock_record(positions_open=2)) + "\n")
@@ -185,6 +249,14 @@ class PaperDailyHealthTests(unittest.TestCase):
         book["cash"] = "150.00"
         path.write_text(json.dumps(book))
         with self.assertRaises(ValueError):
+            get_stock_virtual_snapshot(path)
+
+    def test_unknown_stock_exit_reason_remains_denied(self):
+        path = self.root / "forward_execution_qa.json"
+        book = stock_book()
+        book["events"][-1]["reason"] = "EOD"
+        path.write_text(json.dumps(book))
+        with self.assertRaisesRegex(ValueError, "unsupported"):
             get_stock_virtual_snapshot(path)
 
     def test_stock_log_refuses_claimed_broker_order(self):
