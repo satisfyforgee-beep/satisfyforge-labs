@@ -1,0 +1,41 @@
+name: Paper status reconciliation tests
+
+on:
+  pull_request:
+    paths:
+      - 'algo-trading/zerocost_bot/paper_status.py'
+      - 'algo-trading/paper_status_report.py'
+      - 'algo-trading/tests/test_paper_status.py'
+      - '.github/workflows/test-paper-status-report.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-reconciliation:
+    name: Offline paper-status reconciliation
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Focused paper-status regression
+        env:
+          PYTHONPATH: algo-trading
+        run: python -m unittest -v algo-trading/tests/test_paper_status.py
+
+      - name: Full offline algo-trading suite
+        env:
+          PYTHONPATH: algo-trading
+        run: python -m unittest discover -s algo-trading/tests -p 'test_*.py'
+
+      - name: Repository safety contracts
+        run: python -m unittest discover -s tests -p 'test_*.py'
+
+      - name: Compile status reporter
+        run: python -m compileall -q algo-trading/zerocost_bot algo-trading/paper_status_report.py
