@@ -7,7 +7,9 @@ from urllib.request import Request
 from unittest import mock
 
 from data_preflight import (_get_json, _quote_json, _keychain_secret,
-                            check_connections, load_credentials)
+                            check_connections,
+                            classify_alpaca_cash_only_eligibility,
+                            load_credentials)
 
 
 class PreflightTests(unittest.TestCase):
@@ -48,6 +50,7 @@ class PreflightTests(unittest.TestCase):
         self.assertEqual(result["connections"], {"tradier_sandbox": "CONNECTED",
                                                  "alpaca_paper": "CONNECTED",
                                                  "alpaca_iex_quotes": "CONNECTED"})
+        self.assertEqual(result["alpaca_cash_only_eligibility"], "BLOCKED")
         self.assertEqual(len(requests), 3)
         self.assertTrue(all(req.get_method() == "GET" for req in requests))
         self.assertTrue(all("api.alpaca.markets/v2/orders" not in req.full_url for req in requests))
@@ -99,6 +102,65 @@ class PreflightTests(unittest.TestCase):
             self.assertTrue(all("find-generic-password" in call.args[0] for call in run.call_args_list))
         with mock.patch("data_preflight.platform.system", return_value="Linux"):
             self.assertIsNone(_keychain_secret("com.satisfyforge.tradier.sandbox"))
+
+    @staticmethod
+    def _cash_account(**changes):
+        account = {
+            "id": "private-account", "status": "ACTIVE", "multiplier": "1",
+            "cash": "150.00", "buying_power": "999999.00",
+            "account_blocked": False, "trading_blocked": False,
+            "trade_suspended_by_user": False,
+        }
+        account.update(changes)
+        return account
+
+    def test_multiplier_four_is_blocked_even_when_flat_with_positive_cash(self):
+        account = self._cash_account(multiplier="4")
+        self.assertEqual(classify_alpaca_cash_only_eligibility(account), "BLOCKED")
+
+    def test_multiplier_two_is_blocked(self):
+        self.assertEqual(
+            classify_alpaca_cash_only_eligibility(self._cash_account(multiplier="2")),
+            "BLOCKED")
+
+    def test_multiplier_one_remains_review_required(self):
+        result = classify_alpaca_cash_only_eligibility(self._cash_account())
+        self.assertEqual(result, "REVIEW_REQUIRED")
+        self.assertNotIn("VERIFIED", result)
+
+    def test_missing_or_invalid_multiplier_is_blocked(self):
+        missing = self._cash_account()
+        missing.pop("multiplier")
+        self.assertEqual(classify_alpaca_cash_only_eligibility(missing), "BLOCKED")
+        for invalid in (None, "", "not-a-number", "NaN", "Infinity"):
+            with self.subTest(multiplier=invalid):
+                self.assertEqual(
+                    classify_alpaca_cash_only_eligibility(
+                        self._cash_account(multiplier=invalid)), "BLOCKED")
+
+    def test_negative_or_nonfinite_cash_is_blocked(self):
+        for invalid in ("-0.01", "NaN", "Infinity", None):
+            with self.subTest(cash=invalid):
+                self.assertEqual(
+                    classify_alpaca_cash_only_eligibility(
+                        self._cash_account(cash=invalid)), "BLOCKED")
+
+    def test_short_exposure_and_blocked_flags_are_blocked(self):
+        self.assertEqual(
+            classify_alpaca_cash_only_eligibility(
+                self._cash_account(), has_short_exposure=True), "BLOCKED")
+        for flag in ("account_blocked", "trading_blocked", "trade_suspended_by_user"):
+            with self.subTest(flag=flag):
+                self.assertEqual(
+                    classify_alpaca_cash_only_eligibility(
+                        self._cash_account(**{flag: True})), "BLOCKED")
+
+    def test_non_mapping_account_is_unknown(self):
+        for invalid in (None, [], "bad-response"):
+            with self.subTest(account=invalid):
+                self.assertEqual(
+                    classify_alpaca_cash_only_eligibility(invalid), "UNKNOWN")
+
 
 
 if __name__ == "__main__":
