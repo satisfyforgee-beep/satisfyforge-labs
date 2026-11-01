@@ -12,6 +12,7 @@ import json
 import os
 import platform
 import subprocess
+from decimal import Decimal, InvalidOperation
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -83,6 +84,49 @@ def _quote_json(request: Request, transport=None) -> dict:
         return json.load(response)
 
 
+def classify_alpaca_cash_only_eligibility(
+        account: object, *, has_short_exposure: bool | None = None) -> str:
+    """Return a sanitized, fail-closed paper-account eligibility state.
+
+    Connectivity is deliberately separate. Even multiplier 1 is not enough to
+    prove broker-native cash-only restrictions or a settled-cash policy.
+    Buying power is never used for sizing or eligibility.
+    """
+    if not isinstance(account, dict):
+        return "UNKNOWN"
+    if has_short_exposure is True:
+        return "BLOCKED"
+    for flag in ("account_blocked", "trading_blocked", "trade_suspended_by_user"):
+        value = account.get(flag)
+        if value is not None and value is not False:
+            return "BLOCKED"
+    try:
+        multiplier = Decimal(str(account["multiplier"]))
+        cash = Decimal(str(account["cash"]))
+    except (KeyError, InvalidOperation, TypeError, ValueError):
+        return "BLOCKED"
+    if not multiplier.is_finite() or not cash.is_finite():
+        return "BLOCKED"
+    if cash < 0 or multiplier != Decimal("1"):
+        return "BLOCKED"
+    return "REVIEW_REQUIRED"
+
+
+def _safe_alpaca_check(request: Request, transport=None) -> tuple[str, str]:
+    """Read and classify one paper-account response without exposing it."""
+    try:
+        body = _get_json(request, transport)
+        if not isinstance(body, dict) or "status" not in body or "id" not in body:
+            return "INVALID_RESPONSE", "UNKNOWN"
+        return "CONNECTED", classify_alpaca_cash_only_eligibility(body)
+    except HTTPError as exc:
+        return ("AUTH_FAILED" if exc.code in {401, 403} else "HTTP_ERROR"), "UNKNOWN"
+    except (URLError, TimeoutError, OSError):
+        return "NETWORK_ERROR", "UNKNOWN"
+    except (ValueError, TypeError, KeyError, json.JSONDecodeError):
+        return "INVALID_RESPONSE", "UNKNOWN"
+
+
 def _safe_check(request: Request, transport=None) -> str:
     """Sanitized status only; untrusted API errors never reach stdout."""
     try:
@@ -112,6 +156,7 @@ def check_connections(*, network: bool = False, allow_keychain: bool = False,
                         ("INCOMPLETE_CREDENTIAL_PAIR" if alpaca_key or alpaca_secret else "MISSING_CREDENTIAL"),
         "alpaca_iex_quotes": "NOT_CHECKED",
     }
+    alpaca_cash_only_eligibility = "UNKNOWN"
     if network:
         if tradier:
             request = Request(TRADIER_SANDBOX_PROFILE, headers={
@@ -121,7 +166,8 @@ def check_connections(*, network: bool = False, allow_keychain: bool = False,
             headers = {"APCA-API-KEY-ID": alpaca_key, "APCA-API-SECRET-KEY": alpaca_secret,
                        "Accept": "application/json"}
             request = Request(ALPACA_PAPER_ACCOUNT, headers=headers, method="GET")
-            states["alpaca_paper"] = _safe_check(request, transport)
+            states["alpaca_paper"], alpaca_cash_only_eligibility = _safe_alpaca_check(
+                request, transport)
             if states["alpaca_paper"] == "CONNECTED":
                 # This helper has one hardcoded read-only IEX quote GET. The
                 # response is never returned, printed, or used to make an order.
@@ -146,6 +192,7 @@ def check_connections(*, network: bool = False, allow_keychain: bool = False,
         "always_on_monitoring_enabled": False,
         "tradier_prices_delayed_minutes": 15,
         "alpaca_equity_feed": "IEX_ONLY_NOT_CONSOLIDATED",
+        "alpaca_cash_only_eligibility": alpaca_cash_only_eligibility,
         "connections": states,
         "secrets_and_account_numbers_displayed": False,
     }
