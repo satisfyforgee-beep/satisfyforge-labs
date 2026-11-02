@@ -91,24 +91,39 @@ class PaperCapitalTests(unittest.TestCase):
                                          calendar_proof=proof)
         self.assertEqual(l.snapshot()["unsettled_sale_proceeds"], "11.00")
 
-    def test_holiday_dates_are_proof_driven_not_weekday_guesses(self):
-        trade = datetime(2026, 11, 25, 15, 0, tzinfo=timezone.utc)
-        l = self.ledger
-        l.reserve_buy("h", "stock", "F", 1, 10, 0, when=trade)
-        l.buy_fill("hb", "h", "stock", "F", 1, 10, 0, when=trade)
-        l.release_terminal_reservation("hd", "h", when=trade)
-        l.sell_fill("hs", "stock", "F", 1, 11, 0, when=trade)
-        proof = self.proof("hs", trade_date="2026-11-25",
-                           settlement_date="2026-11-27",
-                           retrieved_at="2026-11-25T20:00:00Z")
-        with self.assertRaises(CapitalBlocked):
-            l.confirm_settlement("early", "hs",
-                                 when=datetime(2026, 11, 26, 18, tzinfo=timezone.utc),
-                                 calendar_proof=proof)
-        l.confirm_settlement("verified", "hs",
-                             when=datetime(2026, 11, 27, 15, tzinfo=timezone.utc),
-                             calendar_proof=proof)
-        self.assertEqual(l.snapshot()["settled_cash"], "151.00")
+    def test_calendar_proof_handles_holiday_early_close_and_dst(self):
+        scenarios = [
+            ("holiday", datetime(2026, 11, 25, 15, 0, tzinfo=timezone.utc),
+             "2026-11-25", "2026-11-27", "2026-11-25T20:00:00Z",
+             datetime(2026, 11, 26, 18, tzinfo=timezone.utc),
+             datetime(2026, 11, 27, 15, tzinfo=timezone.utc)),
+            ("dst", datetime(2026, 10, 30, 19, 0, tzinfo=timezone.utc),
+             "2026-10-30", "2026-11-02", "2026-10-30T20:00:00Z",
+             datetime(2026, 11, 1, 18, tzinfo=timezone.utc),
+             datetime(2026, 11, 2, 15, tzinfo=timezone.utc)),
+            ("early-close", datetime(2026, 11, 27, 17, 0, tzinfo=timezone.utc),
+             "2026-11-27", "2026-11-30", "2026-11-27T18:30:00Z",
+             datetime(2026, 11, 29, 18, tzinfo=timezone.utc),
+             datetime(2026, 11, 30, 15, tzinfo=timezone.utc)),
+        ]
+        for index, (label, trade, trade_date, settlement_date, retrieved,
+                    early, ready) in enumerate(scenarios):
+            with self.subTest(label=label):
+                path = str(Path(self.tmp.name) / f"{index}.sqlite3")
+                l = PaperCapital(path)
+                l.reserve_buy("h", "stock", "F", 1, 10, 0, when=trade)
+                l.buy_fill("hb", "h", "stock", "F", 1, 10, 0, when=trade)
+                l.release_terminal_reservation("hd", "h", when=trade)
+                l.sell_fill("hs", "stock", "F", 1, 11, 0, when=trade)
+                proof = self.proof("hs", trade_date=trade_date,
+                                   settlement_date=settlement_date,
+                                   retrieved_at=retrieved)
+                with self.assertRaises(CapitalBlocked):
+                    l.confirm_settlement("early", "hs", when=early,
+                                         calendar_proof=proof)
+                l.confirm_settlement("verified", "hs", when=ready,
+                                     calendar_proof=proof)
+                self.assertEqual(l.snapshot()["settled_cash"], "151.00")
 
     def test_settlement_proof_is_durable_idempotent_and_conflicts_halt(self):
         l = self.ledger
