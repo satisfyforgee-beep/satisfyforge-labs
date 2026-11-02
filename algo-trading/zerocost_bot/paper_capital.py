@@ -9,9 +9,11 @@ All output is explicitly offline simulation, not brokerage account truth.
 from __future__ import annotations
 
 from contextlib import closing
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from pathlib import Path
+from zoneinfo import ZoneInfo
+import json
 import os
 import re
 import sqlite3
@@ -22,6 +24,11 @@ IDENT = re.compile(r"[A-Za-z0-9_.:-]{1,80}$")
 STOCK = re.compile(r"[A-Z][A-Z0-9.]{0,9}$")
 CRYPTO = re.compile(r"[A-Z0-9]{2,15}[/\-][A-Z0-9]{2,15}$")
 OPTION = re.compile(r"[A-Z]{1,6}[0-9]{6}[CP][0-9]{8}$")
+NEW_YORK = ZoneInfo("America/New_York")
+SETTLEMENT_PROOF_KEYS = {
+    "provider", "date_type", "calendar_id", "trade_date",
+    "settlement_date", "retrieved_at", "sale_execution_id",
+}
 
 
 class CapitalBlocked(ValueError):
@@ -68,6 +75,47 @@ def at_utc(when):
     return when.astimezone(timezone.utc).isoformat()
 
 
+def _iso_date(value, label):
+    if not isinstance(value, str):
+        raise CapitalBlocked(f"{label} must be an ISO date")
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError:
+        raise CapitalBlocked(f"{label} must be an ISO date") from None
+    if parsed.isoformat() != value:
+        raise CapitalBlocked(f"{label} must be canonical")
+    return parsed
+
+
+def verified_stock_settlement_proof(proof, sale_execution_id, sale_observed_at, when):
+    """Validate an explicit dated provider-calendar proof; never guess weekdays."""
+    if not isinstance(proof, dict) or set(proof) != SETTLEMENT_PROOF_KEYS:
+        raise CapitalBlocked("complete settlement calendar proof required")
+    if proof["provider"] != "ALPACA_PAPER" or proof["date_type"] != "SETTLEMENT":
+        raise CapitalBlocked("unsupported settlement calendar source")
+    if ident(proof["sale_execution_id"]) != ident(sale_execution_id):
+        raise CapitalBlocked("settlement proof sale mismatch")
+    ident(proof["calendar_id"])
+    trade_date = _iso_date(proof["trade_date"], "trade_date")
+    settlement_date = _iso_date(proof["settlement_date"], "settlement_date")
+    if settlement_date <= trade_date:
+        raise CapitalBlocked("settlement date must follow trade date")
+    if sale_observed_at.astimezone(NEW_YORK).date() != trade_date:
+        raise CapitalBlocked("settlement proof trade date mismatch")
+    try:
+        retrieved = datetime.fromisoformat(str(proof["retrieved_at"]).replace("Z", "+00:00"))
+    except ValueError:
+        raise CapitalBlocked("invalid proof retrieval timestamp") from None
+    if retrieved.tzinfo is None:
+        raise CapitalBlocked("proof retrieval timestamp must be timezone-aware")
+    observed = when.astimezone(timezone.utc)
+    if retrieved.astimezone(timezone.utc) > observed:
+        raise CapitalBlocked("settlement proof cannot come from the future")
+    if when.astimezone(NEW_YORK).date() < settlement_date:
+        raise CapitalBlocked("settlement event is premature")
+    return json.dumps(proof, sort_keys=True, separators=(",", ":"))
+
+
 class PaperCapital:
     """An OFFLINE replay ledger; distinct from Tradier/Alpaca broker balances.
 
@@ -109,7 +157,11 @@ class PaperCapital:
                 price TEXT NOT NULL,
                 fee TEXT NOT NULL,
                 amount TEXT NOT NULL,
-                observed_at TEXT NOT NULL)""")
+                observed_at TEXT NOT NULL,
+                evidence TEXT NOT NULL DEFAULT '')""")
+            columns = {row[1] for row in db.execute("PRAGMA table_info(capital_events)")}
+            if "evidence" not in columns:
+                db.execute("ALTER TABLE capital_events ADD COLUMN evidence TEXT NOT NULL DEFAULT ''")
             existing = dict(db.execute("SELECT key, value FROM capital_config"))
             expected = {"opening_cash": str(cash), "max_order": str(cap),
                         "max_reservations": str(maximum_reservations)}
@@ -136,7 +188,7 @@ class PaperCapital:
         realized = Decimal(0)
         for row in rows:
             (_eid, kind, reference, asset, symbol, qty, price,
-             fee, amount, _when) = row
+             fee, amount, _when, evidence) = row
             q, p, f, a = map(Decimal, (qty, price, fee, amount))
             key = (asset, symbol)
             if kind == "reserve":
@@ -188,6 +240,8 @@ class PaperCapital:
             elif kind == "settle":
                 if reference not in pending:
                     raise CapitalBlocked("unmatched or repeated settlement")
+                if not evidence:
+                    raise CapitalBlocked("settlement evidence missing")
                 settled += pending.pop(reference)
             elif kind == "release":
                 if reference not in reserves:
@@ -223,19 +277,21 @@ class PaperCapital:
     def snapshot(self):
         with closing(self._db()) as db:
             return self._reduce(db.execute(
-                "SELECT event_id,kind,reference,asset,symbol,quantity,price,fee,amount,observed_at FROM capital_events ORDER BY sequence").fetchall())
+                "SELECT event_id,kind,reference,asset,symbol,quantity,price,fee,amount,observed_at,evidence FROM capital_events ORDER BY sequence").fetchall())
 
     def _append(self, event_id, kind, reference, asset, symbol, quantity,
-                price, fee, amount, when):
+                price, fee, amount, when, evidence=""):
         eid, ref = ident(event_id), ident(reference)
         ts = at_utc(when)
+        if not isinstance(evidence, str):
+            raise CapitalBlocked("invalid event evidence")
         fields = (eid, kind, ref, asset, symbol,
-                  str(quantity), str(price), str(fee), str(amount), ts)
+                  str(quantity), str(price), str(fee), str(amount), ts, evidence)
         db = self._db()
         try:
             db.execute("BEGIN IMMEDIATE")
             existing = db.execute(
-                "SELECT event_id,kind,reference,asset,symbol,quantity,price,fee,amount,observed_at FROM capital_events WHERE event_id=?",
+                "SELECT event_id,kind,reference,asset,symbol,quantity,price,fee,amount,observed_at,evidence FROM capital_events WHERE event_id=?",
                 (eid,)).fetchone()
             if existing:
                 if existing != fields:
@@ -243,11 +299,11 @@ class PaperCapital:
                 db.commit()
                 return False
             rows = db.execute(
-                "SELECT event_id,kind,reference,asset,symbol,quantity,price,fee,amount,observed_at FROM capital_events ORDER BY sequence").fetchall()
+                "SELECT event_id,kind,reference,asset,symbol,quantity,price,fee,amount,observed_at,evidence FROM capital_events ORDER BY sequence").fetchall()
             self._reduce(rows + [fields])
             db.execute("""INSERT INTO capital_events
-                (event_id,kind,reference,asset,symbol,quantity,price,fee,amount,observed_at)
-                VALUES(?,?,?,?,?,?,?,?,?,?)""", fields)
+                (event_id,kind,reference,asset,symbol,quantity,price,fee,amount,observed_at,evidence)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)""", fields)
             db.commit()
             return True
         except Exception:
@@ -285,10 +341,26 @@ class PaperCapital:
         return self._append("sell:" + ident(execution_id), "sell", execution_id,
                             asset, symbol, q, p, f, proceeds, when)
 
-    def confirm_settlement(self, settlement_id, sale_execution_id, *, when):
+    def confirm_settlement(self, settlement_id, sale_execution_id, *, when,
+                           calendar_proof):
+        """Credit stock proceeds only with durable, explicit calendar evidence."""
+        sale_id = ident(sale_execution_id)
+        with closing(self._db()) as db:
+            row = db.execute(
+                "SELECT asset, observed_at FROM capital_events "
+                "WHERE event_id=? AND kind='sell'", ("sell:" + sale_id,)
+            ).fetchone()
+        if not row:
+            raise CapitalBlocked("settlement sale not found")
+        asset, observed_at = row
+        if asset != "stock":
+            raise CapitalBlocked("stock settlement calendar cannot settle this asset")
+        sale_observed_at = datetime.fromisoformat(observed_at)
+        proof_json = verified_stock_settlement_proof(
+            calendar_proof, sale_id, sale_observed_at, when)
         return self._append("settle:" + ident(settlement_id), "settle",
-                            "sell:" + ident(sale_execution_id),
-                            "none", "none", 0, 0, 0, 0, when)
+                            "sell:" + sale_id, "none", "none",
+                            0, 0, 0, 0, when, proof_json)
 
     def release_terminal_reservation(self, terminal_event_id, intent_id, *, when):
         """Caller MUST first verify broker order terminal state; no broker check here."""

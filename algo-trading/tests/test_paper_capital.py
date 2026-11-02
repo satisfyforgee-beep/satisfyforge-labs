@@ -13,6 +13,22 @@ T = datetime(2026, 10, 26, 13, 0, tzinfo=timezone.utc)
 
 
 class PaperCapitalTests(unittest.TestCase):
+    @staticmethod
+    def proof(sale_execution_id, trade_date="2026-10-26",
+              settlement_date="2026-10-27",
+              retrieved_at="2026-10-26T20:30:00Z", **changes):
+        proof = {
+            "provider": "ALPACA_PAPER",
+            "date_type": "SETTLEMENT",
+            "calendar_id": "alpaca-settlement-calendar-fixture",
+            "trade_date": trade_date,
+            "settlement_date": settlement_date,
+            "retrieved_at": retrieved_at,
+            "sale_execution_id": sale_execution_id,
+        }
+        proof.update(changes)
+        return proof
+
     def setUp(self):
         self.tmp = TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -33,7 +49,8 @@ class PaperCapitalTests(unittest.TestCase):
         self.assertEqual(mid["settled_cash"], "125.90")
         self.assertEqual(mid["unsettled_sale_proceeds"], "28.00")
         self.assertEqual(mid["available_for_next_paper_trade"], "125.90")
-        l.confirm_settlement("settlement1", "exit1", when=T + timedelta(days=1))
+        l.confirm_settlement("settlement1", "exit1", when=T + timedelta(days=1),
+                             calendar_proof=self.proof("exit1"))
         self.assertEqual(l.snapshot()["settled_cash"], "153.90")
         self.assertEqual(l.snapshot()["available_for_next_paper_trade"], "153.90")
         again = PaperCapital(self.path)
@@ -54,9 +71,92 @@ class PaperCapitalTests(unittest.TestCase):
         self.assertEqual(l.snapshot()["available_for_next_paper_trade"], "0.00")
         with self.assertRaises(CapitalBlocked):
             l.reserve_buy("next", "stock", "F", 1, 5, 0, when=T)
-        l.confirm_settlement("s1", "sale", when=T + timedelta(days=1))
+        l.confirm_settlement("s1", "sale", when=T + timedelta(days=1),
+                             calendar_proof=self.proof("sale"))
         l.reserve_buy("next", "stock", "F", 1, 5, 0, when=T + timedelta(days=1))
         self.assertEqual(l.snapshot()["available_for_next_paper_trade"], "155.00")
+
+    def test_settlement_requires_explicit_complete_calendar_proof(self):
+        l = self.ledger
+        l.reserve_buy("i", "stock", "F", 1, 10, 0, when=T)
+        l.buy_fill("b", "i", "stock", "F", 1, 10, 0, when=T)
+        l.release_terminal_reservation("done", "i", when=T)
+        l.sell_fill("sale", "stock", "F", 1, 11, 0, when=T)
+        for proof in (None, {}, self.proof("wrong"),
+                      self.proof("sale", provider="UNVERIFIED"),
+                      self.proof("sale", settlement_date="2026-10-26")):
+            with self.subTest(proof=proof):
+                with self.assertRaises(CapitalBlocked):
+                    l.confirm_settlement("settle", "sale", when=T + timedelta(days=1),
+                                         calendar_proof=proof)
+        self.assertEqual(l.snapshot()["unsettled_sale_proceeds"], "11.00")
+
+    def test_calendar_proof_handles_holiday_early_close_and_dst(self):
+        scenarios = [
+            ("holiday", datetime(2026, 11, 25, 15, 0, tzinfo=timezone.utc),
+             "2026-11-25", "2026-11-27", "2026-11-25T20:00:00Z",
+             datetime(2026, 11, 26, 18, tzinfo=timezone.utc),
+             datetime(2026, 11, 27, 15, tzinfo=timezone.utc)),
+            ("dst", datetime(2026, 10, 30, 19, 0, tzinfo=timezone.utc),
+             "2026-10-30", "2026-11-02", "2026-10-30T20:00:00Z",
+             datetime(2026, 11, 1, 18, tzinfo=timezone.utc),
+             datetime(2026, 11, 2, 15, tzinfo=timezone.utc)),
+            ("early-close", datetime(2026, 11, 27, 17, 0, tzinfo=timezone.utc),
+             "2026-11-27", "2026-11-30", "2026-11-27T18:30:00Z",
+             datetime(2026, 11, 29, 18, tzinfo=timezone.utc),
+             datetime(2026, 11, 30, 15, tzinfo=timezone.utc)),
+        ]
+        for index, (label, trade, trade_date, settlement_date, retrieved,
+                    early, ready) in enumerate(scenarios):
+            with self.subTest(label=label):
+                path = str(Path(self.tmp.name) / f"{index}.sqlite3")
+                l = PaperCapital(path)
+                l.reserve_buy("h", "stock", "F", 1, 10, 0, when=trade)
+                l.buy_fill("hb", "h", "stock", "F", 1, 10, 0, when=trade)
+                l.release_terminal_reservation("hd", "h", when=trade)
+                l.sell_fill("hs", "stock", "F", 1, 11, 0, when=trade)
+                proof = self.proof("hs", trade_date=trade_date,
+                                   settlement_date=settlement_date,
+                                   retrieved_at=retrieved)
+                with self.assertRaises(CapitalBlocked):
+                    l.confirm_settlement("early", "hs", when=early,
+                                         calendar_proof=proof)
+                l.confirm_settlement("verified", "hs", when=ready,
+                                     calendar_proof=proof)
+                self.assertEqual(l.snapshot()["settled_cash"], "151.00")
+
+    def test_settlement_proof_is_durable_idempotent_and_conflicts_halt(self):
+        l = self.ledger
+        l.reserve_buy("i", "stock", "F", 1, 10, 0, when=T)
+        l.buy_fill("b", "i", "stock", "F", 1, 10, 0, when=T)
+        l.release_terminal_reservation("done", "i", when=T)
+        l.sell_fill("sale", "stock", "F", 1, 11, 0, when=T)
+        proof = self.proof("sale")
+        when = T + timedelta(days=1)
+        self.assertTrue(l.confirm_settlement("s", "sale", when=when,
+                                             calendar_proof=proof))
+        self.assertFalse(l.confirm_settlement("s", "sale", when=when,
+                                              calendar_proof=proof))
+        with self.assertRaises(CapitalBlocked):
+            l.confirm_settlement("s", "sale", when=when,
+                                 calendar_proof=self.proof(
+                                     "sale", calendar_id="different-fixture"))
+        with l._db() as db:
+            evidence = db.execute(
+                "SELECT evidence FROM capital_events WHERE event_id='settle:s'"
+            ).fetchone()[0]
+        self.assertIn('"calendar_id":"alpaca-settlement-calendar-fixture"', evidence)
+
+    def test_equity_calendar_cannot_settle_options_or_crypto(self):
+        l = self.ledger
+        opt = "SOFI261030C00015000"
+        l.reserve_buy("o", "option", opt, 1, ".20", 0, when=T)
+        l.buy_fill("ob", "o", "option", opt, 1, ".20", 0, when=T)
+        l.release_terminal_reservation("od", "o", when=T)
+        l.sell_fill("os", "option", opt, 1, ".30", 0, when=T)
+        with self.assertRaises(CapitalBlocked):
+            l.confirm_settlement("ox", "os", when=T + timedelta(days=1),
+                                 calendar_proof=self.proof("os"))
 
     def test_option_multiplier_and_crypto_fractional_loss(self):
         l = self.ledger
@@ -149,7 +249,8 @@ class PaperCapitalTests(unittest.TestCase):
         with self.assertRaises(CapitalBlocked):
             l.sell_fill("s", "stock", "AAPL", 1, 20, 0, when=T)
         with self.assertRaises(CapitalBlocked):
-            l.confirm_settlement("fake", "missing", when=T)
+            l.confirm_settlement("fake", "missing", when=T,
+                                 calendar_proof=self.proof("missing"))
         with self.assertRaises(CapitalBlocked):
             l.release_terminal_reservation("fake", "missing", when=T)
         self.assertEqual(l.snapshot()["realized_net_pnl"], "0.00")
