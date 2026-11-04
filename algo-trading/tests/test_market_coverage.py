@@ -158,6 +158,11 @@ class AdapterTests(unittest.TestCase):
         offline = tradier_quote(data, NOW, authenticated_live=False)
         self.assertEqual(offline.coverage, Coverage.DELAYED)
         self.assertFalse(offline.entitlement_verified)
+        gate = CoverageGate()
+        gate.ingest(offline)
+        assessment = gate.assess("SOFI", AssetClass.STOCK, NOW)
+        self.assertEqual(assessment.status, "BLOCKED")
+        self.assertFalse(assessment.live_order_authorized)
 
     def test_tradier_stream_quotes_millisecond_timestamps(self):
         event = {"type": "quote", "symbol": "SOFI", "bid": 14.6,
