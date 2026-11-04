@@ -169,6 +169,56 @@ def _normalize_preview(response):
     }
 
 
+def _normalize_order_readback(response, expected_order_id):
+    """Normalize one authoritative order lookup and reject ambiguous state.
+
+    Tradier can encode a single resource as either an object or a one-item
+    array.  A successful HTTP response can also carry a downstream broker
+    error, so transport success is deliberately ignored here.
+    """
+    if not isinstance(response, dict):
+        raise BrokerUncertain("malformed sandbox order readback")
+    if response.get("error") or response.get("errors"):
+        raise BrokerUncertain("sandbox order readback contains broker errors")
+    order = response.get("order")
+    if isinstance(order, list):
+        if len(order) != 1 or not isinstance(order[0], dict):
+            raise BrokerUncertain("sandbox order readback is not exactly one order")
+        order = order[0]
+    if not isinstance(order, dict):
+        raise BrokerUncertain("broker could not confirm specific sandbox order")
+    if order.get("error") or order.get("errors"):
+        raise BrokerUncertain("sandbox order contains broker errors")
+    if str(order.get("id")) != str(expected_order_id):
+        raise BrokerUncertain("broker could not confirm specific sandbox order")
+    status = order.get("status")
+    if status not in _STATES:
+        raise BrokerUncertain("unknown sandbox order status")
+    try:
+        filled = Decimal(str(order.get("exec_quantity")))
+        qty = Decimal(str(order.get("quantity")))
+    except (InvalidOperation, TypeError, ValueError):
+        raise BrokerUncertain("missing fill quantity") from None
+    if not (filled.is_finite() and qty.is_finite()
+            and Decimal(0) <= filled <= qty and qty > 0):
+        raise BrokerUncertain("invalid sandbox fill quantities")
+    # Quantity and lifecycle state must independently agree.  In particular,
+    # a full execution under an open/rejected/unknown state is not a fill.
+    if (status == "filled") != (filled == qty):
+        raise BrokerUncertain("sandbox order status contradicts fill quantity")
+    if status in ("pending", "open", "rejected", "expired") and filled != 0:
+        raise BrokerUncertain("sandbox terminal/order state has unexpected execution")
+    return {
+        "status": status, "filled_qty": str(filled),
+        "requested_qty": str(qty), "paper_only": True,
+        "is_fill_confirmed": status == "filled" and filled == qty,
+        "needs_reconciliation": status in (
+            "partially_filled", "error", "pending_cancel"
+        ) or (status == "canceled" and filled > 0),
+        "warning": "Child-exit status must be independently verified.",
+    }
+
+
 class TradierSandbox:
     """Narrow HTTP transport. Its ONLY host is Tradier's PAPER endpoint."""
 
@@ -398,27 +448,4 @@ class TradierSandbox:
         response = self._request(
             "GET", "/accounts/" + snap["account"] + "/orders/" + str(order_id),
         )
-        order = response.get("order")
-        if not isinstance(order, dict) or str(order.get("id")) != str(order_id):
-            raise BrokerUncertain("broker could not confirm specific sandbox order")
-        status = order.get("status")
-        if status not in _STATES:
-            raise BrokerUncertain("unknown sandbox order status")
-        filled = order.get("exec_quantity")
-        qty = order.get("quantity")
-        try:
-            filled, qty = Decimal(str(filled)), Decimal(str(qty))
-        except (InvalidOperation, TypeError, ValueError):
-            raise BrokerUncertain("missing fill quantity") from None
-        if not (filled.is_finite() and qty.is_finite()
-                and Decimal(0) <= filled <= qty and qty > 0):
-            raise BrokerUncertain("invalid sandbox fill quantities")
-        return {
-            "status": status, "filled_qty": str(filled),
-            "requested_qty": str(qty), "paper_only": True,
-            "is_fill_confirmed": status == "filled" and filled == qty,
-            "needs_reconciliation": status in (
-                "partially_filled", "error", "pending_cancel"
-            ),
-            "warning": "Child-exit status must be independently verified.",
-        }
+        return _normalize_order_readback(response, order_id)
