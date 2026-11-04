@@ -12,7 +12,8 @@ from urllib.error import URLError
 from zerocost_bot.journal import OrderJournal
 from zerocost_bot.tradier_paper import (
     SANDBOX_HOST, PaperBlocked, BrokerUncertain, TradierSandbox,
-    _normalize_preview, _items, _choose_account, build_paper_otoco, _tag,
+    _normalize_preview, _normalize_order_readback, _items, _choose_account,
+    build_paper_otoco, _tag,
 )
 
 NOW = datetime(2026, 10, 20, 14, 0, tzinfo=timezone.utc)
@@ -342,6 +343,56 @@ class PaperLifecycleTests(unittest.TestCase):
             "quantity": 1, "exec_quantity": 1,
         }})
         self.assertTrue(sb.order_readback(74215)["is_fill_confirmed"])
+
+    def test_single_order_object_and_array_normalize_identically(self):
+        order = {"id": 74215, "status": "open",
+                 "quantity": 1, "exec_quantity": 0}
+        scalar = _normalize_order_readback({"order": order}, 74215)
+        array = _normalize_order_readback({"order": [order]}, 74215)
+        self.assertEqual(scalar, array)
+        self.assertFalse(array["is_fill_confirmed"])
+
+    def test_http_success_with_downstream_rejection_is_not_a_fill(self):
+        sb, _ = broker(order_status={"order": {
+            "id": 74215, "status": "rejected",
+            "quantity": 1, "exec_quantity": 0,
+            "errors": ["simulated downstream rejection"],
+        }})
+        with self.assertRaisesRegex(BrokerUncertain, "broker errors"):
+            sb.order_readback(74215)
+
+    def test_missing_ambiguous_and_contradictory_state_fails_closed(self):
+        bad = (
+            {"order": []},
+            {"order": [
+                {"id": 74215, "status": "open", "quantity": 1,
+                 "exec_quantity": 0},
+                {"id": 74216, "status": "open", "quantity": 1,
+                 "exec_quantity": 0},
+            ]},
+            {"order": {"id": 74215, "quantity": 1, "exec_quantity": 0}},
+            {"order": {"id": 74215, "status": "mystery", "quantity": 1,
+                       "exec_quantity": 0}},
+            {"order": {"id": 74215, "status": "open", "quantity": 1,
+                       "exec_quantity": 1}},
+            {"order": {"id": 74215, "status": "filled", "quantity": 2,
+                       "exec_quantity": 1}},
+            {"errors": ["simulated broker error"], "order": {
+                "id": 74215, "status": "filled", "quantity": 1,
+                "exec_quantity": 1}},
+        )
+        for response in bad:
+            with self.subTest(response=response):
+                with self.assertRaises(BrokerUncertain):
+                    _normalize_order_readback(response, 74215)
+
+    def test_partial_cancel_requires_reconciliation(self):
+        info = _normalize_order_readback({"order": {
+            "id": 74215, "status": "canceled",
+            "quantity": 2, "exec_quantity": 1,
+        }}, 74215)
+        self.assertTrue(info["needs_reconciliation"])
+        self.assertFalse(info["is_fill_confirmed"])
 
     def test_mismatched_order_does_not_mark_fill(self):
         sb, _ = broker(order_status={"order": {
