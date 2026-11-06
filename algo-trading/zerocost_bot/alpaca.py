@@ -103,7 +103,16 @@ def latest_bars(symbols, api_key=None, api_secret=None):
     return out
 
 
-def get_historical_bars(symbol, start, end, api_key=None, api_secret=None):
+def get_historical_bars(symbol, start, end, api_key=None, api_secret=None,
+                        transport=None):
+    """Read every page of one symbol's IEX bars or fail closed.
+
+    Alpaca may return fewer rows than the requested page limit, so only a null
+    ``next_page_token`` proves exhaustion.  Repeated tokens, duplicate or
+    non-monotonic timestamps, malformed pages, and symbol mismatches are
+    rejected instead of silently producing a partial historical series.
+    ``transport`` is a test-only callable accepting a urllib Request.
+    """
     key = api_key or os.getenv("ALPACA_PAPER_KEY")
     secret = api_secret or os.getenv("ALPACA_PAPER_SECRET")
     if not key or not secret:
@@ -112,8 +121,13 @@ def get_historical_bars(symbol, start, end, api_key=None, api_secret=None):
     if not symbol.isalpha() or len(symbol) > 6:
         raise ValueError("invalid ticker")
     bars = []
+    seen_times = set()
+    requested_tokens = set()
     page = None
     while True:
+        if page in requested_tokens:
+            raise ValueError("Historical bar pagination token repeated")
+        requested_tokens.add(page)
         params = {"timeframe":"1Min", "start":start, "end":end,
                   "feed":"iex", "limit":"1000", "adjustment":"split"}
         if page:
@@ -122,13 +136,31 @@ def get_historical_bars(symbol, start, end, api_key=None, api_secret=None):
         request = Request(url, headers={"APCA-API-KEY-ID":key,
                                         "APCA-API-SECRET-KEY":secret,
                                         "Accept":"application/json"})
-        with urlopen(request, timeout=10) as response:
-            result=json.load(response)
-        for row in result.get("bars", []):
+        if transport is None:
+            with urlopen(request, timeout=10) as response:
+                result=json.load(response)
+        else:
+            result=transport(request)
+        if not isinstance(result, dict) or not isinstance(result.get("bars"), list):
+            raise ValueError("Malformed historical bar page")
+        response_symbol = result.get("symbol")
+        if response_symbol is not None and response_symbol != symbol:
+            raise ValueError("Historical bar response symbol mismatch")
+        for row in result["bars"]:
+            if not isinstance(row, dict):
+                raise ValueError("Malformed historical bar record")
             dt=_parse_rfc3339_timestamp(row["t"])
+            if dt in seen_times:
+                raise ValueError("Duplicate historical bar timestamp")
+            if bars and dt <= bars[-1].time:
+                raise ValueError("Historical bars are not strictly increasing")
+            seen_times.add(dt)
             bars.append(Bar(symbol,dt,float(row["o"]),float(row["h"]),
                             float(row["l"]),float(row["c"]),int(row["v"])))
-        page=result.get("next_page_token")
-        if not page:
+        next_page=result.get("next_page_token")
+        if next_page is None:
             break
+        if not isinstance(next_page, str) or not next_page:
+            raise ValueError("Invalid historical bar pagination token")
+        page=next_page
     return bars
