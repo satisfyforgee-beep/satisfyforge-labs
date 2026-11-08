@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from zerocost_bot.engine import Bar, Settings
 from zerocost_bot.evaluation import (
     evaluate_holdout, replay_corporate_actions_as_of,
+    replay_crypto_bars_as_of,
 )
 
 
@@ -52,6 +53,81 @@ class HistoricalHoldoutTests(unittest.TestCase):
         original = settings.__dict__.copy()
         evaluate_holdout(sample(), settings)
         self.assertEqual(settings.__dict__, original)
+
+
+def crypto_capture(capture_id, minute, *, observed_minute=None, revision=1,
+                   close=10, volume=100):
+    observed_minute = minute + 1 if observed_minute is None else observed_minute
+    return {
+        "capture_id": capture_id,
+        "source": "ALPACA_CRYPTO_BARS",
+        "location": "us",
+        "symbol": "BTC/USD",
+        "bar_time": BASE + timedelta(minutes=minute),
+        "observed_at": BASE + timedelta(minutes=observed_minute),
+        "revision": revision,
+        "open": close,
+        "high": close,
+        "low": close,
+        "close": close,
+        "volume": volume,
+    }
+
+
+class CryptoBarReplayTests(unittest.TestCase):
+    def test_zero_volume_midpoint_cannot_signal_or_fill(self):
+        captures = [
+            crypto_capture("b0", 0, close=10, volume=100),
+            crypto_capture("b1", 1, close=10, volume=100),
+            crypto_capture("b2", 2, close=10, volume=100),
+            crypto_capture("midpoint-only", 3, close=20, volume=0),
+        ]
+        report = replay_crypto_bars_as_of(
+            captures, as_of=BASE + timedelta(minutes=5))
+        self.assertEqual(report["excluded_zero_volume_ids"], ["midpoint-only"])
+        self.assertEqual(len(report["bars"]), 3)
+        self.assertNotIn(BASE + timedelta(minutes=3),
+                         [bar.time for bar in report["bars"]])
+
+    def test_late_revision_is_inaccessible_before_arrival(self):
+        captures = [
+            crypto_capture("original", 0, observed_minute=1,
+                           revision=1, close=10),
+            crypto_capture("late-trade", 0, observed_minute=5,
+                           revision=2, close=11),
+        ]
+        early = replay_crypto_bars_as_of(
+            captures, as_of=BASE + timedelta(minutes=2))
+        late = replay_crypto_bars_as_of(
+            captures, as_of=BASE + timedelta(minutes=6))
+        self.assertEqual(early["bars"][0].close, 10)
+        self.assertEqual(early["selected_capture_ids"], ["original"])
+        self.assertEqual(early["future_capture_ids"], ["late-trade"])
+        self.assertEqual(late["bars"][0].close, 11)
+        self.assertEqual(late["selected_capture_ids"], ["late-trade"])
+
+    def test_missing_provenance_and_bad_revision_chain_fail_closed(self):
+        missing = crypto_capture("missing-source", 0)
+        missing.pop("source")
+        with self.assertRaisesRegex(ValueError, "source"):
+            replay_crypto_bars_as_of(
+                [missing], as_of=BASE + timedelta(minutes=2))
+        duplicate_revision = [
+            crypto_capture("first", 0, observed_minute=1, revision=1),
+            crypto_capture("second", 0, observed_minute=2, revision=1),
+        ]
+        with self.assertRaisesRegex(ValueError, "strictly increase"):
+            replay_crypto_bars_as_of(
+                duplicate_revision, as_of=BASE + timedelta(minutes=3))
+
+    def test_replay_and_audit_are_deterministic(self):
+        captures = [
+            crypto_capture("eth-1", 1, close=12, volume=50),
+            crypto_capture("btc-1", 0, close=10, volume=100),
+        ]
+        cutoff = BASE + timedelta(minutes=4)
+        self.assertEqual(replay_crypto_bars_as_of(captures, as_of=cutoff),
+                         replay_crypto_bars_as_of(captures, as_of=cutoff))
 
 
 def action(action_id="split-1", *, revision=1, quality="complete"):
