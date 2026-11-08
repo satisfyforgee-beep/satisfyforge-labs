@@ -26,6 +26,107 @@ def _observed_time(value, label: str) -> datetime:
     return value.astimezone(timezone.utc)
 
 
+def replay_crypto_bars_as_of(captures: list[dict], *, as_of: datetime) -> dict:
+    """Normalize locally captured crypto bars without inventing trades.
+
+    Alpaca can publish a zero-volume crypto bar whose OHLC value came from a
+    quote midpoint, and can later revise an earlier minute after a late trade.
+    A capture therefore needs local arrival provenance and an explicit local
+    revision number.  Only revisions observed by ``as_of`` are visible.  A
+    zero-volume result is retained in the audit but is never returned as a
+    trade-evidencing :class:`Bar`, so it cannot trigger or fill the simulator.
+
+    This function is offline-only.  It performs no provider or broker request.
+    """
+    cutoff = _observed_time(as_of, "crypto-bar cutoff")
+    if not isinstance(captures, list) or not captures:
+        raise ValueError("Crypto-bar captures required")
+
+    grouped: dict[tuple[str, datetime], list[tuple[datetime, int, str, dict]]] = {}
+    capture_ids: set[str] = set()
+    for row in captures:
+        if not isinstance(row, dict):
+            raise ValueError("Malformed crypto-bar capture")
+        capture_id = row.get("capture_id")
+        source = row.get("source")
+        location = row.get("location")
+        symbol = row.get("symbol")
+        revision = row.get("revision")
+        if (not isinstance(capture_id, str) or not capture_id
+                or capture_id in capture_ids):
+            raise ValueError("Missing or duplicate crypto capture_id")
+        if source != "ALPACA_CRYPTO_BARS":
+            raise ValueError("Unsupported crypto-bar source")
+        if not isinstance(location, str) or not location:
+            raise ValueError("Missing crypto-bar feed location")
+        if (not isinstance(symbol, str) or not symbol
+                or any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ/" for c in symbol.upper())):
+            raise ValueError("Invalid crypto symbol")
+        if type(revision) is not int or revision < 1:
+            raise ValueError("Invalid crypto-bar revision")
+        observed = _observed_time(row.get("observed_at"), "crypto observed_at")
+        bar_time = _observed_time(row.get("bar_time"), "crypto bar_time")
+        if bar_time > observed:
+            raise ValueError("Crypto bar cannot arrive before its interval")
+        capture_ids.add(capture_id)
+        key = (symbol.upper(), bar_time)
+        grouped.setdefault(key, []).append((observed, revision, capture_id, row))
+
+    selected: list[tuple[str, datetime, datetime, int, str, dict]] = []
+    future_capture_ids: list[str] = []
+    for (symbol, bar_time), rows in grouped.items():
+        rows.sort(key=lambda item: (item[0], item[1], item[2]))
+        revisions = set()
+        prior_revision = 0
+        for observed, revision, capture_id, _ in rows:
+            if revision in revisions or revision <= prior_revision:
+                raise ValueError("Crypto-bar revisions must strictly increase by arrival")
+            revisions.add(revision)
+            prior_revision = revision
+            if observed > cutoff:
+                future_capture_ids.append(capture_id)
+        eligible = [item for item in rows if item[0] <= cutoff]
+        if not eligible:
+            continue
+        observed, revision, capture_id, row = eligible[-1]
+        selected.append((symbol, bar_time, observed, revision, capture_id, row))
+
+    if not selected:
+        raise ValueError("No crypto-bar capture existed by cutoff")
+
+    bars: list[Bar] = []
+    zero_volume_ids: list[str] = []
+    selected_ids: list[str] = []
+    for symbol, bar_time, _, _, capture_id, row in sorted(
+            selected, key=lambda item: (item[1], item[0])):
+        values = [row.get(name) for name in ("open", "high", "low", "close")]
+        try:
+            prices = [float(value) for value in values]
+            volume = float(row.get("volume"))
+        except (TypeError, ValueError):
+            raise ValueError("Invalid crypto-bar price or volume") from None
+        if (not all(isfinite(value) and value > 0 for value in prices)
+                or not isfinite(volume) or volume < 0):
+            raise ValueError("Invalid crypto-bar price or volume")
+        bar = Bar(symbol, bar_time, *prices, volume)
+        bar.validate()
+        selected_ids.append(capture_id)
+        if volume == 0:
+            zero_volume_ids.append(capture_id)
+            continue
+        bars.append(bar)
+
+    return {
+        "mode": "OFFLINE_POINT_IN_TIME_CRYPTO_BAR_REPLAY",
+        "as_of_utc": cutoff.isoformat(),
+        "bars": bars,
+        "selected_capture_ids": selected_ids,
+        "excluded_zero_volume_ids": sorted(zero_volume_ids),
+        "future_capture_ids": sorted(future_capture_ids),
+        "warning": "Zero-volume midpoint bars are audit-only, never trade or fill evidence.",
+    }
+
+
 def replay_corporate_actions_as_of(pages: list[dict], *, as_of: datetime) -> dict:
     """Rebuild one fully captured corporate-action snapshot as it was known.
 
