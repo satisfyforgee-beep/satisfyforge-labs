@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from zerocost_bot.engine import Bar, Settings
 from zerocost_bot.evaluation import (
     evaluate_holdout, replay_corporate_actions_as_of,
+    replay_option_contracts_as_of,
 )
 
 
@@ -164,6 +165,150 @@ class CorporateActionReplayTests(unittest.TestCase):
             evaluate_holdout(
                 sample(), corporate_action_pages=pages,
                 corporate_action_as_of=BASE + timedelta(seconds=1))
+
+
+def option_filters(**updates):
+    values = {
+        "underlying_symbols": ["DEMO"],
+        "expiration_date_gte": "2026-11-13",
+        "expiration_date_lte": "2026-12-18",
+        "show_deliverables": True,
+        "status": "active",
+    }
+    values.update(updates)
+    return values
+
+
+def option_contract(symbol="DEMO261113C00014500", **updates):
+    values = {
+        "symbol": symbol,
+        "underlying_symbol": "DEMO",
+        "expiration_date": "2026-11-13",
+        "type": "call",
+        "status": "active",
+        "strike_price": "14.50",
+        "size": "100",
+        "multiplier": "100",
+        # Deliberately not a standard 100-share deliverable.
+        "deliverables": [
+            {"type": "equity", "symbol": "DEMO", "amount": "50"},
+            {"type": "cash", "symbol": None, "amount": "3.25"},
+        ],
+    }
+    values.update(updates)
+    return values
+
+
+def option_page(snapshot_id="options-a", observed_at="2026-11-09T13:00:00Z",
+                *, token=None, next_token=None, contracts=None, filters=None):
+    return {
+        "snapshot_id": snapshot_id,
+        "observed_at": observed_at,
+        "page_token": token,
+        "next_page_token": next_token,
+        "request_filters": filters if filters is not None else option_filters(),
+        "contracts": list(contracts or []),
+    }
+
+
+class OptionContractReplayTests(unittest.TestCase):
+    def test_adjusted_deliverables_and_complete_pagination_are_preserved(self):
+        pages = [
+            option_page(next_token="p2", contracts=[option_contract()]),
+            option_page(token="p2", contracts=[
+                option_contract("DEMO261218P00012000",
+                                expiration_date="2026-12-18", type="put",
+                                deliverables=[{"type": "equity",
+                                               "symbol": "DEMO",
+                                               "amount": "75"}]),
+            ]),
+        ]
+        result = replay_option_contracts_as_of(
+            pages, as_of=datetime(2026, 11, 9, 13, 1, tzinfo=timezone.utc))
+        self.assertEqual(result["pages_exhausted"], 2)
+        self.assertEqual(result["mode"],
+                         "OFFLINE_POINT_IN_TIME_OPTION_CONTRACT_REPLAY")
+        self.assertEqual(result["contracts"][0]["deliverables"][0]["amount"],
+                         "50")
+        self.assertEqual(result["contracts"][0]["multiplier"], "100")
+        self.assertTrue(all(row["known_at_utc"] ==
+                            "2026-11-09T13:00:00+00:00"
+                            for row in result["contracts"]))
+
+    def test_expiration_bounds_and_deliverable_request_are_mandatory(self):
+        bad_filters = [
+            option_filters(show_deliverables=False),
+            option_filters(expiration_date_gte=None),
+            option_filters(expiration_date_gte="2026-12-19"),
+        ]
+        for filters in bad_filters:
+            with self.subTest(filters=filters):
+                with self.assertRaises(ValueError):
+                    replay_option_contracts_as_of(
+                        [option_page(filters=filters,
+                                     contracts=[option_contract()])],
+                        as_of=datetime(2026, 11, 9, 13, 1,
+                                       tzinfo=timezone.utc))
+
+    def test_truncated_pages_and_duplicate_contracts_fail_closed(self):
+        bad_sets = [
+            [option_page(next_token="missing",
+                         contracts=[option_contract()])],
+            [option_page(contracts=[option_contract(), option_contract()])],
+        ]
+        for pages in bad_sets:
+            with self.subTest(pages=pages):
+                with self.assertRaises(ValueError):
+                    replay_option_contracts_as_of(
+                        pages, as_of=datetime(2026, 11, 9, 13, 1,
+                                              tzinfo=timezone.utc))
+
+    def test_later_snapshot_never_leaks_before_observed_at(self):
+        pages = [
+            option_page("early", "2026-11-09T12:00:00Z",
+                        contracts=[option_contract(deliverables=[
+                            {"type": "equity", "symbol": "DEMO",
+                             "amount": "50"}])]),
+            option_page("late", "2026-11-10T12:00:00Z",
+                        contracts=[option_contract(deliverables=[
+                            {"type": "equity", "symbol": "DEMO",
+                             "amount": "75"}])]),
+        ]
+        early = replay_option_contracts_as_of(
+            pages, as_of=datetime(2026, 11, 9, 12, 1, tzinfo=timezone.utc))
+        late = replay_option_contracts_as_of(
+            pages, as_of=datetime(2026, 11, 10, 12, 1, tzinfo=timezone.utc))
+        self.assertEqual(early["snapshot_id"], "early")
+        self.assertEqual(early["contracts"][0]["deliverables"][0]["amount"],
+                         "50")
+        self.assertEqual(late["contracts"][0]["deliverables"][0]["amount"],
+                         "75")
+
+    def test_missing_or_ambiguous_metadata_fails_closed(self):
+        malformed = option_contract(deliverables=[])
+        with self.assertRaisesRegex(ValueError, "deliverables missing"):
+            replay_option_contracts_as_of(
+                [option_page(contracts=[malformed])],
+                as_of=datetime(2026, 11, 9, 13, 1, tzinfo=timezone.utc))
+        tied = [
+            option_page("a", contracts=[option_contract()]),
+            option_page("b", contracts=[option_contract()]),
+        ]
+        with self.assertRaisesRegex(ValueError, "Ambiguous"):
+            replay_option_contracts_as_of(
+                tied, as_of=datetime(2026, 11, 9, 13, 1,
+                                     tzinfo=timezone.utc))
+        with self.assertRaisesRegex(ValueError, "existed by cutoff"):
+            replay_option_contracts_as_of(
+                [option_page(observed_at="2026-11-10T13:00:00Z",
+                             contracts=[option_contract()])],
+                as_of=datetime(2026, 11, 9, 13, 1,
+                               tzinfo=timezone.utc))
+        with self.assertRaisesRegex(ValueError, "no contracts"):
+            replay_option_contracts_as_of(
+                [option_page(contracts=[])],
+                as_of=datetime(2026, 11, 9, 13, 1,
+                               tzinfo=timezone.utc))
 
 
 if __name__ == "__main__":
