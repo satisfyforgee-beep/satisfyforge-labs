@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import date, datetime, timezone
+from decimal import Decimal, InvalidOperation
 from math import isfinite
 
 from .engine import Bar, PaperEngine, Settings
@@ -24,6 +25,191 @@ def _observed_time(value, label: str) -> datetime:
             or value.utcoffset() is None):
         raise ValueError(f"Missing timezone-aware {label}")
     return value.astimezone(timezone.utc)
+
+
+def _positive_decimal(value, label: str) -> Decimal:
+    """Parse exact provider metadata without accepting floats or non-finite values."""
+    if isinstance(value, float):
+        raise ValueError(f"Invalid {label}")
+    try:
+        parsed = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        raise ValueError(f"Invalid {label}") from None
+    if not parsed.is_finite() or parsed <= 0:
+        raise ValueError(f"Invalid {label}")
+    return parsed
+
+
+def replay_option_contracts_as_of(pages: list[dict], *, as_of: datetime) -> dict:
+    """Rebuild one complete option-contract capture as it was observed.
+
+    The caller supplies offline pages captured from an explicitly bounded
+    contract query.  This function performs no provider request and produces
+    audit metadata only; it never values a contract or authorizes an order.
+    """
+    cutoff = _observed_time(as_of, "option-contract cutoff")
+    if not isinstance(pages, list) or not pages:
+        raise ValueError("Option-contract capture pages required")
+
+    snapshots: dict[str, list[tuple[dict, datetime, dict]]] = {}
+    for page in pages:
+        if not isinstance(page, dict):
+            raise ValueError("Malformed option-contract capture page")
+        snapshot_id = page.get("snapshot_id")
+        if not isinstance(snapshot_id, str) or not snapshot_id:
+            raise ValueError("Missing option-contract snapshot provenance")
+        observed = _observed_time(page.get("observed_at"),
+                                  "option-contract observed_at")
+        filters = page.get("request_filters")
+        if not isinstance(filters, dict):
+            raise ValueError("Explicit option-contract request filters required")
+        symbols = filters.get("underlying_symbols")
+        if (not isinstance(symbols, list) or not symbols
+                or any(not isinstance(symbol, str) or not symbol
+                       or symbol != symbol.upper() for symbol in symbols)
+                or len(set(symbols)) != len(symbols)):
+            raise ValueError("Explicit underlying_symbols filter required")
+        try:
+            expiration_start = date.fromisoformat(filters["expiration_date_gte"])
+            expiration_end = date.fromisoformat(filters["expiration_date_lte"])
+        except (KeyError, TypeError, ValueError):
+            raise ValueError("Explicit option expiration bounds required") from None
+        if expiration_start > expiration_end:
+            raise ValueError("Invalid option expiration bounds")
+        if filters.get("show_deliverables") is not True:
+            raise ValueError("Option deliverables must be explicitly requested")
+        status = filters.get("status")
+        if not isinstance(status, str) or not status:
+            raise ValueError("Explicit option status filter required")
+        token = page.get("page_token")
+        next_token = page.get("next_page_token")
+        for value in (token, next_token):
+            if value is not None and (not isinstance(value, str) or not value):
+                raise ValueError("Invalid option-contract page token")
+        if not isinstance(page.get("contracts"), list):
+            raise ValueError("Option-contract page records missing")
+        snapshots.setdefault(snapshot_id, []).append((page, observed, filters))
+
+    eligible: list[tuple[datetime, str]] = []
+    for snapshot_id, rows in snapshots.items():
+        observed = {stamp for _, stamp, _ in rows}
+        filters = [query for _, _, query in rows]
+        if len(observed) != 1 or any(query != filters[0] for query in filters[1:]):
+            raise ValueError("Option-contract snapshot metadata conflict")
+        stamp = next(iter(observed))
+        if stamp <= cutoff:
+            eligible.append((stamp, snapshot_id))
+    if not eligible:
+        raise ValueError("No option-contract snapshot existed by cutoff")
+    newest = max(stamp for stamp, _ in eligible)
+    candidate_ids = [snapshot_id for stamp, snapshot_id in eligible
+                     if stamp == newest]
+    if len(candidate_ids) != 1:
+        raise ValueError("Ambiguous option-contract snapshot at cutoff")
+
+    snapshot_id = candidate_ids[0]
+    rows = snapshots[snapshot_id]
+    query = rows[0][2]
+    by_token: dict[str | None, dict] = {}
+    for page, _, _ in rows:
+        token = page.get("page_token")
+        if token in by_token:
+            raise ValueError("Duplicate option-contract page token")
+        by_token[token] = page
+    if None not in by_token:
+        raise ValueError("Option-contract pagination has no first page")
+    ordered = []
+    seen = set()
+    token = None
+    while True:
+        if token in seen:
+            raise ValueError("Option-contract pagination cycle")
+        page = by_token.get(token)
+        if page is None:
+            raise ValueError("Option-contract pagination is truncated")
+        seen.add(token)
+        ordered.append(page)
+        token = page.get("next_page_token")
+        if token is None:
+            break
+    if len(seen) != len(by_token):
+        raise ValueError("Option-contract pagination has orphan pages")
+
+    start = date.fromisoformat(query["expiration_date_gte"])
+    end = date.fromisoformat(query["expiration_date_lte"])
+    requested_underlyings = set(query["underlying_symbols"])
+    contracts = []
+    identities = set()
+    for page in ordered:
+        for contract in page["contracts"]:
+            if not isinstance(contract, dict):
+                raise ValueError("Malformed option-contract record")
+            symbol = contract.get("symbol")
+            underlying = contract.get("underlying_symbol")
+            contract_type = contract.get("type")
+            status = contract.get("status")
+            if (not isinstance(symbol, str) or not symbol
+                    or not isinstance(underlying, str)
+                    or underlying not in requested_underlyings
+                    or contract_type not in ("call", "put")
+                    or status != query["status"]):
+                raise ValueError("Option-contract identity conflicts with request")
+            if symbol in identities:
+                raise ValueError("Duplicate option-contract identity")
+            identities.add(symbol)
+            try:
+                expiration = date.fromisoformat(contract["expiration_date"])
+            except (KeyError, TypeError, ValueError):
+                raise ValueError("Invalid option-contract expiration") from None
+            if not start <= expiration <= end:
+                raise ValueError("Option contract outside requested expiration bounds")
+            strike = _positive_decimal(contract.get("strike_price"),
+                                       "option strike")
+            size = _positive_decimal(contract.get("size"), "option size")
+            multiplier = _positive_decimal(contract.get("multiplier"),
+                                            "option multiplier")
+            deliverables = contract.get("deliverables")
+            if not isinstance(deliverables, list) or not deliverables:
+                raise ValueError("Option contract deliverables missing")
+            normalized_deliverables = []
+            for deliverable in deliverables:
+                if not isinstance(deliverable, dict):
+                    raise ValueError("Malformed option deliverable")
+                kind = deliverable.get("type")
+                asset = deliverable.get("symbol")
+                if (not isinstance(kind, str) or not kind
+                        or asset is not None
+                        and (not isinstance(asset, str) or not asset)):
+                    raise ValueError("Option deliverable identity missing")
+                amount = _positive_decimal(deliverable.get("amount"),
+                                           "option deliverable amount")
+                normalized_deliverables.append({
+                    "type": kind,
+                    "symbol": asset,
+                    "amount": str(amount),
+                })
+            normalized = dict(contract)
+            normalized.update({
+                "strike_price": str(strike),
+                "size": str(size),
+                "multiplier": str(multiplier),
+                "deliverables": normalized_deliverables,
+                "known_at_utc": newest.isoformat(),
+            })
+            contracts.append(normalized)
+    if not contracts:
+        raise ValueError("Option-contract snapshot contains no contracts")
+    contracts.sort(key=lambda item: item["symbol"])
+    return {
+        "mode": "OFFLINE_POINT_IN_TIME_OPTION_CONTRACT_REPLAY",
+        "snapshot_id": snapshot_id,
+        "as_of_utc": cutoff.isoformat(),
+        "observed_at_utc": newest.isoformat(),
+        "request_filters": dict(query),
+        "pages_exhausted": len(ordered),
+        "contracts": contracts,
+        "warning": "Audit metadata only; does not value options or authorize trading.",
+    }
 
 
 def replay_corporate_actions_as_of(pages: list[dict], *, as_of: datetime) -> dict:
