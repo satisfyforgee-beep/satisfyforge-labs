@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from zerocost_bot.engine import Bar, Settings
 from zerocost_bot.evaluation import (
     evaluate_holdout, replay_corporate_actions_as_of,
+    replay_stock_trades_as_of,
 )
 
 
@@ -52,6 +53,134 @@ class HistoricalHoldoutTests(unittest.TestCase):
         original = settings.__dict__.copy()
         evaluate_holdout(sample(), settings)
         self.assertEqual(settings.__dict__, original)
+
+
+def stock_event(event_id, sequence, arrived_at, event_type="trade", **updates):
+    values = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "capture_sequence": sequence,
+        "arrived_at": arrived_at,
+        "symbol": "DEMO",
+    }
+    if event_type == "trade":
+        values.update({
+            "trade_id": updates.pop("trade_id", "trade-1"),
+            "price": updates.pop("price", "10.00"),
+            "size": updates.pop("size", "100"),
+            "conditions": updates.pop("conditions", ["@"]),
+            "exchange_time": updates.pop("exchange_time",
+                                         "2026-10-19T13:30:00Z"),
+        })
+    values.update(updates)
+    return values
+
+
+class StockTradeCorrectionReplayTests(unittest.TestCase):
+    cutoff = datetime(2026, 10, 19, 13, 35, tzinfo=timezone.utc)
+
+    def test_correction_replaces_original_only_after_local_arrival(self):
+        events = [
+            stock_event("capture-1", 1, "2026-10-19T13:30:01Z"),
+            stock_event("capture-2", 2, "2026-10-19T13:34:00Z",
+                        "correction", original_id="trade-1",
+                        corrected_id="trade-2", corrected_price="9.95",
+                        corrected_size="80", corrected_conditions=["C"]),
+        ]
+        before = replay_stock_trades_as_of(
+            events, symbol="DEMO",
+            as_of=datetime(2026, 10, 19, 13, 33, tzinfo=timezone.utc))
+        after = replay_stock_trades_as_of(events, symbol="DEMO", as_of=self.cutoff)
+        self.assertEqual(before["trades"][0]["trade_id"], "trade-1")
+        self.assertEqual(before["trades"][0]["price"], "10.00")
+        self.assertEqual(after["trades"][0]["trade_id"], "trade-2")
+        self.assertEqual(after["trades"][0]["price"], "9.95")
+        self.assertEqual(after["superseded_trade_ids"], ["trade-1"])
+
+    def test_cancel_error_removes_trade_only_after_arrival(self):
+        events = [
+            stock_event("capture-1", 1, "2026-10-19T13:30:01Z"),
+            stock_event("capture-2", 2, "2026-10-19T13:34:00Z",
+                        "cancel_error", original_id="trade-1"),
+        ]
+        result = replay_stock_trades_as_of(events, symbol="DEMO", as_of=self.cutoff)
+        self.assertEqual(result["trades"], [])
+        self.assertEqual(result["cancelled_trade_ids"], ["trade-1"])
+
+    def test_input_order_does_not_override_arrival_sequence(self):
+        correction = stock_event(
+            "capture-2", 2, "2026-10-19T13:34:00Z", "correction",
+            original_id="trade-1", corrected_id="trade-2",
+            corrected_price="10.25", corrected_size="100",
+            corrected_conditions=["C"])
+        original = stock_event("capture-1", 1, "2026-10-19T13:30:01Z")
+        result = replay_stock_trades_as_of(
+            [correction, original], symbol="DEMO", as_of=self.cutoff)
+        self.assertEqual(result["trades"][0]["trade_id"], "trade-2")
+
+    def test_exact_duplicate_capture_is_idempotent(self):
+        original = stock_event("capture-1", 1, "2026-10-19T13:30:01Z")
+        result = replay_stock_trades_as_of(
+            [original, dict(original)], symbol="DEMO", as_of=self.cutoff)
+        self.assertEqual(result["events_applied"], 1)
+        self.assertEqual(len(result["trades"]), 1)
+
+    def test_conflicting_duplicate_or_duplicate_sequence_fails_closed(self):
+        original = stock_event("capture-1", 1, "2026-10-19T13:30:01Z")
+        conflict = dict(original, price="11.00")
+        with self.assertRaisesRegex(ValueError, "Conflicting duplicate"):
+            replay_stock_trades_as_of(
+                [original, conflict], symbol="DEMO", as_of=self.cutoff)
+        with self.assertRaisesRegex(ValueError, "capture sequence"):
+            replay_stock_trades_as_of([
+                original,
+                stock_event("capture-2", 1, "2026-10-19T13:31:01Z",
+                            trade_id="trade-2"),
+            ], symbol="DEMO", as_of=self.cutoff)
+
+    def test_unknown_or_cross_symbol_reference_fails_closed(self):
+        correction = stock_event(
+            "capture-2", 2, "2026-10-19T13:34:00Z", "correction",
+            original_id="missing", corrected_id="trade-2",
+            corrected_price="10.25", corrected_size="100",
+            corrected_conditions=["C"])
+        with self.assertRaisesRegex(ValueError, "Unknown"):
+            replay_stock_trades_as_of([correction], symbol="DEMO", as_of=self.cutoff)
+        with self.assertRaisesRegex(ValueError, "Cross-symbol"):
+            replay_stock_trades_as_of([
+                stock_event("capture-1", 1, "2026-10-19T13:30:01Z",
+                            symbol="OTHER"),
+            ], symbol="DEMO", as_of=self.cutoff)
+
+    def test_future_event_never_leaks_backward(self):
+        events = [
+            stock_event("capture-1", 1, "2026-10-19T13:30:01Z"),
+            stock_event("capture-2", 2, "2026-10-20T13:30:01Z",
+                        "cancel_error", original_id="trade-1"),
+        ]
+        result = replay_stock_trades_as_of(events, symbol="DEMO", as_of=self.cutoff)
+        self.assertEqual(result["events_applied"], 1)
+        self.assertEqual(result["trades"][0]["trade_id"], "trade-1")
+
+    def test_unreliable_provenance_and_prices_fail_closed(self):
+        invalid = [
+            stock_event("capture-1", 1, None),
+            stock_event("capture-1", 1, "2026-10-19T13:30:01Z", price=10.0),
+            stock_event("capture-1", 1, "2026-10-19T13:29:00Z"),
+        ]
+        for event in invalid:
+            with self.subTest(event=event):
+                with self.assertRaises(ValueError):
+                    replay_stock_trades_as_of(
+                        [event], symbol="DEMO", as_of=self.cutoff)
+
+    def test_result_is_explicitly_not_execution_evidence(self):
+        result = replay_stock_trades_as_of([
+            stock_event("capture-1", 1, "2026-10-19T13:30:01Z"),
+        ], symbol="DEMO", as_of=self.cutoff)
+        self.assertIn("not bar, signal, quote, fill, or order", result["warning"])
+        self.assertEqual(result["mode"],
+                         "OFFLINE_POINT_IN_TIME_STOCK_TRADE_REPLAY")
 
 
 def action(action_id="split-1", *, revision=1, quality="complete"):
