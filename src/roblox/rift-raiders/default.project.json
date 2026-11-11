@@ -1,0 +1,170 @@
+{
+  "name": "Rift Raiders: Chaos Islands",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "RiftRaidersServer": {
+        "$path": "Server.server.lua"
+      },
+      "WorldKit": {
+        "$path": "WorldKit.lua"
+      },
+      "VehicleService": {
+        "$path": "VehicleService.lua"
+      },
+      "WorldExpansion": {
+        "$path": "WorldExpansion.lua"
+      },
+      "WorldActivities": {
+        "$path": "WorldActivities.lua"
+      },
+      "WorldPolish": {
+        "$path": "WorldPolish.lua"
+      },
+      "LifeSimulation": {
+        "$path": "LifeSimulation.lua"
+      },
+      "LifeCityVisuals": {
+        "$path": "LifeCityVisuals.lua"
+      },
+      "ModernCityIntegration": {
+        "$path": "ModernCityIntegration.lua"
+      },
+      "DowntownPopulation": {
+        "$path": "DowntownPopulation.lua"
+      },
+      "UrbanGardening": {
+        "$path": "UrbanGardening.lua"
+      },
+      "BoatService": {
+        "$path": "BoatService.lua"
+      },
+      "HomeLiving": {
+        "$path": "HomeLiving.lua"
+      },
+      "HomeArchitecture": {
+        "$path": "HomeArchitecture.lua"
+      },
+      "VehicleStyles": {
+        "$path": "VehicleStyles.lua"
+      },
+      "SuburbanDistrict": {
+        "$path": "SuburbanDistrict.lua"
+      },
+      "SuburbanAccess": {
+        "$path": "SuburbanAccess.lua"
+      },
+      "SuburbanHomeLights": {
+        "$path": "SuburbanHomeLights.lua"
+      },
+      "SuburbanWindowBlinds": {
+        "$path": "SuburbanWindowBlinds.lua"
+      },
+      "ProgressionGoals": {
+        "$path": "ProgressionGoals.lua"
+      },
+      "SuburbanDiscovery": {
+        "$path": "SuburbanDiscovery.lua"
+      },
+      "DataPersistence": {
+        "$path": "DataPersistence.lua"
+      },
+      "CafeService": {
+        "$path": "CafeService.lua"
+      },
+      "DowntownArrivalExperience": {
+        "$path": "DowntownArrivalExperience.lua"
+      },
+      "DowntownStreetscape": {
+        "$path": "DowntownStreetscape.lua"
+      },
+      "MechanicService": {
+        "$path": "MechanicService.lua"
+      },
+      "RetailService": {
+        "$path": "RetailService.lua"
+      },
+      "CourierService": {
+        "$path": "CourierService.lua"
+      },
+      "VenueCharacters": {
+        "$path": "VenueCharacters.lua"
+      },
+      "WalkInStores": {
+        "$path": "WalkInStores.lua"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "RiftRaidersHUD": {
+          "$path": "Client.client.lua"
+        }
+      }
+    },
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "PrestigeCatalog": {
+        "$path": "PrestigeCatalog.lua"
+      },
+      "LifeCatalog": {
+        "$path": "LifeCatalog.lua"
+      }
+    },
+    "Workspace": {
+      "$className": "Workspace",
+      "OfficialModernCityDistrict": {
+        "$path": "assets/OfficialModernCityDistrict.rbxmx"
+      },
+      "$properties": {
+        "StreamingEnabled": true,
+        "StreamingMinRadius": 64,
+        "StreamingTargetRadius": 256
+      }
+    },
+    "MaterialService": {
+      "$className": "MaterialService",
+      "Plaster_A": {
+        "$path": "assets/materials/Plaster_A.rbxmx"
+      },
+      "Concrete_Ribbed_A": {
+        "$path": "assets/materials/Concrete_Ribbed_A.rbxmx"
+      },
+      "Concrete_Tie_Holes_A": {
+        "$path": "assets/materials/Concrete_Tie_Holes_A.rbxmx"
+      },
+      "Concrete_Tiles_A": {
+        "$path": "assets/materials/Concrete_Tiles_A.rbxmx"
+      },
+      "PaintedBrick": {
+        "$path": "assets/materials/PaintedBrick.rbxmx"
+      },
+      "Sidewalk_A": {
+        "$path": "assets/materials/Sidewalk_A.rbxmx"
+      },
+      "Concrete_Board_Formed_A": {
+        "$path": "assets/materials/Concrete_Board_Formed_A.rbxmx"
+      },
+      "CarPaint_A": {
+        "$path": "assets/materials/CarPaint_A.rbxmx"
+      }
+    },
+    "ServerStorage": {
+      "$className": "ServerStorage",
+      "OfficialSedanVisual": {
+        "$path": "assets/OfficialSedanVisual.rbxmx"
+      },
+      "OfficialRedSedanVisual": {
+        "$path": "assets/OfficialRedSedanVisual.rbxmx"
+      },
+      "OfficialRacingCarVisual": {
+        "$path": "assets/OfficialRacingCarVisual.rbxmx"
+      },
+      "OfficialSuburbanArchitecture": {
+        "$path": "assets/OfficialSuburbanArchitecture.rbxmx"
+      }
+    }
+  }
+}
