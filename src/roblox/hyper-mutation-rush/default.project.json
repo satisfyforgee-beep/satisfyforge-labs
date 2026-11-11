@@ -1,0 +1,21 @@
+{
+  "name": "Hyper Mutation Rush Prototype",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Game": {
+        "$path": "Server.server.lua"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "HUD": {
+          "$path": "Client.client.lua"
+        }
+      }
+    }
+  }
+}
