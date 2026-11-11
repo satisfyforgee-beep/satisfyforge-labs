@@ -13,6 +13,32 @@ import re
 from .engine import Bar
 
 BASE = "https://data.alpaca.markets"
+_RFC3339_TIMESTAMP = re.compile(
+    r"^(?P<whole>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})"
+    r"(?:\.(?P<fraction>\d+))?(?P<zone>Z|[+-]\d{2}:\d{2})$"
+)
+
+
+def _parse_rfc3339_timestamp(value):
+    """Parse provider RFC3339 timestamps on Python 3.9 through current Python.
+
+    Alpaca emits nanosecond precision, while Python 3.9 fromisoformat only
+    accepts up to six fractional digits. Truncating to microseconds preserves
+    ordering at the runtime precision. A timezone remains mandatory.
+    """
+    match = _RFC3339_TIMESTAMP.fullmatch(str(value))
+    if not match:
+        raise ValueError("Expected a timezone-aware RFC3339 timestamp")
+    fraction = match.group("fraction")
+    normalized = match.group("whole")
+    if fraction:
+        normalized += "." + fraction[:6]
+    zone = match.group("zone")
+    normalized += "+00:00" if zone == "Z" else zone
+    timestamp = datetime.fromisoformat(normalized)
+    if timestamp.tzinfo is None:
+        raise ValueError("RFC3339 timestamp must carry timezone")
+    return timestamp
 
 
 def latest_equity_quotes(symbols, api_key=None, api_secret=None, transport=None):
@@ -45,7 +71,7 @@ def latest_equity_quotes(symbols, api_key=None, api_secret=None, transport=None)
         if not row:
             continue
         bid, ask = str(row.get("bp", "0")), str(row.get("ap", "0"))
-        timestamp = datetime.fromisoformat(str(row["t"]).replace("Z", "+00:00"))
+        timestamp = _parse_rfc3339_timestamp(row["t"])
         if timestamp.tzinfo is None:
             raise ValueError("IEX quote timestamp must carry timezone")
         # Decimal validation and spread checks occur in trading-lab. Do not
@@ -71,7 +97,7 @@ def latest_bars(symbols, api_key=None, api_secret=None):
         data = json.load(response)
     out = []
     for symbol, row in data.get("bars", {}).items():
-        dt = datetime.fromisoformat(row["t"].replace("Z", "+00:00"))
+        dt = _parse_rfc3339_timestamp(row["t"])
         out.append(Bar(symbol, dt, float(row["o"]), float(row["h"]),
                        float(row["l"]), float(row["c"]), int(row["v"])))
     return out
@@ -99,7 +125,7 @@ def get_historical_bars(symbol, start, end, api_key=None, api_secret=None):
         with urlopen(request, timeout=10) as response:
             result=json.load(response)
         for row in result.get("bars", []):
-            dt=datetime.fromisoformat(row["t"].replace("Z","+00:00"))
+            dt=_parse_rfc3339_timestamp(row["t"])
             bars.append(Bar(symbol,dt,float(row["o"]),float(row["h"]),
                             float(row["l"]),float(row["c"]),int(row["v"])))
         page=result.get("next_page_token")
