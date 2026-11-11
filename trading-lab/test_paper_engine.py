@@ -110,6 +110,48 @@ class PaperEngineTests(unittest.TestCase):
         self.assertEqual(result["status"], "REJECTED")
         self.assertIn("daily risk", result["reason"])
 
+    def test_account_wide_realized_loss_halt_persists_and_resets_by_utc_day(self):
+        self.engine.submit(self.order("option-in", OPTION, limit="0.50"),
+                           self.quote(OPTION, bid="0.48", ask="0.50"), NOW)
+        self.engine.submit(self.order("option-out", OPTION, "sell", limit="0.40"),
+                           self.quote(OPTION, bid="0.40", ask="0.42"), NOW)
+
+        strict = RiskPolicy(D("70"), D("100"), D("10"))
+        restarted = PaperEngine(self.path, D("9999"), strict)
+        state = restarted.daily_risk_state(NOW)
+        self.assertTrue(state["halted"])
+        self.assertEqual(D(state["gross_realized_loss"]), D("11.30"))
+        self.assertEqual(D(state["net_realized_pnl"]), D("-11.30"))
+
+        blocked = restarted.submit(self.order("blocked-after-loss"),
+                                   self.quote(), NOW)
+        self.assertEqual(blocked["status"], "REJECTED")
+        self.assertIn("realized-loss limit", blocked["reason"])
+
+        tomorrow = NOW + timedelta(days=1)
+        reset = restarted.daily_risk_state(tomorrow)
+        self.assertFalse(reset["halted"])
+        self.assertEqual(D(reset["gross_realized_loss"]), D("0"))
+
+    def test_malformed_realized_pnl_fails_closed(self):
+        for index, malformed in enumerate(("not-a-number", "NaN")):
+            path = Path(self.tmp.name) / f"malformed-{index}.sqlite3"
+            engine = PaperEngine(path, D("100"), self.policy)
+            with engine._connect() as conn:
+                conn.execute("""INSERT INTO orders
+                    (client_id, fingerprint, timestamp, symbol, asset, side, quantity,
+                     status, reason, realized_pnl)
+                     VALUES ('legacy-bad-pnl', 'x', ?, 'EXAMPLE', 'equity', 'sell',
+                             '1', 'FILLED', 'legacy capture', ?)""",
+                             (NOW.isoformat(), malformed))
+            state = engine.daily_risk_state(NOW)
+            self.assertTrue(state["halted"])
+            self.assertIsNone(state["gross_realized_loss"])
+            blocked = engine.submit(self.order(f"blocked-bad-{index}"),
+                                    self.quote(), NOW)
+            self.assertEqual(blocked["status"], "REJECTED")
+            self.assertIn("fail-closed", blocked["reason"])
+
     def test_invalid_prices_quantities_multiplier_and_timestamps(self):
         with self.assertRaises(ValueError):
             amount(float("nan"))
