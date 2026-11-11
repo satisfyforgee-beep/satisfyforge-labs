@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import date, datetime, timezone
+from decimal import Decimal, InvalidOperation
 from math import isfinite
 
 from .engine import Bar, PaperEngine, Settings
@@ -24,6 +25,142 @@ def _observed_time(value, label: str) -> datetime:
             or value.utcoffset() is None):
         raise ValueError(f"Missing timezone-aware {label}")
     return value.astimezone(timezone.utc)
+
+
+def _trade_decimal(value, label: str) -> str:
+    """Return a canonical positive decimal without accepting binary floats."""
+    if isinstance(value, float):
+        raise ValueError(f"Invalid {label}")
+    try:
+        parsed = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError(f"Invalid {label}") from None
+    if not parsed.is_finite() or parsed <= 0:
+        raise ValueError(f"Invalid {label}")
+    return format(parsed, "f")
+
+
+def replay_stock_trades_as_of(events: list[dict], *, as_of: datetime,
+                              symbol: str) -> dict:
+    """Replay locally captured stock trades/corrections at one cutoff.
+
+    ``arrived_at`` and ``capture_sequence`` are local capture provenance, not
+    exchange event time.  Corrections replace the referenced trade ID and
+    cancel/error events remove it.  The result is audit data only: it is not a
+    quote, bar, signal or executable fill source.
+    """
+    cutoff = _observed_time(as_of, "stock-trade cutoff")
+    if not isinstance(events, list) or not events:
+        raise ValueError("Stock-trade capture events required")
+    if not isinstance(symbol, str) or not symbol.strip():
+        raise ValueError("Stock-trade symbol required")
+    requested_symbol = symbol.strip().upper()
+
+    unique: dict[str, dict] = {}
+    for event in events:
+        if not isinstance(event, dict):
+            raise ValueError("Malformed stock-trade capture event")
+        event_id = event.get("event_id")
+        if not isinstance(event_id, str) or not event_id:
+            raise ValueError("Missing stock-trade event provenance")
+        prior = unique.get(event_id)
+        if prior is not None:
+            if prior != event:
+                raise ValueError("Conflicting duplicate stock-trade event")
+            continue
+        unique[event_id] = event
+
+    normalized = []
+    sequences = set()
+    for event in unique.values():
+        arrived = _observed_time(event.get("arrived_at"),
+                                 "stock-trade arrived_at")
+        sequence = event.get("capture_sequence")
+        if type(sequence) is not int or sequence < 1 or sequence in sequences:
+            raise ValueError("Invalid or duplicate stock-trade capture sequence")
+        sequences.add(sequence)
+        event_symbol = event.get("symbol")
+        if (not isinstance(event_symbol, str)
+                or event_symbol.upper() != requested_symbol):
+            raise ValueError("Cross-symbol stock-trade capture")
+        kind = event.get("event_type")
+        if kind not in {"trade", "correction", "cancel_error"}:
+            raise ValueError("Unsupported stock-trade event type")
+        normalized.append((arrived, sequence, event))
+
+    eligible = [row for row in normalized if row[0] <= cutoff]
+    if not eligible:
+        raise ValueError("No stock-trade event existed by cutoff")
+    eligible.sort(key=lambda row: (row[0], row[1]))
+
+    active: dict[str, dict] = {}
+    superseded = []
+    cancelled = []
+    for arrived, _, event in eligible:
+        kind = event["event_type"]
+        if kind == "trade":
+            trade_id = event.get("trade_id")
+            if not isinstance(trade_id, str) or not trade_id or trade_id in active:
+                raise ValueError("Missing or duplicate original stock-trade ID")
+            conditions = event.get("conditions")
+            if (not isinstance(conditions, list)
+                    or not all(isinstance(item, str) and item for item in conditions)):
+                raise ValueError("Invalid stock-trade conditions")
+            exchange_time = _observed_time(event.get("exchange_time"),
+                                           "stock-trade exchange_time")
+            if exchange_time > arrived:
+                raise ValueError("Stock trade arrived before exchange time")
+            active[trade_id] = {
+                "trade_id": trade_id,
+                "symbol": requested_symbol,
+                "price": _trade_decimal(event.get("price"), "stock-trade price"),
+                "size": _trade_decimal(event.get("size"), "stock-trade size"),
+                "conditions": list(conditions),
+                "exchange_time_utc": exchange_time.isoformat(),
+                "known_at_utc": arrived.isoformat(),
+            }
+            continue
+
+        original_id = event.get("original_id")
+        if not isinstance(original_id, str) or original_id not in active:
+            raise ValueError("Unknown stock-trade correction/cancel ID")
+        original = active.pop(original_id)
+        if kind == "cancel_error":
+            cancelled.append(original_id)
+            continue
+
+        corrected_id = event.get("corrected_id")
+        if (not isinstance(corrected_id, str) or not corrected_id
+                or corrected_id == original_id or corrected_id in active):
+            raise ValueError("Invalid corrected stock-trade ID")
+        conditions = event.get("corrected_conditions")
+        if (not isinstance(conditions, list)
+                or not all(isinstance(item, str) and item for item in conditions)):
+            raise ValueError("Invalid corrected stock-trade conditions")
+        active[corrected_id] = {
+            "trade_id": corrected_id,
+            "symbol": requested_symbol,
+            "price": _trade_decimal(event.get("corrected_price"),
+                                    "corrected stock-trade price"),
+            "size": _trade_decimal(event.get("corrected_size"),
+                                   "corrected stock-trade size"),
+            "conditions": list(conditions),
+            "exchange_time_utc": original["exchange_time_utc"],
+            "known_at_utc": arrived.isoformat(),
+            "corrects_trade_id": original_id,
+        }
+        superseded.append(original_id)
+
+    return {
+        "mode": "OFFLINE_POINT_IN_TIME_STOCK_TRADE_REPLAY",
+        "symbol": requested_symbol,
+        "as_of_utc": cutoff.isoformat(),
+        "events_applied": len(eligible),
+        "trades": sorted(active.values(), key=lambda row: row["trade_id"]),
+        "superseded_trade_ids": sorted(superseded),
+        "cancelled_trade_ids": sorted(cancelled),
+        "warning": "Audit only; not bar, signal, quote, fill, or order evidence.",
+    }
 
 
 def replay_corporate_actions_as_of(pages: list[dict], *, as_of: datetime) -> dict:
