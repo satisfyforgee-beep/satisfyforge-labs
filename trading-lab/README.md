@@ -18,6 +18,8 @@ the SQLite ledger owns the integrated simulated fills.
 - Conservative immediate-limit simulation: buy at ask, sell-to-close at bid.
 - Cash-only buying power, worst-case exposure/daily-loss caps, order-cost caps,
   quote age, delay and spread rejection, with no naked shorting or margin.
+- A persisted account-wide UTC-day realized-loss halt across stocks, options
+  and crypto; malformed legacy P/L records fail closed instead of reopening risk.
 - Stable client-order IDs with SQLite transactional duplicate protection,
   position cost basis including modeled option fees, realized P&L, and a journal.
 - End-to-end **equity-only signal handoff** from chronological completed-minute

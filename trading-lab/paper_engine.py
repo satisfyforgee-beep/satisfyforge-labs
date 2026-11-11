@@ -197,6 +197,54 @@ class PaperEngine:
             "warning": "Exit-leg statistics only; no out-of-sample edge or live performance implied",
         }
 
+    def daily_risk_state(self, asof: datetime) -> dict:
+        """Report the persisted, account-wide UTC-day realized-loss guard."""
+        when = _utc(asof)
+        with self._connect() as conn:
+            return self._daily_risk_state(conn, when)
+
+    def _daily_risk_state(self, conn: sqlite3.Connection,
+                          when: datetime) -> dict:
+        start = when.date().isoformat()
+        end = (when.date() + timedelta(days=1)).isoformat()
+        rows = conn.execute(
+            "SELECT realized_pnl FROM orders "
+            "WHERE status='FILLED' AND side='sell' "
+            "AND timestamp>=? AND timestamp<?",
+            (start, end),
+        )
+        realized = []
+        try:
+            realized = [Decimal(row[0]) for row in rows]
+        except (ArithmeticError, TypeError, ValueError):
+            realized = []
+        if not all(value.is_finite() for value in realized):
+            realized = []
+        if not realized and conn.execute(
+                "SELECT COUNT(*) FROM orders WHERE status='FILLED' AND side='sell' "
+                "AND timestamp>=? AND timestamp<?", (start, end)).fetchone()[0]:
+            return {
+                "asof_utc": when.isoformat(),
+                "gross_realized_loss": None,
+                "net_realized_pnl": None,
+                "limit": str(self.policy.max_daily_loss),
+                "halted": True,
+                "reason": "Malformed realized P/L journal; fail-closed halt",
+            }
+        gross_loss = sum((max(Decimal("0"), -value) for value in realized),
+                         Decimal("0"))
+        net = sum(realized, Decimal("0"))
+        halted = gross_loss >= self.policy.max_daily_loss
+        return {
+            "asof_utc": when.isoformat(),
+            "gross_realized_loss": str(gross_loss),
+            "net_realized_pnl": str(net),
+            "limit": str(self.policy.max_daily_loss),
+            "halted": halted,
+            "reason": ("Account-wide daily realized-loss limit reached"
+                       if halted else "Within daily realized-loss limit"),
+        }
+
     def submit(self, order: PaperOrder, quote: Quote, now: datetime) -> dict:
         """Attempt a single immediate limit fill. Unfilled limits are NOT queued."""
         when = _utc(now)
@@ -265,9 +313,10 @@ class PaperEngine:
             cost = proceeds + fee
             exposure = sum(Decimal(row["quantity"]) * Decimal(row["avg_cost"])
                            for row in conn.execute("SELECT quantity, avg_cost FROM positions"))
-            losses = sum(max(Decimal("0"), -Decimal(row[0])) for row in conn.execute(
-                "SELECT realized_pnl FROM orders WHERE status='FILLED' AND side='sell' AND timestamp>=? AND timestamp<?",
-                (now.date().isoformat(), (now.date() + timedelta(days=1)).isoformat())))
+            risk = self._daily_risk_state(conn, now)
+            if risk["halted"]:
+                return "REJECTED", risk["reason"], Decimal("0")
+            losses = Decimal(risk["gross_realized_loss"])
             if cost > cash:
                 return "REJECTED", "Cash-only buying power exceeded", Decimal("0")
             if cost > self.policy.max_order_cost:
