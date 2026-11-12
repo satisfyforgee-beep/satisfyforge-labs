@@ -42,6 +42,13 @@ buy-and-hold changes. Parameters are fixed, **not optimized**, and the sample
 demo is entirely synthetic. Real research needs many separate periods,
 regimes and known transaction costs before a strategy is considered promising.
 
+Historical option captures can be checked offline with
+`validate_historical_option_provenance`. The guard rejects data before Alpaca's
+documented February 2024 option-history coverage, unknown or contradictory feed
+provenance, indicative trades without their documented delay, unverified OPRA
+entitlement, and any attempt to label research data as execution evidence.
+Accepted metadata remains research-only and does not authorize a broker call.
+
 ## Optional official paper data (read-only)
 1. Create an Alpaca **paper account** at https://app.alpaca.markets/paper/dashboard .
 2. Put API credentials in LOCAL environment variables, never in Git or chat:

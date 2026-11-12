@@ -14,6 +14,9 @@ from math import isfinite
 from .engine import Bar, PaperEngine, Settings
 
 
+_ALPACA_OPTION_HISTORY_START = datetime(2024, 2, 1, tzinfo=timezone.utc)
+
+
 def _observed_time(value, label: str) -> datetime:
     """Parse local capture provenance; this is not a provider timestamp."""
     if isinstance(value, str):
@@ -160,6 +163,85 @@ def replay_stock_trades_as_of(events: list[dict], *, as_of: datetime,
         "superseded_trade_ids": sorted(superseded),
         "cancelled_trade_ids": sorted(cancelled),
         "warning": "Audit only; not bar, signal, quote, fill, or order evidence.",
+    }
+
+
+def validate_historical_option_provenance(metadata: dict) -> dict:
+    """Fail closed on ambiguous Alpaca historical-option feed provenance.
+
+    This offline preflight validates capture metadata only.  Alpaca documents
+    option history as beginning in February 2024; its free indicative feed is
+    derived rather than OPRA, and indicative trades are delayed 15 minutes.
+    No accepted dataset is promoted to executable quote, fill, or order proof.
+    """
+    if not isinstance(metadata, dict):
+        raise ValueError("Historical-option provenance metadata required")
+    if metadata.get("provider") != "alpaca":
+        raise ValueError("Unsupported historical-option provider")
+    if metadata.get("asset_class") != "option":
+        raise ValueError("Historical-option asset class required")
+
+    data_type = metadata.get("data_type")
+    if data_type not in {"quotes", "trades"}:
+        raise ValueError("Unsupported historical-option data type")
+    feed = metadata.get("feed")
+    if feed not in {"indicative", "opra"}:
+        raise ValueError("Unknown historical-option feed")
+    expected_provenance = {
+        "indicative": "derived_indicative",
+        "opra": "opra",
+    }[feed]
+    if metadata.get("source_provenance") != expected_provenance:
+        raise ValueError("Historical-option feed provenance conflict")
+
+    start = _observed_time(metadata.get("window_start"),
+                           "historical-option window_start")
+    end = _observed_time(metadata.get("window_end"),
+                         "historical-option window_end")
+    captured = _observed_time(metadata.get("captured_at"),
+                              "historical-option captured_at")
+    if start < _ALPACA_OPTION_HISTORY_START:
+        raise ValueError("Historical-option window predates provider coverage")
+    if end <= start:
+        raise ValueError("Historical-option window must have positive duration")
+    if end > captured:
+        raise ValueError("Historical-option window extends beyond capture time")
+
+    delay = metadata.get("delay_minutes")
+    if type(delay) is not int or delay < 0:
+        raise ValueError("Known historical-option feed delay required")
+    entitlement = metadata.get("opra_entitlement_verified")
+    if type(entitlement) is not bool:
+        raise ValueError("Explicit OPRA entitlement status required")
+    if metadata.get("execution_evidence") is not False:
+        raise ValueError("Historical-option data is not execution evidence")
+
+    if feed == "opra":
+        if not entitlement:
+            raise ValueError("Verified OPRA entitlement required")
+        if delay != 0:
+            raise ValueError("OPRA capture cannot claim delayed provenance")
+    else:
+        if entitlement:
+            raise ValueError("Indicative feed cannot claim OPRA entitlement")
+        if data_type == "trades" and delay < 15:
+            raise ValueError("Indicative option trades must preserve delay")
+
+    return {
+        "mode": "OFFLINE_HISTORICAL_OPTION_PROVENANCE_PREFLIGHT",
+        "provider": "alpaca",
+        "asset_class": "option",
+        "data_type": data_type,
+        "feed": feed,
+        "source_provenance": expected_provenance,
+        "window_start_utc": start.isoformat(),
+        "window_end_utc": end.isoformat(),
+        "captured_at_utc": captured.isoformat(),
+        "delay_minutes": delay,
+        "opra_entitlement_verified": entitlement,
+        "research_only": True,
+        "execution_evidence": False,
+        "warning": "Research metadata only; not quote, fill, or order evidence.",
     }
 
 

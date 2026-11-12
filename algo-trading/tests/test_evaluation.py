@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from zerocost_bot.engine import Bar, Settings
 from zerocost_bot.evaluation import (
     evaluate_holdout, replay_corporate_actions_as_of,
-    replay_stock_trades_as_of,
+    replay_stock_trades_as_of, validate_historical_option_provenance,
 )
 
 
@@ -181,6 +181,91 @@ class StockTradeCorrectionReplayTests(unittest.TestCase):
         self.assertIn("not bar, signal, quote, fill, or order", result["warning"])
         self.assertEqual(result["mode"],
                          "OFFLINE_POINT_IN_TIME_STOCK_TRADE_REPLAY")
+
+
+def option_history_metadata(**updates):
+    values = {
+        "provider": "alpaca",
+        "asset_class": "option",
+        "data_type": "quotes",
+        "feed": "indicative",
+        "source_provenance": "derived_indicative",
+        "window_start": "2026-11-10T14:30:00Z",
+        "window_end": "2026-11-10T20:00:00Z",
+        "captured_at": "2026-11-11T12:00:00Z",
+        "delay_minutes": 0,
+        "opra_entitlement_verified": False,
+        "execution_evidence": False,
+    }
+    values.update(updates)
+    return values
+
+
+class HistoricalOptionProvenanceTests(unittest.TestCase):
+    def test_accepts_explicit_indicative_quote_as_research_only(self):
+        result = validate_historical_option_provenance(
+            option_history_metadata())
+        self.assertEqual(result["feed"], "indicative")
+        self.assertTrue(result["research_only"])
+        self.assertFalse(result["execution_evidence"])
+        self.assertIn("not quote, fill, or order", result["warning"])
+
+    def test_accepts_documented_indicative_trade_delay(self):
+        result = validate_historical_option_provenance(
+            option_history_metadata(data_type="trades", delay_minutes=15))
+        self.assertEqual(result["delay_minutes"], 15)
+
+    def test_rejects_pre_coverage_and_impossible_windows(self):
+        invalid = [
+            option_history_metadata(window_start="2024-01-31T23:59:59Z"),
+            option_history_metadata(window_end="2026-11-10T14:30:00Z"),
+            option_history_metadata(captured_at="2026-11-10T19:00:00Z"),
+        ]
+        for metadata in invalid:
+            with self.subTest(metadata=metadata):
+                with self.assertRaises(ValueError):
+                    validate_historical_option_provenance(metadata)
+
+    def test_rejects_unknown_or_conflicting_feed_provenance(self):
+        invalid = [
+            option_history_metadata(feed="unknown"),
+            option_history_metadata(source_provenance="opra"),
+            option_history_metadata(provider="other"),
+        ]
+        for metadata in invalid:
+            with self.subTest(metadata=metadata):
+                with self.assertRaises(ValueError):
+                    validate_historical_option_provenance(metadata)
+
+    def test_rejects_delayed_trade_claimed_as_contemporaneous(self):
+        with self.assertRaisesRegex(ValueError, "preserve delay"):
+            validate_historical_option_provenance(
+                option_history_metadata(data_type="trades", delay_minutes=0))
+
+    def test_requires_verified_entitlement_for_opra(self):
+        with self.assertRaisesRegex(ValueError, "entitlement"):
+            validate_historical_option_provenance(option_history_metadata(
+                feed="opra", source_provenance="opra", delay_minutes=0))
+        result = validate_historical_option_provenance(option_history_metadata(
+            feed="opra", source_provenance="opra", delay_minutes=0,
+            opra_entitlement_verified=True))
+        self.assertTrue(result["opra_entitlement_verified"])
+
+    def test_rejects_execution_claim_and_unknown_delay(self):
+        invalid = [
+            option_history_metadata(execution_evidence=True),
+            option_history_metadata(delay_minutes=None),
+            option_history_metadata(opra_entitlement_verified=None),
+        ]
+        for metadata in invalid:
+            with self.subTest(metadata=metadata):
+                with self.assertRaises(ValueError):
+                    validate_historical_option_provenance(metadata)
+
+    def test_requires_timezone_aware_capture_provenance(self):
+        with self.assertRaisesRegex(ValueError, "timezone-aware"):
+            validate_historical_option_provenance(
+                option_history_metadata(captured_at="2026-11-11T12:00:00"))
 
 
 def action(action_id="split-1", *, revision=1, quality="complete"):
