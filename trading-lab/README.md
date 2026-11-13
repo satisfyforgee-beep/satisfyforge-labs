@@ -29,6 +29,11 @@ the SQLite ledger owns the integrated simulated fills.
 - A descriptive paper-only performance summary (not a signal or strategy edge).
 - Exact decimal accounting and UTC timestamps; no dependencies beyond Python.
 - Fail-closed: a limit that cannot fill **is not queued** for later execution.
+- Offline long-option expiration reconciliation in `option_expiration.py`.
+  Independent next-day account, position and non-trade-activity observations
+  must agree before a synthetic expiry/exercise state is marked confirmed.
+  Adjusted exercise deltas are explicit, missing activities remain pending, and
+  the idempotent SQLite audit never mutates cash, positions or orders.
 
 ## Run the synthetic smoke demo
 
@@ -75,7 +80,8 @@ deliberate safety boundary, not a claim that those asset classes are ignored.
 4. Historical/live quote feeds, actual event-driven monitoring, option contract
    metadata (especially adjusted multipliers), corporate actions, exchange
    calendars, fills/partial fills, real fee schedules, slippage and assignment
-   risk are **not** implemented. Never infer deployability from passing tests.
+   risk are **not** implemented. The offline expiry audit does not replace a
+   broker adapter or prove settlement. Never infer deployability from passing tests.
 5. Historical holdout evaluation is available in `../algo-trading/evaluate.py`.
    Next are sourced data validation, multi-session comparisons, proper open
    position exits, realistic option/crypto contracts, independent statistical
