@@ -29,6 +29,10 @@ the SQLite ledger owns the integrated simulated fills.
 - A descriptive paper-only performance summary (not a signal or strategy edge).
 - Exact decimal accounting and UTC timestamps; no dependencies beyond Python.
 - Fail-closed: a limit that cannot fill **is not queued** for later execution.
+- Pure adverse-fill stress fixtures in `fill_stress.py` conservatively model
+  declared latency, slippage, fees, displayed-liquidity haircuts, partial fills,
+  and cash sufficiency. Results are synthetic observations only; they never
+  mutate the SQLite journal or claim broker/exchange execution evidence.
 
 ## Run the synthetic smoke demo
 
@@ -74,8 +78,10 @@ deliberate safety boundary, not a claim that those asset classes are ignored.
    no current feed is connected to this signal handoff.
 4. Historical/live quote feeds, actual event-driven monitoring, option contract
    metadata (especially adjusted multipliers), corporate actions, exchange
-   calendars, fills/partial fills, real fee schedules, slippage and assignment
-   risk are **not** implemented. Never infer deployability from passing tests.
+   calendars, observed fills/partial fills, real fee schedules, slippage and
+   assignment risk are **not** implemented. The offline adverse-fill fixture is
+   an assumption stress test, not execution evidence. Never infer deployability
+   from passing tests.
 5. Historical holdout evaluation is available in `../algo-trading/evaluate.py`.
    Next are sourced data validation, multi-session comparisons, proper open
    position exits, realistic option/crypto contracts, independent statistical
