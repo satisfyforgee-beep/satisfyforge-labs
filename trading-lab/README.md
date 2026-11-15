@@ -29,6 +29,12 @@ the SQLite ledger owns the integrated simulated fills.
 - A descriptive paper-only performance summary (not a signal or strategy edge).
 - Exact decimal accounting and UTC timestamps; no dependencies beyond Python.
 - Fail-closed: a limit that cannot fill **is not queued** for later execution.
+- A pure offline `order_lifecycle.py` reconciliation fixture that requires a
+  confirmed `trade_updates` subscription, deduplicates execution observations,
+  enforces monotonic cumulative partial fills, distinguishes pending from
+  terminal cancel/replace states, and requires caller-supplied REST readback
+  after disconnects or ambiguous/rejected operations. It never connects to a
+  provider or enables broker submission.
 
 ## Run the synthetic smoke demo
 
@@ -37,6 +43,11 @@ python trading-lab/demo.py --database /tmp/satisfyforge-synthetic-paper.sqlite3
 python trading-lab/integrated_demo.py --database /tmp/sf-integrated-fictional.sqlite3
 python -m unittest discover -s trading-lab -p 'test_*.py' -v
 ```
+
+`test_order_lifecycle.py` replays synthetic provider-shaped observations only.
+Passing it is evidence that the local fail-closed state contract behaves as
+specified; it is not evidence of an Alpaca stream, broker fill, or deployable
+paper-order adapter.
 
 Rerunning the integrated demo against the same database does not create a
 duplicate paper order; it uses one fictional bar/quote set and stable signal ID.
