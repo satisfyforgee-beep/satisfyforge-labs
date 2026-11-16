@@ -29,6 +29,11 @@ the SQLite ledger owns the integrated simulated fills.
 - A descriptive paper-only performance summary (not a signal or strategy edge).
 - Exact decimal accounting and UTC timestamps; no dependencies beyond Python.
 - Fail-closed: a limit that cannot fill **is not queued** for later execution.
+- Offline expiration-day option opening cutoff classification in
+  `option_opening_cutoff.py`. It distinguishes Alpaca's documented 3:15 PM ET
+  equity-option and 3:30 PM ET broad-ETF boundaries, normalizes DST through
+  America/New_York, rejects stale/unknown policy and contract evidence, and
+  never authorizes broker submission or treats best-efforts liquidation as an exit.
 
 ## Run the synthetic smoke demo
 
@@ -73,9 +78,11 @@ deliberate safety boundary, not a claim that those asset classes are ignored.
    consolidated quote. Until actual authorized credentials and data are verified,
    no current feed is connected to this signal handoff.
 4. Historical/live quote feeds, actual event-driven monitoring, option contract
-   metadata (especially adjusted multipliers), corporate actions, exchange
-   calendars, fills/partial fills, real fee schedules, slippage and assignment
-   risk are **not** implemented. Never infer deployability from passing tests.
+   metadata (especially adjusted multipliers), corporate actions, authoritative
+   exchange calendars, fills/partial fills, real fee schedules, slippage and
+   assignment risk are **not** implemented. The offline cutoff classifier needs
+   caller-verified calendar/session evidence and does not guarantee a closing
+   order or auto-liquidation. Never infer deployability from passing tests.
 5. Historical holdout evaluation is available in `../algo-trading/evaluate.py`.
    Next are sourced data validation, multi-session comparisons, proper open
    position exits, realistic option/crypto contracts, independent statistical
