@@ -54,6 +54,15 @@ regimes and known transaction costs before a strategy is considered promising.
 4. Test historical IEX minute bars (availability depends on account/feed):
    `python3 cli.py --alpaca-history SOFI --from-utc 2026-10-19T13:30:00Z --to-utc 2026-10-19T20:00:00Z --starting-cash 1000`
 
+`classify_overnight_market_data` is a pure, offline provenance gate for later
+overnight research. It verifies the 20:00–04:00 America/New_York session,
+next-trade-date rollover, exchange-calendar status, account/feed permission,
+asset overnight flags and observation freshness. Alpaca Basic overnight quotes
+are classified as real-time **indicative** research data; free overnight trades
+and historical BOATS data are classified as delayed research data. Even after
+all checks pass, the helper always returns `broker_submission_enabled=false`,
+`execution_price_usable=false` and `fill_evidence=false`.
+
 ## Tradier sandbox + Alpaca paper connection preflight
 
 The zero-dependency `data_preflight.py` **never submits orders**. It prints
