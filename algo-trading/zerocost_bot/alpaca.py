@@ -86,17 +86,10 @@ def classify_overnight_market_data(
     if asset_overnight_halted is not False:
         blockers.append("ASSET_HALT_UNVERIFIED")
 
-    if observed_at.tzinfo is not None and data_asof.tzinfo is not None:
-        age = (observed_at.astimezone(timezone.utc) -
-               data_asof.astimezone(timezone.utc)).total_seconds()
-        if age < 0:
-            blockers.append("FUTURE_DATA")
-        elif age > max_age_seconds:
-            blockers.append("STALE_DATA")
-
     feed_name = str(feed).lower()
     kind = str(data_kind).lower()
     provenance = None
+    allowed_age_seconds = max_age_seconds
     if feed_name == "overnight" and kind == "quote":
         provenance = "REALTIME_INDICATIVE_QUOTE"
         if quote_is_indicative is not True:
@@ -105,8 +98,21 @@ def classify_overnight_market_data(
         provenance = "DELAYED_TRADE"
         if delayed_minutes is None or delayed_minutes < 15:
             blockers.append("DELAY_PROVENANCE_UNVERIFIED")
+        else:
+            # The provider-documented delay is provenance, not unexplained
+            # staleness. Still allow only a small capture-lag tolerance beyond
+            # that delay, and never promote the observation to execution data.
+            allowed_age_seconds += delayed_minutes * 60
     else:
         blockers.append("UNSUPPORTED_DATA_PROVENANCE")
+
+    if observed_at.tzinfo is not None and data_asof.tzinfo is not None:
+        age = (observed_at.astimezone(timezone.utc) -
+               data_asof.astimezone(timezone.utc)).total_seconds()
+        if age < 0:
+            blockers.append("FUTURE_DATA")
+        elif age > allowed_age_seconds:
+            blockers.append("STALE_DATA")
 
     research_usable = not blockers
     return {
