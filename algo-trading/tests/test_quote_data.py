@@ -1,5 +1,5 @@
 import unittest
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from zerocost_bot.alpaca import (classify_overnight_market_data,
@@ -104,6 +104,7 @@ class QuoteDataTests(unittest.TestCase):
         indicative = self._overnight(observed)
         delayed = self._overnight(
             observed, feed="boats", data_kind="trade", delayed_minutes=15,
+            data_asof=observed - timedelta(minutes=15),
             quote_is_indicative=None)
         for result in (indicative, delayed):
             self.assertEqual(result["state"], "RESEARCH_ONLY")
@@ -130,6 +131,10 @@ class QuoteDataTests(unittest.TestCase):
             observed, quote_is_indicative=False)["blockers"])
         self.assertIn("DELAY_PROVENANCE_UNVERIFIED", self._overnight(
             observed, feed="boats", data_kind="trade", delayed_minutes=0,
+            quote_is_indicative=None)["blockers"])
+        self.assertIn("STALE_DATA", self._overnight(
+            observed, feed="boats", data_kind="trade", delayed_minutes=15,
+            data_asof=observed - timedelta(minutes=16),
             quote_is_indicative=None)["blockers"])
         self.assertIn("UNSUPPORTED_DATA_PROVENANCE", self._overnight(
             observed, feed="iex")["blockers"])
