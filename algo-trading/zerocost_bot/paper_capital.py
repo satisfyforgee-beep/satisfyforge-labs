@@ -298,6 +298,13 @@ class PaperCapital:
                     raise CapitalBlocked("conflicting duplicate paper execution ID")
                 db.commit()
                 return False
+            latest = db.execute(
+                "SELECT observed_at FROM capital_events "
+                "ORDER BY sequence DESC LIMIT 1"
+            ).fetchone()
+            if (latest and
+                    datetime.fromisoformat(ts) < datetime.fromisoformat(latest[0])):
+                raise CapitalBlocked("paper event chronology regressed")
             rows = db.execute(
                 "SELECT event_id,kind,reference,asset,symbol,quantity,price,fee,amount,observed_at,evidence FROM capital_events ORDER BY sequence").fetchall()
             self._reduce(rows + [fields])
