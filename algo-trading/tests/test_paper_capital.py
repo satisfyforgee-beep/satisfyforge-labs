@@ -147,6 +147,46 @@ class PaperCapitalTests(unittest.TestCase):
             ).fetchone()[0]
         self.assertIn('"calendar_id":"alpaca-settlement-calendar-fixture"', evidence)
 
+    def test_holiday_settlement_cannot_backfill_unsettled_cash(self):
+        trade = datetime(2026, 11, 25, 15, 0, tzinfo=timezone.utc)
+        for index in range(5):
+            intent = f"cash{index}"
+            self.ledger.reserve_buy(intent, "stock", "F", 1, 30, 0,
+                                    when=trade)
+            self.ledger.buy_fill(f"buy{index}", intent, "stock", "F", 1,
+                                 30, 0, when=trade)
+            self.ledger.release_terminal_reservation(f"done{index}", intent,
+                                                     when=trade)
+        self.ledger.sell_fill("holiday-sale", "stock", "F", 5, 31, 0,
+                              when=trade)
+        self.assertEqual(self.ledger.snapshot()["settled_cash"], "0.00")
+        self.assertEqual(
+            self.ledger.snapshot()["unsettled_sale_proceeds"], "155.00")
+        with self.assertRaises(CapitalBlocked):
+            self.ledger.reserve_buy("unsettled-funded", "stock", "CLF", 1,
+                                    5, 0, when=trade)
+
+        settled = datetime(2026, 11, 27, 15, 0, tzinfo=timezone.utc)
+        proof = self.proof(
+            "holiday-sale", trade_date="2026-11-25",
+            settlement_date="2026-11-27",
+            retrieved_at="2026-11-25T20:00:00Z")
+        self.ledger.confirm_settlement(
+            "holiday-settlement", "holiday-sale", when=settled,
+            calendar_proof=proof)
+        self.ledger.reserve_buy(
+            "after-settlement", "stock", "CLF", 1, 5, 0,
+            when=settled + timedelta(minutes=1))
+        self.assertFalse(self.ledger.confirm_settlement(
+            "holiday-settlement", "holiday-sale", when=settled,
+            calendar_proof=proof))
+        before = self.ledger.snapshot()
+        with self.assertRaisesRegex(CapitalBlocked, "chronology regressed"):
+            self.ledger.reserve_buy(
+                "backdated-leak", "stock", "AAL", 1, 5, 0,
+                when=datetime(2026, 11, 26, 15, 0, tzinfo=timezone.utc))
+        self.assertEqual(self.ledger.snapshot(), before)
+
     def test_equity_calendar_cannot_settle_options_or_crypto(self):
         l = self.ledger
         opt = "SOFI261030C00015000"
