@@ -42,6 +42,13 @@ buy-and-hold changes. Parameters are fixed, **not optimized**, and the sample
 demo is entirely synthetic. Real research needs many separate periods,
 regimes and known transaction costs before a strategy is considered promising.
 
+The evaluation library can also bind supplied bars to an offline, fully
+paginated Alpaca stock-bar capture observed by an explicit research cutoff
+after the final captured bar.  The capture must state the IEX feed, adjustment
+mode and symbol-mapping `asof` date, and its exact normalized OHLCV content must
+match the evaluated bars.  This is an audit control only: it performs no HTTP
+request and is not fill, order or alpha evidence.
+
 ## Optional official paper data (read-only)
 1. Create an Alpaca **paper account** at https://app.alpaca.markets/paper/dashboard .
 2. Put API credentials in LOCAL environment variables, never in Git or chat:
