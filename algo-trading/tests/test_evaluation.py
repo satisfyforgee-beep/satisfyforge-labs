@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from zerocost_bot.engine import Bar, Settings
 from zerocost_bot.evaluation import (
     evaluate_holdout, replay_corporate_actions_as_of,
-    replay_stock_trades_as_of,
+    replay_stock_bars_as_of, replay_stock_trades_as_of,
 )
 
 
@@ -53,6 +53,123 @@ class HistoricalHoldoutTests(unittest.TestCase):
         original = settings.__dict__.copy()
         evaluate_holdout(sample(), settings)
         self.assertEqual(settings.__dict__, original)
+
+
+def captured_bar(bar, **changes):
+    values = {
+        "symbol": bar.symbol,
+        "time": bar.time.isoformat(),
+        "open": bar.open,
+        "high": bar.high,
+        "low": bar.low,
+        "close": bar.close,
+        "volume": bar.volume,
+    }
+    values.update(changes)
+    return values
+
+
+def bar_page(snapshot_id, observed_at, bars, *, token=None, next_token=None,
+             adjustment="raw", symbol_asof="2026-10-19"):
+    return {
+        "snapshot_id": snapshot_id,
+        "observed_at": observed_at,
+        "source": "ALPACA_STOCK_BARS",
+        "feed": "iex",
+        "symbol": "DEMO",
+        "adjustment": adjustment,
+        "symbol_asof": symbol_asof,
+        "timeframe": "1Min",
+        "page_token": token,
+        "next_page_token": next_token,
+        "bars": list(bars),
+    }
+
+
+class StockBarPointInTimeTests(unittest.TestCase):
+    cutoff = datetime(2026, 10, 19, 15, 25, tzinfo=timezone.utc)
+
+    def test_complete_pagination_and_explicit_query_provenance(self):
+        rows = sample(4)
+        pages = [
+            bar_page("snapshot-a", "2026-10-19T15:20:00Z",
+                     [captured_bar(x) for x in rows[:2]], next_token="p2",
+                     adjustment="split"),
+            bar_page("snapshot-a", "2026-10-19T15:20:00Z",
+                     [captured_bar(x) for x in rows[2:]], token="p2",
+                     adjustment="split"),
+        ]
+        result = replay_stock_bars_as_of(
+            pages, as_of=self.cutoff, symbol="DEMO", adjustment="split",
+            symbol_asof="2026-10-19")
+        self.assertEqual(result["pages_exhausted"], 2)
+        self.assertEqual(result["bars"], 4)
+        self.assertEqual(result["adjustment"], "split")
+        self.assertEqual(result["symbol_asof"], "2026-10-19")
+        self.assertEqual(len(result["content_sha256"]), 64)
+
+    def test_later_revised_snapshot_never_leaks_backward(self):
+        row = sample(1)[0]
+        pages = [
+            bar_page("early", "2026-10-19T15:20:00Z",
+                     [captured_bar(row)]),
+            bar_page("late", "2026-10-20T13:20:00Z",
+                     [captured_bar(row, close=99)]),
+        ]
+        result = replay_stock_bars_as_of(
+            pages, as_of=self.cutoff, symbol="DEMO", adjustment="raw",
+            symbol_asof="2026-10-19")
+        self.assertEqual(result["snapshot_id"], "early")
+
+    def test_unknown_adjustment_asof_or_incomplete_pages_fail_closed(self):
+        row = captured_bar(sample(1)[0])
+        valid = [bar_page("s", "2026-10-19T15:20:00Z", [row])]
+        with self.assertRaisesRegex(ValueError, "adjustment"):
+            replay_stock_bars_as_of(
+                valid, as_of=self.cutoff, symbol="DEMO", adjustment="unknown",
+                symbol_asof="2026-10-19")
+        with self.assertRaisesRegex(ValueError, "as-of"):
+            replay_stock_bars_as_of(
+                valid, as_of=self.cutoff, symbol="DEMO", adjustment="raw",
+                symbol_asof="current")
+        with self.assertRaisesRegex(ValueError, "truncated"):
+            replay_stock_bars_as_of(
+                [bar_page("s", "2026-10-19T15:20:00Z", [row],
+                          next_token="missing")],
+                as_of=self.cutoff, symbol="DEMO", adjustment="raw",
+                symbol_asof="2026-10-19")
+
+    def test_holdout_requires_exact_audited_bar_content(self):
+        rows = sample()
+        pages = [bar_page(
+            "exact", "2026-10-19T15:20:00Z",
+            [captured_bar(row) for row in rows])]
+        report = evaluate_holdout(
+            rows, stock_bar_pages=pages, stock_bar_as_of=self.cutoff,
+            stock_bar_adjustment="raw", stock_bar_symbol_asof="2026-10-19")
+        self.assertEqual(report["stock_bar_audit"]["snapshot_id"], "exact")
+        changed = list(rows)
+        changed[-1] = replace(changed[-1], close=changed[-1].close + 0.01,
+                              high=changed[-1].high + 0.01)
+        with self.assertRaisesRegex(ValueError, "do not match"):
+            evaluate_holdout(
+                changed, stock_bar_pages=pages, stock_bar_as_of=self.cutoff,
+                stock_bar_adjustment="raw",
+                stock_bar_symbol_asof="2026-10-19")
+
+    def test_holdout_rejects_future_or_partial_audit_configuration(self):
+        rows = sample()
+        pages = [bar_page(
+            "exact", "2026-10-19T15:20:00Z",
+            [captured_bar(row) for row in rows])]
+        with self.assertRaisesRegex(ValueError, "supplied together"):
+            evaluate_holdout(rows, stock_bar_pages=pages)
+        with self.assertRaisesRegex(ValueError, "evaluation end"):
+            evaluate_holdout(
+                rows, stock_bar_pages=pages,
+                stock_bar_as_of=rows[-1].time - timedelta(seconds=1),
+                stock_bar_adjustment="raw",
+                stock_bar_symbol_asof="2026-10-19")
 
 
 def stock_event(event_id, sequence, arrived_at, event_type="trade", **updates):

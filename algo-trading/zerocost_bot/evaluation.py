@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import asdict
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
+from hashlib import sha256
+import json
 from math import isfinite
 
 from .engine import Bar, PaperEngine, Settings
@@ -286,6 +288,181 @@ def replay_corporate_actions_as_of(pages: list[dict], *, as_of: datetime) -> dic
     }
 
 
+def _bar_decimal(value, label: str, *, allow_zero: bool = False) -> str:
+    try:
+        parsed = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError(f"Invalid {label}") from None
+    if (not parsed.is_finite() or parsed < 0
+            or (not allow_zero and parsed == 0)):
+        raise ValueError(f"Invalid {label}")
+    return format(parsed, "f")
+
+
+def _stock_bar_snapshot(pages: list[dict], *, as_of: datetime, symbol: str,
+                        adjustment: str, symbol_asof: str) -> tuple[dict, list[dict]]:
+    """Select and normalize one complete locally observed stock-bar snapshot."""
+    cutoff = _observed_time(as_of, "stock-bar cutoff")
+    if not isinstance(pages, list) or not pages:
+        raise ValueError("Stock-bar capture pages required")
+    if not isinstance(symbol, str) or not symbol.strip():
+        raise ValueError("Stock-bar symbol required")
+    requested_symbol = symbol.strip().upper()
+    if adjustment not in {"raw", "split", "dividend", "spin-off", "all"}:
+        raise ValueError("Explicit supported stock-bar adjustment required")
+    try:
+        date.fromisoformat(symbol_asof)
+    except (TypeError, ValueError):
+        raise ValueError("Explicit stock-bar symbol as-of date required") from None
+
+    snapshots: dict[str, list[tuple[dict, datetime]]] = {}
+    for page in pages:
+        if not isinstance(page, dict):
+            raise ValueError("Malformed stock-bar capture page")
+        snapshot_id = page.get("snapshot_id")
+        if not isinstance(snapshot_id, str) or not snapshot_id:
+            raise ValueError("Missing stock-bar snapshot provenance")
+        observed = _observed_time(page.get("observed_at"),
+                                  "stock-bar snapshot observed_at")
+        if (page.get("source") != "ALPACA_STOCK_BARS"
+                or page.get("feed") != "iex"
+                or page.get("symbol") != requested_symbol
+                or page.get("adjustment") != adjustment
+                or page.get("symbol_asof") != symbol_asof
+                or not isinstance(page.get("timeframe"), str)
+                or not page["timeframe"]):
+            raise ValueError("Stock-bar query provenance mismatch")
+        token = page.get("page_token")
+        next_token = page.get("next_page_token")
+        for value in (token, next_token):
+            if value is not None and (not isinstance(value, str) or not value):
+                raise ValueError("Invalid stock-bar page token")
+        if not isinstance(page.get("bars"), list):
+            raise ValueError("Stock-bar page records missing")
+        snapshots.setdefault(snapshot_id, []).append((page, observed))
+
+    eligible: list[tuple[datetime, str]] = []
+    for snapshot_id, rows in snapshots.items():
+        observed = {stamp for _, stamp in rows}
+        metadata = {(page["source"], page["feed"], page["symbol"],
+                     page["adjustment"], page["symbol_asof"], page["timeframe"])
+                    for page, _ in rows}
+        if len(observed) != 1 or len(metadata) != 1:
+            raise ValueError("Stock-bar snapshot metadata conflict")
+        stamp = next(iter(observed))
+        if stamp <= cutoff:
+            eligible.append((stamp, snapshot_id))
+    if not eligible:
+        raise ValueError("No stock-bar snapshot existed by cutoff")
+    newest = max(stamp for stamp, _ in eligible)
+    candidate_ids = [item for stamp, item in eligible if stamp == newest]
+    if len(candidate_ids) != 1:
+        raise ValueError("Ambiguous stock-bar snapshot at cutoff")
+
+    snapshot_id = candidate_ids[0]
+    rows = snapshots[snapshot_id]
+    by_token: dict[str | None, dict] = {}
+    for page, _ in rows:
+        token = page.get("page_token")
+        if token in by_token:
+            raise ValueError("Duplicate stock-bar page token")
+        by_token[token] = page
+    if None not in by_token:
+        raise ValueError("Stock-bar pagination has no first page")
+    ordered = []
+    seen = set()
+    token = None
+    while True:
+        if token in seen:
+            raise ValueError("Stock-bar pagination cycle")
+        page = by_token.get(token)
+        if page is None:
+            raise ValueError("Stock-bar pagination is truncated")
+        seen.add(token)
+        ordered.append(page)
+        token = page.get("next_page_token")
+        if token is None:
+            break
+    if len(seen) != len(by_token):
+        raise ValueError("Stock-bar pagination has orphan pages")
+
+    normalized = []
+    bar_keys = set()
+    for page in ordered:
+        for bar in page["bars"]:
+            if not isinstance(bar, dict) or bar.get("symbol") != requested_symbol:
+                raise ValueError("Malformed or cross-symbol stock bar")
+            stamp = _observed_time(bar.get("time"), "stock-bar time")
+            if stamp > newest:
+                raise ValueError("Stock bar occurs after snapshot observation")
+            row = {
+                "symbol": requested_symbol,
+                "time_utc": stamp.isoformat(),
+                "open": _bar_decimal(bar.get("open"), "stock-bar open"),
+                "high": _bar_decimal(bar.get("high"), "stock-bar high"),
+                "low": _bar_decimal(bar.get("low"), "stock-bar low"),
+                "close": _bar_decimal(bar.get("close"), "stock-bar close"),
+                "volume": _bar_decimal(bar.get("volume"), "stock-bar volume",
+                                        allow_zero=True),
+            }
+            if (Decimal(row["low"]) > min(Decimal(row["open"]),
+                                           Decimal(row["close"]))
+                    or Decimal(row["high"]) < max(Decimal(row["open"]),
+                                                  Decimal(row["close"]))
+                    or Decimal(row["low"]) > Decimal(row["high"])):
+                raise ValueError("Inconsistent stock-bar OHLC")
+            key = (requested_symbol, row["time_utc"])
+            if key in bar_keys:
+                raise ValueError("Duplicate stock bar")
+            bar_keys.add(key)
+            normalized.append(row)
+    if not normalized:
+        raise ValueError("Stock-bar snapshot is empty")
+    normalized.sort(key=lambda row: row["time_utc"])
+    payload = json.dumps(normalized, sort_keys=True, separators=(",", ":"))
+    audit = {
+        "mode": "OFFLINE_POINT_IN_TIME_STOCK_BAR_REPLAY",
+        "snapshot_id": snapshot_id,
+        "as_of_utc": cutoff.isoformat(),
+        "observed_at_utc": newest.isoformat(),
+        "source": "ALPACA_STOCK_BARS",
+        "feed": "iex",
+        "symbol": requested_symbol,
+        "adjustment": adjustment,
+        "symbol_asof": symbol_asof,
+        "timeframe": ordered[0]["timeframe"],
+        "pages_exhausted": len(ordered),
+        "bars": len(normalized),
+        "first_bar_utc": normalized[0]["time_utc"],
+        "last_bar_utc": normalized[-1]["time_utc"],
+        "content_sha256": sha256(payload.encode("utf-8")).hexdigest(),
+        "warning": "Offline audit only; not quote, fill, order, or alpha evidence.",
+    }
+    return audit, normalized
+
+
+def replay_stock_bars_as_of(pages: list[dict], *, as_of: datetime, symbol: str,
+                            adjustment: str, symbol_asof: str) -> dict:
+    """Audit one complete stock-bar snapshot without making a provider request."""
+    audit, _ = _stock_bar_snapshot(
+        pages, as_of=as_of, symbol=symbol, adjustment=adjustment,
+        symbol_asof=symbol_asof)
+    return audit
+
+
+def _engine_bar_rows(bars: list[Bar]) -> list[dict]:
+    return [{
+        "symbol": bar.symbol.upper(),
+        "time_utc": bar.time.astimezone(timezone.utc).isoformat(),
+        "open": _bar_decimal(bar.open, "evaluation bar open"),
+        "high": _bar_decimal(bar.high, "evaluation bar high"),
+        "low": _bar_decimal(bar.low, "evaluation bar low"),
+        "close": _bar_decimal(bar.close, "evaluation bar close"),
+        "volume": _bar_decimal(bar.volume, "evaluation bar volume",
+                               allow_zero=True),
+    } for bar in bars]
+
+
 def _check_data(bars: list[Bar]) -> None:
     if not bars:
         raise ValueError("Historical bars required")
@@ -328,7 +505,11 @@ def _window_report(rows: list[Bar], settings: Settings) -> dict:
 def evaluate_holdout(bars: list[Bar], settings: Settings | None = None,
                      *, train_fraction: float = 0.70,
                      corporate_action_pages: list[dict] | None = None,
-                     corporate_action_as_of: datetime | None = None) -> dict:
+                     corporate_action_as_of: datetime | None = None,
+                     stock_bar_pages: list[dict] | None = None,
+                     stock_bar_as_of: datetime | None = None,
+                     stock_bar_adjustment: str | None = None,
+                     stock_bar_symbol_asof: str | None = None) -> dict:
     """Chronological split, fresh account per window, no parameter search.
 
     Minimum usable history is required *within each window*.  This avoids
@@ -357,11 +538,32 @@ def evaluate_holdout(bars: list[Bar], settings: Settings | None = None,
             raise ValueError("Corporate-action cutoff must not follow evaluation start")
         action_audit = replay_corporate_actions_as_of(
             corporate_action_pages, as_of=cutoff)
+    bar_audit = {
+        "status": "NOT_PROVIDED",
+        "warning": "No point-in-time stock-bar capture was supplied.",
+    }
+    bar_inputs = (stock_bar_pages, stock_bar_as_of, stock_bar_adjustment,
+                  stock_bar_symbol_asof)
+    if any(value is not None for value in bar_inputs):
+        if any(value is None for value in bar_inputs):
+            raise ValueError("Stock-bar pages, cutoff, adjustment and symbol as-of "
+                             "must be supplied together")
+        cutoff = _observed_time(stock_bar_as_of, "stock-bar cutoff")
+        last_bar = bars[-1].time.astimezone(timezone.utc)
+        if cutoff < last_bar:
+            raise ValueError("Stock-bar cutoff must not precede evaluation end")
+        bar_audit, captured = _stock_bar_snapshot(
+            stock_bar_pages, as_of=cutoff, symbol=bars[0].symbol,
+            adjustment=stock_bar_adjustment,
+            symbol_asof=stock_bar_symbol_asof)
+        if captured != _engine_bar_rows(bars):
+            raise ValueError("Evaluation bars do not match audited stock-bar snapshot")
     return {
         "mode": "OFFLINE_HISTORICAL_HOLDOUT",
         "paper_only": True,
         "strategy_settings_fixed": asdict(settings),
         "corporate_action_audit": action_audit,
+        "stock_bar_audit": bar_audit,
         "train": _window_report(bars[:split], settings),
         "holdout": _window_report(bars[split:], settings),
         "limitations": [
@@ -370,5 +572,6 @@ def evaluate_holdout(bars: list[Bar], settings: Settings | None = None,
             "Real execution, spreads, market impact and option/crypto behavior are not validated",
             "Synthetic data and a single holdout cannot demonstrate statistical significance",
             "Corporate-action audit metadata does not retrospectively adjust price bars",
+            "Stock-bar provenance is optional; when supplied, exact content must match",
         ],
     }
