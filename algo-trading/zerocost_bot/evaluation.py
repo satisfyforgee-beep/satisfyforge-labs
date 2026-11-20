@@ -182,7 +182,7 @@ def validate_historical_option_provenance(metadata: dict) -> dict:
         raise ValueError("Historical-option asset class required")
 
     data_type = metadata.get("data_type")
-    if data_type not in {"quotes", "trades"}:
+    if data_type not in {"bars", "quotes", "trades"}:
         raise ValueError("Unsupported historical-option data type")
     feed = metadata.get("feed")
     if feed not in {"indicative", "opra"}:
@@ -242,6 +242,140 @@ def validate_historical_option_provenance(metadata: dict) -> dict:
         "research_only": True,
         "execution_evidence": False,
         "warning": "Research metadata only; not quote, fill, or order evidence.",
+    }
+
+
+def validate_historical_option_bar_pages(pages: list[dict], *,
+                                         requested_symbols: list[str],
+                                         metadata: dict) -> dict:
+    """Validate one complete offline Alpaca multi-contract bar capture.
+
+    Alpaca documents historical option bars as sorted by symbol before time,
+    so an initial page can contain only the first requested contract.  This
+    guard follows the captured page-token chain to exhaustion and refuses to
+    promote a partial response, duplicate bar, or out-of-window observation to
+    holdout evidence.  It performs no network or broker operation.
+    """
+    provenance = validate_historical_option_provenance(metadata)
+    if provenance["data_type"] != "bars":
+        raise ValueError("Historical-option bars metadata required")
+    if not isinstance(requested_symbols, list) or not requested_symbols:
+        raise ValueError("Requested option contracts required")
+
+    requested = []
+    for symbol in requested_symbols:
+        if not isinstance(symbol, str) or not symbol.strip():
+            raise ValueError("Invalid requested option contract")
+        normalized = symbol.strip().upper()
+        if normalized in requested:
+            raise ValueError("Duplicate requested option contract")
+        requested.append(normalized)
+
+    if not isinstance(pages, list) or not pages:
+        raise ValueError("Historical-option bar pages required")
+    by_token = {}
+    for page in pages:
+        if not isinstance(page, dict):
+            raise ValueError("Malformed historical-option bar page")
+        token = page.get("page_token")
+        if token is not None and (not isinstance(token, str) or not token):
+            raise ValueError("Invalid historical-option page token")
+        if token in by_token:
+            raise ValueError("Duplicate historical-option page token")
+        by_token[token] = page
+
+    start = datetime.fromisoformat(provenance["window_start_utc"])
+    end = datetime.fromisoformat(provenance["window_end_utc"])
+    captured = datetime.fromisoformat(provenance["captured_at_utc"])
+    token = None
+    visited = set()
+    counts = {symbol: 0 for symbol in requested}
+    timestamps = []
+    seen_bars = set()
+
+    while True:
+        if token in visited:
+            raise ValueError("Cyclic historical-option pagination")
+        visited.add(token)
+        page = by_token.get(token)
+        if page is None:
+            raise ValueError("Truncated historical-option pagination")
+
+        observed = _observed_time(page.get("observed_at"),
+                                  "historical-option page observed_at")
+        if observed < end or observed > captured:
+            raise ValueError("Historical-option page capture conflicts with window")
+        bars = page.get("bars")
+        if not isinstance(bars, dict):
+            raise ValueError("Malformed historical-option bar payload")
+        for raw_symbol, rows in bars.items():
+            if not isinstance(raw_symbol, str):
+                raise ValueError("Invalid historical-option bar symbol")
+            symbol = raw_symbol.strip().upper()
+            if symbol not in counts:
+                raise ValueError("Unexpected historical-option bar contract")
+            if not isinstance(rows, list):
+                raise ValueError("Malformed historical-option bar series")
+            for row in rows:
+                if not isinstance(row, dict):
+                    raise ValueError("Malformed historical-option bar")
+                bar_time = _observed_time(row.get("t"),
+                                          "historical-option bar time")
+                if bar_time < start or bar_time > end:
+                    raise ValueError("Historical-option bar outside requested window")
+                identity = (symbol, bar_time)
+                if identity in seen_bars:
+                    raise ValueError("Duplicate historical-option bar")
+                seen_bars.add(identity)
+
+                values = {}
+                for key in ("o", "h", "l", "c"):
+                    try:
+                        value = Decimal(str(row.get(key)))
+                    except (InvalidOperation, TypeError, ValueError):
+                        raise ValueError("Invalid historical-option bar price") from None
+                    if not value.is_finite() or value <= 0:
+                        raise ValueError("Invalid historical-option bar price")
+                    values[key] = value
+                if values["h"] < max(values["o"], values["c"], values["l"]):
+                    raise ValueError("Invalid historical-option bar high")
+                if values["l"] > min(values["o"], values["c"], values["h"]):
+                    raise ValueError("Invalid historical-option bar low")
+                volume = row.get("v")
+                if type(volume) not in {int, float} or not isfinite(volume) or volume < 0:
+                    raise ValueError("Invalid historical-option bar volume")
+                counts[symbol] += 1
+                timestamps.append(bar_time)
+
+        next_token = page.get("next_page_token")
+        if next_token is None:
+            break
+        if not isinstance(next_token, str) or not next_token:
+            raise ValueError("Invalid historical-option next-page token")
+        token = next_token
+
+    if len(visited) != len(by_token):
+        raise ValueError("Orphan historical-option bar page")
+    if not timestamps:
+        raise ValueError("No option bars returned for requested contracts")
+    missing = [symbol for symbol, count in counts.items() if count == 0]
+    if missing:
+        raise ValueError("Incomplete option-contract coverage: missing "
+                         + ", ".join(missing))
+
+    return {
+        "mode": "OFFLINE_HISTORICAL_OPTION_BAR_COVERAGE_PREFLIGHT",
+        "historical_holdout_gate": "PASS",
+        "requested_symbols": requested,
+        "bar_counts": counts,
+        "pages_exhausted": len(visited),
+        "first_bar_utc": min(timestamps).isoformat(),
+        "last_bar_utc": max(timestamps).isoformat(),
+        "window_start_utc": provenance["window_start_utc"],
+        "window_end_utc": provenance["window_end_utc"],
+        "research_only": True,
+        "execution_evidence": False,
+        "warning": "Complete capture gate only; not quote, fill, order, or alpha evidence.",
     }
 
 
