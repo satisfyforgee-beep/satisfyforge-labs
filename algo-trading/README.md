@@ -48,6 +48,14 @@ documented February 2024 option-history coverage, unknown or contradictory feed
 provenance, indicative trades without their documented delay, unverified OPRA
 entitlement, and any attempt to label research data as execution evidence.
 Accepted metadata remains research-only and does not authorize a broker call.
+For multi-contract option-bar captures,
+`validate_historical_option_bar_pages` additionally follows every stored page
+token to exhaustion because Alpaca sorts these responses by symbol before time.
+It rejects truncated or cyclic pagination, missing requested contracts,
+duplicate or out-of-window bars, and capture/window provenance conflicts before
+returning a research-only holdout gate. A first HTTP 200 or first page is never
+treated as complete coverage, and this offline check is not execution or alpha
+evidence.
 
 ## Optional official paper data (read-only)
 1. Create an Alpaca **paper account** at https://app.alpaca.markets/paper/dashboard .
