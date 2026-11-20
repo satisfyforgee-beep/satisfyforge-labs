@@ -5,7 +5,8 @@ from datetime import datetime, timedelta, timezone
 from zerocost_bot.engine import Bar, Settings
 from zerocost_bot.evaluation import (
     evaluate_holdout, replay_corporate_actions_as_of,
-    replay_stock_trades_as_of, validate_historical_option_provenance,
+    replay_stock_trades_as_of, validate_historical_option_bar_pages,
+    validate_historical_option_provenance,
 )
 
 
@@ -266,6 +267,114 @@ class HistoricalOptionProvenanceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "timezone-aware"):
             validate_historical_option_provenance(
                 option_history_metadata(captured_at="2026-11-11T12:00:00"))
+
+
+def option_bar_page(*, token=None, next_token=None, observed_at=None, bars=None):
+    return {
+        "page_token": token,
+        "next_page_token": next_token,
+        "observed_at": observed_at or "2026-11-11T11:59:00Z",
+        "bars": bars or {},
+    }
+
+
+def option_bar(timestamp="2026-11-10T14:31:00Z", **updates):
+    values = {"t": timestamp, "o": 1.00, "h": 1.05, "l": .95,
+              "c": 1.02, "v": 10}
+    values.update(updates)
+    return values
+
+
+class HistoricalOptionBarCoverageTests(unittest.TestCase):
+    symbols = ["DEMO261120C00100000", "DEMO261120P00100000"]
+
+    def metadata(self, **updates):
+        return option_history_metadata(data_type="bars", **updates)
+
+    def complete_pages(self):
+        return [
+            option_bar_page(next_token="page-2", bars={
+                self.symbols[0]: [option_bar()],
+            }),
+            option_bar_page(token="page-2", bars={
+                self.symbols[1]: [option_bar("2026-11-10T14:32:00Z")],
+            }),
+        ]
+
+    def test_exhausts_symbol_first_pages_before_passing_holdout_gate(self):
+        result = validate_historical_option_bar_pages(
+            self.complete_pages(), requested_symbols=self.symbols,
+            metadata=self.metadata())
+        self.assertEqual(result["historical_holdout_gate"], "PASS")
+        self.assertEqual(result["pages_exhausted"], 2)
+        self.assertEqual(result["bar_counts"], {symbol: 1 for symbol in self.symbols})
+        self.assertTrue(result["research_only"])
+        self.assertFalse(result["execution_evidence"])
+
+    def test_truncated_cycle_and_orphan_pages_fail_closed(self):
+        bad_sets = [
+            [option_bar_page(next_token="missing", bars={
+                self.symbols[0]: [option_bar()],
+            })],
+            [option_bar_page(next_token="page-2"),
+             option_bar_page(token="page-2", next_token="page-2")],
+            self.complete_pages() + [option_bar_page(token="orphan")],
+        ]
+        for pages in bad_sets:
+            with self.subTest(pages=pages):
+                with self.assertRaises(ValueError):
+                    validate_historical_option_bar_pages(
+                        pages, requested_symbols=self.symbols,
+                        metadata=self.metadata())
+
+    def test_no_bars_and_missing_contract_are_distinct_failures(self):
+        with self.assertRaisesRegex(ValueError, "No option bars"):
+            validate_historical_option_bar_pages(
+                [option_bar_page()], requested_symbols=self.symbols,
+                metadata=self.metadata())
+        with self.assertRaisesRegex(ValueError, "Incomplete option-contract coverage"):
+            validate_historical_option_bar_pages(
+                [option_bar_page(bars={self.symbols[0]: [option_bar()]})],
+                requested_symbols=self.symbols, metadata=self.metadata())
+
+    def test_duplicate_bar_across_pages_fails_closed(self):
+        pages = self.complete_pages()
+        pages[1]["bars"] = {
+            self.symbols[0]: [option_bar()],
+            self.symbols[1]: [option_bar("2026-11-10T14:32:00Z")],
+        }
+        with self.assertRaisesRegex(ValueError, "Duplicate historical-option bar"):
+            validate_historical_option_bar_pages(
+                pages, requested_symbols=self.symbols,
+                metadata=self.metadata())
+
+    def test_bar_and_page_time_provenance_fail_closed(self):
+        cases = [
+            ([option_bar_page(bars={
+                self.symbols[0]: [option_bar("2026-11-10T14:29:59Z")],
+                self.symbols[1]: [option_bar()],
+            })], self.metadata()),
+            (self.complete_pages(), self.metadata(
+                captured_at="2026-11-10T20:00:30Z")),
+        ]
+        for pages, metadata in cases:
+            with self.subTest(metadata=metadata):
+                with self.assertRaises(ValueError):
+                    validate_historical_option_bar_pages(
+                        pages, requested_symbols=self.symbols,
+                        metadata=metadata)
+
+    def test_unexpected_contract_and_invalid_bar_fail_closed(self):
+        unexpected = self.complete_pages()
+        unexpected[0]["bars"]["OTHER261120C00100000"] = [option_bar()]
+        invalid = self.complete_pages()
+        invalid[0]["bars"][self.symbols[0]][0]["h"] = .90
+        for pages in (unexpected, invalid):
+            with self.subTest(pages=pages):
+                with self.assertRaises(ValueError):
+                    validate_historical_option_bar_pages(
+                        pages, requested_symbols=self.symbols,
+                        metadata=self.metadata())
 
 
 def action(action_id="split-1", *, revision=1, quality="complete"):
