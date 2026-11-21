@@ -49,6 +49,14 @@ mode and symbol-mapping `asof` date, and its exact normalized OHLCV content must
 match the evaluated bars.  This is an audit control only: it performs no HTTP
 request and is not fill, order or alpha evidence.
 
+Captured stock trades can also be checked with the bounded offline
+`classify_stock_trade_bar_updates` negative control. It preserves Alpaca's
+documented distinction between minute and daily aggregation for prior-reference
+and derivatively priced trades, applies the strictest rule when conditions are
+combined, and identifies odd lots as volume-only. Unknown conditions or
+condition/tape conflicts fail closed. Even a price-eligible aggregation result
+is explicitly not executable quote, fill, order, or alpha evidence.
+
 ## Optional official paper data (read-only)
 1. Create an Alpaca **paper account** at https://app.alpaca.markets/paper/dashboard .
 2. Put API credentials in LOCAL environment variables, never in Git or chat:
