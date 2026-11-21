@@ -4,7 +4,8 @@ from datetime import datetime, timedelta, timezone
 
 from zerocost_bot.engine import Bar, Settings
 from zerocost_bot.evaluation import (
-    evaluate_holdout, replay_corporate_actions_as_of,
+    classify_stock_trade_bar_updates, evaluate_holdout,
+    replay_corporate_actions_as_of,
     replay_stock_bars_as_of, replay_stock_trades_as_of,
 )
 
@@ -298,6 +299,74 @@ class StockTradeCorrectionReplayTests(unittest.TestCase):
         self.assertIn("not bar, signal, quote, fill, or order", result["warning"])
         self.assertEqual(result["mode"],
                          "OFFLINE_POINT_IN_TIME_STOCK_TRADE_REPLAY")
+
+
+class StockTradeConditionEligibilityTests(unittest.TestCase):
+    cutoff = datetime(2026, 10, 19, 13, 35, tzinfo=timezone.utc)
+
+    def test_regular_nasdaq_sale_updates_all_bar_components(self):
+        result = classify_stock_trade_bar_updates(
+            tape="C", bar_type="minute", conditions=["@"])
+        self.assertEqual(result["open_close_update"], "ALWAYS")
+        self.assertEqual(result["high_low_update"], "ALWAYS")
+        self.assertEqual(result["volume_update"], "ALWAYS")
+        self.assertTrue(result["can_seed_complete_bar"])
+        self.assertFalse(result["execution_evidence"])
+        self.assertFalse(result["fill_inference_allowed"])
+
+    def test_odd_lot_is_volume_only_not_price_or_fill_evidence(self):
+        result = classify_stock_trade_bar_updates(
+            tape="C", bar_type="minute", conditions=["I"])
+        self.assertTrue(result["volume_only"])
+        self.assertEqual(result["open_close_update"], "NEVER")
+        self.assertEqual(result["high_low_update"], "NEVER")
+        self.assertFalse(result["can_seed_complete_bar"])
+        self.assertFalse(result["fill_inference_allowed"])
+
+    def test_prior_reference_differs_between_minute_and_daily_bars(self):
+        minute = classify_stock_trade_bar_updates(
+            tape="C", bar_type="minute", conditions=["P"])
+        daily = classify_stock_trade_bar_updates(
+            tape="C", bar_type="daily", conditions=["P"])
+        self.assertTrue(minute["volume_only"])
+        self.assertEqual(daily["open_close_update"], "FIRST_ONLY")
+        self.assertEqual(daily["high_low_update"], "ALWAYS")
+        self.assertTrue(daily["can_seed_complete_bar"])
+
+    def test_multiple_conditions_apply_the_strictest_rule(self):
+        odd_lot = classify_stock_trade_bar_updates(
+            tape="C", bar_type="daily", conditions=["@", "4", "I"])
+        derived = classify_stock_trade_bar_updates(
+            tape="C", bar_type="daily", conditions=["@", "4"])
+        self.assertTrue(odd_lot["volume_only"])
+        self.assertEqual(derived["open_close_update"], "FIRST_ONLY")
+        self.assertEqual(derived["high_low_update"], "ALWAYS")
+
+    def test_unknown_duplicate_or_tape_conflicting_condition_fails_closed(self):
+        cases = [
+            {"tape": "C", "bar_type": "minute", "conditions": ["?"]},
+            {"tape": "C", "bar_type": "minute", "conditions": ["I", "I"]},
+            {"tape": "A", "bar_type": "minute", "conditions": ["@"]},
+            {"tape": "O", "bar_type": "daily", "conditions": ["4"]},
+        ]
+        for values in cases:
+            with self.subTest(values=values):
+                with self.assertRaises(ValueError):
+                    classify_stock_trade_bar_updates(**values)
+
+    def test_future_arrival_does_not_change_point_in_time_condition_audit(self):
+        events = [
+            stock_event("capture-1", 1, "2026-10-19T13:30:01Z"),
+            stock_event("capture-2", 2, "2026-10-20T13:30:01Z",
+                        trade_id="trade-2", conditions=["I"]),
+        ]
+        point_in_time = replay_stock_trades_as_of(
+            events, symbol="DEMO", as_of=self.cutoff)
+        self.assertEqual(len(point_in_time["trades"]), 1)
+        result = classify_stock_trade_bar_updates(
+            tape="C", bar_type="minute",
+            conditions=point_in_time["trades"][0]["conditions"])
+        self.assertFalse(result["volume_only"])
 
 
 def action(action_id="split-1", *, revision=1, quality="complete"):
