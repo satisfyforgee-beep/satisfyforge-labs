@@ -42,6 +42,73 @@ def _trade_decimal(value, label: str) -> str:
     return format(parsed, "f")
 
 
+def classify_stock_trade_bar_updates(*, tape: str, bar_type: str,
+                                     conditions: list[str]) -> dict:
+    """Classify a bounded set of Alpaca/SIP trade-condition bar updates.
+
+    This is an offline negative control for captured research data, not a bar
+    builder.  Unsupported condition/tape combinations fail closed rather than
+    guessing.  Even an eligible price update is never promoted to executable
+    quote or fill evidence.
+    """
+    if tape not in {"A", "B", "C", "O"}:
+        raise ValueError("Unsupported stock-trade tape")
+    if bar_type not in {"minute", "daily"}:
+        raise ValueError("Unsupported stock-bar type")
+    if (not isinstance(conditions, list) or not conditions
+            or not all(isinstance(item, str) and item for item in conditions)):
+        raise ValueError("Stock-trade conditions required")
+    if len(set(conditions)) != len(conditions):
+        raise ValueError("Duplicate stock-trade condition")
+
+    always = "ALWAYS"
+    first = "FIRST_ONLY"
+    never = "NEVER"
+    rank = {never: 0, first: 1, always: 2}
+
+    def rule(code: str) -> tuple[str, str, str]:
+        if code == "@":
+            if tape not in {"C", "O"}:
+                raise ValueError("Trade condition conflicts with tape")
+            return always, always, always
+        if code == "I":
+            return never, never, always
+        if code == "P":
+            if bar_type == "minute":
+                return never, never, always
+            return first, always, always
+        if code == "4":
+            if tape == "O":
+                raise ValueError("Trade condition conflicts with tape")
+            if bar_type == "minute":
+                return never, never, always
+            return first, always, always
+        raise ValueError("Unknown stock-trade condition")
+
+    component_rules = [rule(code) for code in conditions]
+    combined = tuple(min((item[index] for item in component_rules),
+                         key=rank.get) for index in range(3))
+    open_close, high_low, volume = combined
+    volume_only = (open_close == never and high_low == never
+                   and volume == always)
+    can_seed_complete_bar = (open_close in {always, first}
+                             and high_low == always and volume == always)
+    return {
+        "mode": "OFFLINE_STOCK_TRADE_BAR_CONDITION_AUDIT",
+        "tape": tape,
+        "bar_type": bar_type,
+        "conditions": list(conditions),
+        "open_close_update": open_close,
+        "high_low_update": high_low,
+        "volume_update": volume,
+        "volume_only": volume_only,
+        "can_seed_complete_bar": can_seed_complete_bar,
+        "execution_evidence": False,
+        "fill_inference_allowed": False,
+        "warning": "Aggregation audit only; not quote, fill, order, or alpha evidence.",
+    }
+
+
 def replay_stock_trades_as_of(events: list[dict], *, as_of: datetime,
                               symbol: str) -> dict:
     """Replay locally captured stock trades/corrections at one cutoff.
