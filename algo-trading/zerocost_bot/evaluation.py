@@ -7,7 +7,7 @@ forecast; data quality, fees and market coverage still matter greatly.
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import json
@@ -106,6 +106,177 @@ def classify_stock_trade_bar_updates(*, tape: str, bar_type: str,
         "execution_evidence": False,
         "fill_inference_allowed": False,
         "warning": "Aggregation audit only; not quote, fill, order, or alpha evidence.",
+    }
+
+
+def replay_crypto_quotes_as_of(pages: list[dict], *, as_of: datetime,
+                               location: str, symbols: list[str],
+                               start: datetime, end: datetime) -> dict:
+    """Audit one complete offline Alpaca crypto-quote capture.
+
+    Alpaca's historical crypto quote limit applies across all requested
+    symbols, so a first page is not proof of complete symbol coverage. This
+    routine exhausts one captured token chain, binds it to explicit location,
+    interval and entitlement provenance, and never treats quotes as fills.
+    """
+    cutoff = _observed_time(as_of, "crypto-quote cutoff")
+    requested_start = _observed_time(start, "crypto-quote start")
+    requested_end = _observed_time(end, "crypto-quote end")
+    if requested_start >= requested_end or requested_end > cutoff:
+        raise ValueError("Invalid crypto-quote interval")
+    supported_locations = {"us", "us-1", "us-2", "eu-1", "bs-1"}
+    if location not in supported_locations:
+        raise ValueError("Unsupported crypto-quote location")
+    us1_start = datetime(2025, 10, 14, tzinfo=timezone.utc)
+    if location == "us-1" and requested_start < us1_start:
+        raise ValueError("Crypto-quote interval predates us-1 coverage")
+    if (not isinstance(symbols, list) or not symbols
+            or not all(isinstance(item, str) and item and "/" in item
+                       and item == item.upper()
+                       and not any(ch.isspace() for ch in item)
+                       for item in symbols)
+            or len(set(symbols)) != len(symbols)):
+        raise ValueError("Explicit unique crypto symbols required")
+    if not isinstance(pages, list) or not pages:
+        raise ValueError("Crypto-quote capture pages required")
+
+    requested_symbols = tuple(symbols)
+    snapshots: dict[str, list[tuple[dict, datetime, str]]] = {}
+    for page in pages:
+        if not isinstance(page, dict):
+            raise ValueError("Malformed crypto-quote capture page")
+        snapshot_id = page.get("snapshot_id")
+        if not isinstance(snapshot_id, str) or not snapshot_id:
+            raise ValueError("Missing crypto-quote snapshot provenance")
+        observed = _observed_time(page.get("observed_at"),
+                                  "crypto-quote observed_at")
+        entitlement = page.get("entitlement")
+        if entitlement not in {"real_time", "delayed_15m"}:
+            raise ValueError("Explicit crypto-quote entitlement required")
+        if (page.get("source") != "ALPACA_CRYPTO_QUOTES"
+                or page.get("location") != location
+                or tuple(page.get("symbols", [])) != requested_symbols
+                or _observed_time(page.get("start"), "crypto-quote page start")
+                   != requested_start
+                or _observed_time(page.get("end"), "crypto-quote page end")
+                   != requested_end):
+            raise ValueError("Crypto-quote query provenance mismatch")
+        if requested_end > observed:
+            raise ValueError("Crypto-quote request ends after capture")
+        if (entitlement == "delayed_15m"
+                and requested_end > observed - timedelta(minutes=15)):
+            raise ValueError("Crypto-quote interval violates delayed entitlement")
+        token = page.get("page_token")
+        next_token = page.get("next_page_token")
+        for value in (token, next_token):
+            if value is not None and (not isinstance(value, str) or not value):
+                raise ValueError("Invalid crypto-quote page token")
+        if not isinstance(page.get("quotes"), list):
+            raise ValueError("Crypto-quote page records missing")
+        snapshots.setdefault(snapshot_id, []).append((page, observed, entitlement))
+
+    eligible: list[tuple[datetime, str]] = []
+    for snapshot_id, rows in snapshots.items():
+        observed = {stamp for _, stamp, _ in rows}
+        metadata = {(page["source"], page["location"],
+                     tuple(page["symbols"]), page["start"], page["end"],
+                     entitlement)
+                    for page, _, entitlement in rows}
+        if len(observed) != 1 or len(metadata) != 1:
+            raise ValueError("Crypto-quote snapshot metadata conflict")
+        stamp = next(iter(observed))
+        if stamp <= cutoff:
+            eligible.append((stamp, snapshot_id))
+    if not eligible:
+        raise ValueError("No crypto-quote snapshot existed by cutoff")
+    newest = max(stamp for stamp, _ in eligible)
+    candidate_ids = [item for stamp, item in eligible if stamp == newest]
+    if len(candidate_ids) != 1:
+        raise ValueError("Ambiguous crypto-quote snapshot at cutoff")
+
+    snapshot_id = candidate_ids[0]
+    rows = snapshots[snapshot_id]
+    by_token: dict[str | None, dict] = {}
+    for page, _, _ in rows:
+        token = page.get("page_token")
+        if token in by_token:
+            raise ValueError("Duplicate crypto-quote page token")
+        by_token[token] = page
+    if None not in by_token:
+        raise ValueError("Crypto-quote pagination has no first page")
+    ordered = []
+    seen = set()
+    token = None
+    while True:
+        if token in seen:
+            raise ValueError("Crypto-quote pagination cycle")
+        page = by_token.get(token)
+        if page is None:
+            raise ValueError("Crypto-quote pagination is truncated")
+        seen.add(token)
+        ordered.append(page)
+        token = page.get("next_page_token")
+        if token is None:
+            break
+    if len(seen) != len(by_token):
+        raise ValueError("Crypto-quote pagination has orphan pages")
+
+    normalized = []
+    quote_keys = set()
+    coverage = {symbol: 0 for symbol in requested_symbols}
+    for page in ordered:
+        for quote in page["quotes"]:
+            if not isinstance(quote, dict) or quote.get("symbol") not in coverage:
+                raise ValueError("Malformed or unrequested crypto quote")
+            stamp = _observed_time(quote.get("time"), "crypto-quote time")
+            if not requested_start <= stamp <= requested_end or stamp > newest:
+                raise ValueError("Crypto quote outside captured interval")
+            bid = _trade_decimal(quote.get("bid_price"), "crypto-quote bid")
+            ask = _trade_decimal(quote.get("ask_price"), "crypto-quote ask")
+            bid_size = _trade_decimal(quote.get("bid_size"),
+                                      "crypto-quote bid size")
+            ask_size = _trade_decimal(quote.get("ask_size"),
+                                      "crypto-quote ask size")
+            if Decimal(ask) < Decimal(bid):
+                raise ValueError("Crossed crypto quote")
+            key = (quote["symbol"], stamp.isoformat())
+            if key in quote_keys:
+                raise ValueError("Duplicate crypto quote")
+            quote_keys.add(key)
+            coverage[quote["symbol"]] += 1
+            normalized.append({
+                "symbol": quote["symbol"],
+                "time_utc": stamp.isoformat(),
+                "bid_price": bid,
+                "bid_size": bid_size,
+                "ask_price": ask,
+                "ask_size": ask_size,
+            })
+    missing = sorted(symbol for symbol, count in coverage.items() if not count)
+    if missing:
+        raise ValueError("Crypto-quote snapshot missing requested symbols")
+    normalized.sort(key=lambda item: (item["time_utc"], item["symbol"]))
+    payload = json.dumps(normalized, sort_keys=True, separators=(",", ":"))
+    return {
+        "mode": "OFFLINE_POINT_IN_TIME_CRYPTO_QUOTE_REPLAY",
+        "snapshot_id": snapshot_id,
+        "as_of_utc": cutoff.isoformat(),
+        "observed_at_utc": newest.isoformat(),
+        "source": "ALPACA_CRYPTO_QUOTES",
+        "location": location,
+        "entitlement": rows[0][2],
+        "symbols": list(requested_symbols),
+        "start_utc": requested_start.isoformat(),
+        "end_utc": requested_end.isoformat(),
+        "pages_exhausted": len(ordered),
+        "quotes": len(normalized),
+        "quotes_by_symbol": coverage,
+        "first_quote_utc": normalized[0]["time_utc"],
+        "last_quote_utc": normalized[-1]["time_utc"],
+        "content_sha256": sha256(payload.encode("utf-8")).hexdigest(),
+        "execution_evidence": False,
+        "fill_inference_allowed": False,
+        "warning": "Offline quote audit only; not fill, order, or alpha evidence.",
     }
 
 
