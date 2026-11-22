@@ -6,6 +6,7 @@ from zerocost_bot.engine import Bar, Settings
 from zerocost_bot.evaluation import (
     classify_stock_trade_bar_updates, evaluate_holdout,
     replay_corporate_actions_as_of,
+    replay_crypto_quotes_as_of,
     replay_stock_bars_as_of, replay_stock_trades_as_of,
 )
 
@@ -367,6 +368,173 @@ class StockTradeConditionEligibilityTests(unittest.TestCase):
             tape="C", bar_type="minute",
             conditions=point_in_time["trades"][0]["conditions"])
         self.assertFalse(result["volume_only"])
+
+
+def crypto_quote(symbol, time, bid="100", ask="101"):
+    return {
+        "symbol": symbol,
+        "time": time,
+        "bid_price": bid,
+        "bid_size": "0.5",
+        "ask_price": ask,
+        "ask_size": "0.6",
+    }
+
+
+def crypto_quote_page(snapshot_id, observed_at, quotes, *, token=None,
+                      next_token=None, location="us-1",
+                      symbols=("BTC/USD", "ETH/USD"),
+                      start="2026-01-01T23:00:00Z",
+                      end="2026-01-02T00:00:00Z",
+                      entitlement="real_time"):
+    return {
+        "snapshot_id": snapshot_id,
+        "observed_at": observed_at,
+        "source": "ALPACA_CRYPTO_QUOTES",
+        "location": location,
+        "symbols": list(symbols),
+        "start": start,
+        "end": end,
+        "entitlement": entitlement,
+        "page_token": token,
+        "next_page_token": next_token,
+        "quotes": list(quotes),
+    }
+
+
+class CryptoQuotePointInTimeTests(unittest.TestCase):
+    cutoff = datetime(2026, 1, 2, 0, 30, tzinfo=timezone.utc)
+    start = datetime(2026, 1, 1, 23, tzinfo=timezone.utc)
+    end = datetime(2026, 1, 2, 0, tzinfo=timezone.utc)
+
+    def replay(self, pages, **changes):
+        values = {
+            "as_of": self.cutoff,
+            "location": "us-1",
+            "symbols": ["BTC/USD", "ETH/USD"],
+            "start": self.start,
+            "end": self.end,
+        }
+        values.update(changes)
+        return replay_crypto_quotes_as_of(pages, **values)
+
+    def test_exhausts_total_limit_pages_and_proves_symbol_coverage(self):
+        pages = [
+            crypto_quote_page(
+                "capture-a", "2026-01-02T00:20:00Z",
+                [crypto_quote("BTC/USD", "2026-01-01T23:30:00Z")],
+                next_token="p2"),
+            crypto_quote_page(
+                "capture-a", "2026-01-02T00:20:00Z",
+                [crypto_quote("ETH/USD", "2026-01-01T23:31:00Z",
+                              bid="200", ask="201")], token="p2"),
+        ]
+        result = self.replay(pages)
+        self.assertEqual(result["pages_exhausted"], 2)
+        self.assertEqual(result["quotes_by_symbol"],
+                         {"BTC/USD": 1, "ETH/USD": 1})
+        self.assertEqual(result["location"], "us-1")
+        self.assertEqual(len(result["content_sha256"]), 64)
+        self.assertFalse(result["execution_evidence"])
+        self.assertFalse(result["fill_inference_allowed"])
+
+    def test_us1_coverage_location_and_symbols_are_explicit(self):
+        pages = [crypto_quote_page(
+            "capture-a", "2026-01-02T00:20:00Z", [
+                crypto_quote("BTC/USD", "2026-01-01T23:30:00Z"),
+                crypto_quote("ETH/USD", "2026-01-01T23:31:00Z"),
+            ])]
+        with self.assertRaisesRegex(ValueError, "predates us-1"):
+            self.replay(
+                pages,
+                start=datetime(2025, 10, 13, tzinfo=timezone.utc))
+        with self.assertRaisesRegex(ValueError, "provenance mismatch"):
+            self.replay(pages, location="eu-1")
+        with self.assertRaisesRegex(ValueError, "location"):
+            self.replay(pages, location="unknown")
+        with self.assertRaisesRegex(ValueError, "unique crypto symbols"):
+            self.replay(pages, symbols=["BTC/USD", "BTC/USD"])
+
+    def test_truncated_cycle_or_orphan_pagination_fails_closed(self):
+        row = crypto_quote("BTC/USD", "2026-01-01T23:30:00Z")
+        cases = [
+            [crypto_quote_page("s", "2026-01-02T00:20:00Z", [row],
+                               next_token="missing")],
+            [crypto_quote_page("s", "2026-01-02T00:20:00Z", [row],
+                               next_token="p2"),
+             crypto_quote_page("s", "2026-01-02T00:20:00Z", [], token="p2",
+                               next_token="p2")],
+            [crypto_quote_page("s", "2026-01-02T00:20:00Z", [row]),
+             crypto_quote_page("s", "2026-01-02T00:20:00Z", [], token="orphan")],
+            [crypto_quote_page("s", "2026-01-02T00:20:00Z", [row],
+                               next_token="p2"),
+             crypto_quote_page("s", "2026-01-02T00:20:00Z", [], token="p2"),
+             crypto_quote_page("s", "2026-01-02T00:20:00Z", [], token="p2")],
+        ]
+        for pages in cases:
+            with self.subTest(pages=pages):
+                with self.assertRaisesRegex(ValueError,
+                                            "pagination|page token"):
+                    self.replay(pages)
+
+    def test_missing_symbol_duplicate_or_crossed_quote_fails_closed(self):
+        missing = [crypto_quote_page(
+            "s", "2026-01-02T00:20:00Z",
+            [crypto_quote("BTC/USD", "2026-01-01T23:30:00Z")])]
+        with self.assertRaisesRegex(ValueError, "missing requested symbols"):
+            self.replay(missing)
+        duplicate = [crypto_quote_page(
+            "s", "2026-01-02T00:20:00Z", [
+                crypto_quote("BTC/USD", "2026-01-01T23:30:00Z"),
+                crypto_quote("BTC/USD", "2026-01-01T23:30:00Z"),
+                crypto_quote("ETH/USD", "2026-01-01T23:31:00Z"),
+            ])]
+        with self.assertRaisesRegex(ValueError, "Duplicate crypto quote"):
+            self.replay(duplicate)
+        crossed = [crypto_quote_page(
+            "s", "2026-01-02T00:20:00Z", [
+                crypto_quote("BTC/USD", "2026-01-01T23:30:00Z",
+                             bid="102", ask="101"),
+                crypto_quote("ETH/USD", "2026-01-01T23:31:00Z"),
+            ])]
+        with self.assertRaisesRegex(ValueError, "Crossed crypto quote"):
+            self.replay(crossed)
+
+    def test_entitlement_delay_and_future_quotes_fail_closed(self):
+        delayed = [crypto_quote_page(
+            "s", "2026-01-02T00:10:00Z", [
+                crypto_quote("BTC/USD", "2026-01-01T23:30:00Z"),
+                crypto_quote("ETH/USD", "2026-01-01T23:31:00Z"),
+            ], entitlement="delayed_15m")]
+        with self.assertRaisesRegex(ValueError, "delayed entitlement"):
+            self.replay(delayed)
+        unknown_entitlement = [crypto_quote_page(
+            "s", "2026-01-02T00:20:00Z", [], entitlement="unknown")]
+        with self.assertRaisesRegex(ValueError, "entitlement"):
+            self.replay(unknown_entitlement)
+        future = [crypto_quote_page(
+            "s", "2026-01-02T00:20:00Z", [
+                crypto_quote("BTC/USD", "2026-01-02T00:01:00Z"),
+                crypto_quote("ETH/USD", "2026-01-01T23:31:00Z"),
+            ])]
+        with self.assertRaisesRegex(ValueError, "outside captured interval"):
+            self.replay(future)
+
+    def test_later_snapshot_never_leaks_backward(self):
+        pages = [
+            crypto_quote_page("early", "2026-01-02T00:20:00Z", [
+                crypto_quote("BTC/USD", "2026-01-01T23:30:00Z"),
+                crypto_quote("ETH/USD", "2026-01-01T23:31:00Z"),
+            ]),
+            crypto_quote_page("late", "2026-01-03T00:20:00Z", [
+                crypto_quote("BTC/USD", "2026-01-01T23:30:00Z",
+                             bid="999", ask="1000"),
+                crypto_quote("ETH/USD", "2026-01-01T23:31:00Z",
+                             bid="999", ask="1000"),
+            ]),
+        ]
+        result = self.replay(pages)
+        self.assertEqual(result["snapshot_id"], "early")
 
 
 def action(action_id="split-1", *, revision=1, quality="complete"):
