@@ -57,6 +57,13 @@ combined, and identifies odd lots as volume-only. Unknown conditions or
 condition/tape conflicts fail closed. Even a price-eligible aggregation result
 is explicitly not executable quote, fill, order, or alpha evidence.
 
+Historical crypto quotes can be bound to a fully captured, offline
+`replay_crypto_quotes_as_of` audit. It requires explicit Alpaca location,
+requested symbols, interval and entitlement provenance, exhausts the captured
+page-token chain, enforces the documented `us-1` coverage start, and rejects
+missing-symbol coverage, crossed/duplicate quotes and future leakage. A quote
+capture remains research data only and can never be promoted to fill evidence.
+
 ## Optional official paper data (read-only)
 1. Create an Alpaca **paper account** at https://app.alpaca.markets/paper/dashboard .
 2. Put API credentials in LOCAL environment variables, never in Git or chat:
