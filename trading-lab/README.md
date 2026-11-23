@@ -61,6 +61,14 @@ are available in the *offline manual/synthetic order ledger* but do not have
 validated option-chain or exchange-price signal-to-order adapters. This is a
 deliberate safety boundary, not a claim that those asset classes are ignored.
 
+`validate_crypto_buy_contract` is a separate, pure offline provider-contract
+guard. It accepts only documented crypto market/limit/stop-limit order shapes
+with GTC/IOC, exactly one of quantity or notional, captured pair-specific
+minimums/increments, an explicit conservative fee, and sufficient cash. It
+rejects DAY, stop-market, bracket/OCO/OTO, ambiguous sizing and missing risk
+metadata before anything can touch the journal. Its output explicitly forbids
+broker submission and is not a fill, signal, adapter, or profit result.
+
 ## Important boundaries and roadmap
 
 1. No broker API keys in this public GitHub repository or test logs. Future
