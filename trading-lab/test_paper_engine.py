@@ -4,13 +4,21 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal as D
 from pathlib import Path
 
-from paper_engine import Instrument, PaperEngine, PaperOrder, Quote, RiskPolicy, amount
+from paper_engine import (
+    CryptoOrderRules, Instrument, PaperEngine, PaperOrder, Quote, RiskPolicy,
+    amount, validate_crypto_buy_contract,
+)
 
 
 NOW = datetime(2026, 10, 27, 14, 0, tzinfo=timezone.utc)
 STOCK = Instrument("EXAMPLE", "equity")
 OPTION = Instrument("EXAMPLE261030C00020000", "option", D("100"))
 CRYPTO = Instrument("DEMO/USD", "crypto")
+CRYPTO_RULES = CryptoOrderRules(
+    min_quantity=D("0.0001"), quantity_increment=D("0.0001"),
+    min_notional=D("1"), price_increment=D("0.01"),
+    taker_fee_fraction=D("0.0025"),
+)
 
 
 class PaperEngineTests(unittest.TestCase):
@@ -163,6 +171,112 @@ class PaperEngineTests(unittest.TestCase):
             self.order(qty="0.5")
         with self.assertRaises(ValueError):
             self.quote(asof=datetime(2026, 10, 27))
+
+
+class CryptoOrderContractTests(unittest.TestCase):
+    def valid(self, **changes):
+        payload = {
+            "symbol": "BTC/USD", "side": "buy", "type": "market",
+            "time_in_force": "gtc", "qty": "0.0010",
+            "client_order_id": "sf-crypto-contract-1",
+        }
+        payload.update(changes)
+        return payload
+
+    def check(self, payload, *, cash="100", reference="50000",
+              rules=CRYPTO_RULES):
+        return validate_crypto_buy_contract(
+            payload, rules=rules, available_cash=D(cash),
+            reference_price=D(reference))
+
+    def test_documented_order_types_and_time_in_force_validate_offline(self):
+        cases = [
+            self.valid(type="market", time_in_force="gtc"),
+            self.valid(type="limit", time_in_force="ioc",
+                       limit_price="49000.00"),
+            self.valid(type="stop_limit", time_in_force="gtc",
+                       limit_price="51000.00", stop_price="50500.00"),
+        ]
+        for payload in cases:
+            with self.subTest(payload=payload):
+                result = self.check(payload)
+                self.assertEqual(result["type"], payload["type"])
+                self.assertFalse(result["execution_evidence"])
+                self.assertFalse(result["broker_submit_allowed"])
+
+    def test_day_stop_market_and_bracket_oco_oto_fail_closed(self):
+        cases = [
+            self.valid(time_in_force="day"),
+            self.valid(type="stop", stop_price="49000"),
+            self.valid(order_class="bracket"),
+            self.valid(take_profit={"limit_price": "60000"}),
+            self.valid(oco=True),
+            self.valid(oto=True),
+        ]
+        for payload in cases:
+            with self.subTest(payload=payload):
+                with self.assertRaises(ValueError):
+                    self.check(payload)
+
+    def test_qty_and_notional_are_mutually_exclusive_and_positive(self):
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            self.check(self.valid(notional="50"))
+        payload = self.valid()
+        del payload["qty"]
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            self.check(payload)
+        payload["notional"] = "50"
+        result = self.check(payload)
+        self.assertEqual(result["notional"], "50")
+        self.assertEqual(result["estimated_gross"], "50")
+
+    def test_asset_minimums_and_increments_are_required_and_enforced(self):
+        bad_rules = [
+            ("min_quantity", "0"), ("quantity_increment", "0"),
+            ("min_notional", "0"), ("price_increment", "0"),
+            ("taker_fee_fraction", "0"),
+        ]
+        values = {
+            "min_quantity": D("0.0001"), "quantity_increment": D("0.0001"),
+            "min_notional": D("1"), "price_increment": D("0.01"),
+            "taker_fee_fraction": D("0.0025"),
+        }
+        for field, invalid in bad_rules:
+            with self.subTest(field=field):
+                changed = dict(values)
+                changed[field] = D(invalid)
+                with self.assertRaises(ValueError):
+                    CryptoOrderRules(**changed)
+        with self.assertRaisesRegex(ValueError, "below asset minimum"):
+            self.check(self.valid(qty="0.00001"))
+        with self.assertRaisesRegex(ValueError, "quantity violates"):
+            self.check(self.valid(qty="0.00015"))
+        with self.assertRaisesRegex(ValueError, "price violates"):
+            self.check(self.valid(type="limit", limit_price="49000.001"))
+        payload = self.valid()
+        del payload["qty"]
+        payload["notional"] = "0.99"
+        with self.assertRaisesRegex(ValueError, "notional is below"):
+            self.check(payload)
+
+    def test_fee_is_included_before_cash_acceptance(self):
+        payload = self.valid(qty="0.0020")
+        with self.assertRaisesRegex(ValueError, "exceeds cash"):
+            self.check(payload, cash="100")
+        result = self.check(payload, cash="100.25")
+        self.assertEqual(result["estimated_gross"], "100.0000")
+        self.assertEqual(result["estimated_taker_fee"], "0.25000000")
+        self.assertEqual(result["estimated_total_debit"], "100.25000000")
+
+    def test_rejected_contract_never_mutates_paper_journal(self):
+        with tempfile.TemporaryDirectory() as temp:
+            engine = PaperEngine(Path(temp) / "paper.sqlite3", D("100"),
+                                 RiskPolicy(D("70"), D("100"), D("100")))
+            before = engine.snapshot()
+            with self.assertRaises(ValueError):
+                self.check(self.valid(time_in_force="day"))
+            self.assertEqual(engine.snapshot(), before)
+            self.assertEqual(engine.orders(), [])
 
 
 if __name__ == "__main__":
