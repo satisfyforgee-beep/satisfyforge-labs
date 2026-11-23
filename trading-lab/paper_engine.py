@@ -97,6 +97,136 @@ class PaperOrder:
 
 
 @dataclass(frozen=True)
+class CryptoOrderRules:
+    """Explicit provider metadata required before shaping a crypto order.
+
+    These values must come from a captured asset/fee snapshot.  Defaults are
+    intentionally omitted so missing precision, minimum, or fee evidence fails
+    closed instead of silently borrowing assumptions from another pair.
+    """
+
+    min_quantity: Decimal
+    quantity_increment: Decimal
+    min_notional: Decimal
+    price_increment: Decimal
+    taker_fee_fraction: Decimal
+
+    def __post_init__(self) -> None:
+        for name in ("min_quantity", "quantity_increment", "min_notional",
+                     "price_increment", "taker_fee_fraction"):
+            object.__setattr__(self, name, amount(getattr(self, name)))
+
+
+def validate_crypto_buy_contract(payload: dict, *, rules: CryptoOrderRules,
+                                 available_cash: Decimal,
+                                 reference_price: Decimal) -> dict:
+    """Validate one offline crypto buy request without submitting or filling it.
+
+    Alpaca documents crypto ``market``, ``limit`` and ``stop_limit`` orders,
+    ``gtc``/``ioc`` time in force, and fractional sizing by exactly one of
+    ``qty`` or ``notional``.  This guard additionally requires captured
+    pair-specific increments/minimums plus an explicit conservative fee and
+    cash estimate.  It is a contract audit only, not a broker adapter.
+    """
+    if not isinstance(payload, dict):
+        raise ValueError("Crypto order payload must be an object")
+    forbidden = {"order_class", "take_profit", "stop_loss", "bracket", "oco", "oto"}
+    if forbidden.intersection(payload):
+        raise ValueError("Bracket/OCO/OTO fields are unsupported for crypto")
+    allowed = {
+        "symbol", "side", "type", "time_in_force", "qty", "notional",
+        "limit_price", "stop_price", "client_order_id",
+    }
+    unknown = set(payload) - allowed
+    if unknown:
+        raise ValueError("Unknown crypto order fields")
+
+    symbol = payload.get("symbol")
+    if (not isinstance(symbol, str) or "/" not in symbol
+            or symbol != symbol.upper() or any(char.isspace() for char in symbol)):
+        raise ValueError("Explicit uppercase crypto pair required")
+    if payload.get("side") != "buy":
+        raise ValueError("This contract guard supports buys only")
+    order_type = payload.get("type")
+    if order_type not in {"market", "limit", "stop_limit"}:
+        raise ValueError("Unsupported crypto order type")
+    time_in_force = payload.get("time_in_force")
+    if time_in_force not in {"gtc", "ioc"}:
+        raise ValueError("Unsupported crypto time in force")
+
+    has_qty = "qty" in payload
+    has_notional = "notional" in payload
+    if has_qty == has_notional:
+        raise ValueError("Provide exactly one of crypto qty or notional")
+    sizing_name = "qty" if has_qty else "notional"
+    sizing = amount(payload[sizing_name])
+    cash = amount(available_cash)
+    reference = amount(reference_price)
+
+    limit_price = None
+    stop_price = None
+    if order_type == "market":
+        if "limit_price" in payload or "stop_price" in payload:
+            raise ValueError("Market crypto order cannot contain limit/stop prices")
+    elif order_type == "limit":
+        if "limit_price" not in payload or "stop_price" in payload:
+            raise ValueError("Limit crypto order requires only limit_price")
+        limit_price = amount(payload["limit_price"])
+    else:
+        if "limit_price" not in payload or "stop_price" not in payload:
+            raise ValueError("Stop-limit crypto order requires limit_price and stop_price")
+        limit_price = amount(payload["limit_price"])
+        stop_price = amount(payload["stop_price"])
+
+    for label, price in (("limit", limit_price), ("stop", stop_price)):
+        if price is not None and price % rules.price_increment != 0:
+            raise ValueError(f"Crypto {label} price violates asset increment")
+
+    if has_qty:
+        if sizing < rules.min_quantity:
+            raise ValueError("Crypto quantity is below asset minimum")
+        if sizing % rules.quantity_increment != 0:
+            raise ValueError("Crypto quantity violates asset increment")
+        gross = sizing * (limit_price if limit_price is not None else reference)
+    else:
+        if sizing < rules.min_notional:
+            raise ValueError("Crypto notional is below asset minimum")
+        gross = sizing
+
+    fee = gross * rules.taker_fee_fraction
+    total_debit = gross + fee
+    if total_debit > cash:
+        raise ValueError("Crypto order exceeds cash after conservative fee")
+
+    canonical = {
+        "symbol": symbol,
+        "side": "buy",
+        "type": order_type,
+        "time_in_force": time_in_force,
+        sizing_name: str(sizing),
+        "estimated_gross": str(gross),
+        "estimated_taker_fee": str(fee),
+        "estimated_total_debit": str(total_debit),
+        "available_cash": str(cash),
+        "reference_price": str(reference),
+        "execution_evidence": False,
+        "broker_submit_allowed": False,
+        "warning": "Offline contract validation only; not an order, fill, or profit claim.",
+    }
+    if limit_price is not None:
+        canonical["limit_price"] = str(limit_price)
+    if stop_price is not None:
+        canonical["stop_price"] = str(stop_price)
+    client_order_id = payload.get("client_order_id")
+    if client_order_id is not None:
+        if (not isinstance(client_order_id, str) or not client_order_id
+                or len(client_order_id) > 128 or any(c.isspace() for c in client_order_id)):
+            raise ValueError("Stable crypto client_order_id is invalid")
+        canonical["client_order_id"] = client_order_id
+    return canonical
+
+
+@dataclass(frozen=True)
 class RiskPolicy:
     max_order_cost: Decimal
     max_total_exposure: Decimal
