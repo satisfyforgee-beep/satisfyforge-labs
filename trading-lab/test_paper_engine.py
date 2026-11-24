@@ -5,8 +5,9 @@ from decimal import Decimal as D
 from pathlib import Path
 
 from paper_engine import (
-    CryptoOrderRules, Instrument, PaperEngine, PaperOrder, Quote, RiskPolicy,
-    amount, validate_crypto_buy_contract,
+    AccountInventoryPolicy, CryptoOrderRules, Instrument, PaperEngine,
+    PaperOrder, Quote, RiskPolicy, amount, validate_crypto_account_preflight,
+    validate_crypto_buy_contract,
 )
 
 
@@ -277,6 +278,103 @@ class CryptoOrderContractTests(unittest.TestCase):
                 self.check(self.valid(time_in_force="day"))
             self.assertEqual(engine.snapshot(), before)
             self.assertEqual(engine.orders(), [])
+
+
+class CryptoAccountPreflightTests(unittest.TestCase):
+    POLICY = AccountInventoryPolicy(D("500"), D("50"), 5)
+
+    def contract(self, **changes):
+        value = {
+            "symbol": "BTC/USD", "client_order_id": "sf-crypto-new-1",
+            "estimated_total_debit": "100", "broker_submit_allowed": False,
+            "execution_evidence": False,
+        }
+        value.update(changes)
+        return value
+
+    def snapshot(self, **changes):
+        value = {
+            "paper_endpoint_verified": True,
+            "positions_complete": True,
+            "open_orders_complete": True,
+            "account": {
+                "status": "ACTIVE", "crypto_status": "PAPER_ONLY",
+                "trading_blocked": False, "account_blocked": False,
+                "trade_suspended_by_user": False, "multiplier": "1",
+                "cash": "400", "buying_power": "400", "equity": "490",
+                "last_equity": "500",
+            },
+            "positions": [
+                {"symbol": "AAPL", "asset_class": "us_equity", "side": "long",
+                 "qty": "1", "cost_basis": "100"},
+                {"symbol": "ETH/USD", "asset_class": "crypto", "side": "long",
+                 "qty": "0.1", "cost_basis": "50"},
+            ],
+            "open_orders": [
+                {"id": "order-1", "client_order_id": "existing-1",
+                 "symbol": "MSFT", "asset_class": "us_equity", "side": "buy",
+                 "status": "new", "type": "limit", "qty": "1",
+                 "notional": None, "limit_price": "75"},
+            ],
+        }
+        value.update(changes)
+        return value
+
+    def check(self, snapshot=None, contract=None, policy=None):
+        return validate_crypto_account_preflight(
+            snapshot or self.snapshot(), contract=contract or self.contract(),
+            policy=policy or self.POLICY)
+
+    def test_multi_asset_inventory_and_open_buy_are_reserved_offline(self):
+        result = self.check()
+        self.assertEqual(result["existing_positions"], 2)
+        self.assertEqual(result["existing_exposure"], "150")
+        self.assertEqual(result["reserved_open_buys"], "75")
+        self.assertEqual(result["projected_exposure"], "325")
+        self.assertFalse(result["broker_submit_allowed"])
+        self.assertFalse(result["execution_evidence"])
+
+    def test_incomplete_or_margin_like_account_snapshot_fails_closed(self):
+        for snapshot in (
+            self.snapshot(positions_complete=False),
+            self.snapshot(account={**self.snapshot()["account"], "multiplier": "4"}),
+            self.snapshot(account={**self.snapshot()["account"],
+                                   "buying_power": "401"}),
+        ):
+            with self.subTest(snapshot=snapshot):
+                with self.assertRaises(ValueError):
+                    self.check(snapshot=snapshot)
+
+    def test_short_duplicate_and_ambiguous_open_market_buy_fail_closed(self):
+        short = self.snapshot()["positions"][:]
+        short[0] = {**short[0], "side": "short"}
+        duplicate = self.snapshot()["open_orders"][:]
+        duplicate[0] = {**duplicate[0], "symbol": "BTC/USD"}
+        market = self.snapshot()["open_orders"][:]
+        market[0] = {**market[0], "type": "market", "limit_price": None}
+        for snapshot in (
+            self.snapshot(positions=short),
+            self.snapshot(open_orders=duplicate),
+            self.snapshot(open_orders=market),
+        ):
+            with self.subTest(snapshot=snapshot):
+                with self.assertRaises(ValueError):
+                    self.check(snapshot=snapshot)
+
+    def test_daily_loss_position_count_cash_and_exposure_caps_block(self):
+        loss_account = {**self.snapshot()["account"], "equity": "450"}
+        tight_count = AccountInventoryPolicy(D("500"), D("50"), 2)
+        tight_exposure = AccountInventoryPolicy(D("300"), D("50"), 5)
+        for snapshot, contract, policy in (
+            (self.snapshot(account=loss_account), None, None),
+            (self.snapshot(), None, tight_count),
+            (self.snapshot(), None, tight_exposure),
+            (self.snapshot(), self.contract(estimated_total_debit="326"), None),
+        ):
+            with self.subTest(snapshot=snapshot, policy=policy):
+                with self.assertRaises(ValueError):
+                    self.check(snapshot=snapshot, contract=contract,
+                               policy=policy)
 
 
 if __name__ == "__main__":
