@@ -227,6 +227,181 @@ def validate_crypto_buy_contract(payload: dict, *, rules: CryptoOrderRules,
 
 
 @dataclass(frozen=True)
+class AccountInventoryPolicy:
+    """Account-wide caps for an offline, paper-only inventory preflight."""
+
+    max_total_exposure: Decimal
+    max_daily_loss: Decimal
+    max_open_positions: int
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "max_total_exposure",
+                           amount(self.max_total_exposure))
+        object.__setattr__(self, "max_daily_loss", amount(self.max_daily_loss))
+        if (not isinstance(self.max_open_positions, int)
+                or isinstance(self.max_open_positions, bool)
+                or self.max_open_positions < 1):
+            raise ValueError("max_open_positions must be a positive integer")
+
+
+def _snapshot_amount(value: object, label: str, *, allow_zero: bool = False) -> Decimal:
+    if isinstance(value, float):
+        raise ValueError(f"{label} must use an exact decimal string")
+    try:
+        number = Decimal(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError, ArithmeticError) as exc:
+        raise ValueError(f"{label} must be a decimal") from exc
+    if not number.is_finite() or number < 0 or (not allow_zero and number == 0):
+        raise ValueError(f"{label} is invalid")
+    return number
+
+
+def validate_crypto_account_preflight(snapshot: dict, *, contract: dict,
+                                      policy: AccountInventoryPolicy) -> dict:
+    """Audit a complete paper-account snapshot before one crypto buy.
+
+    This pure function accepts caller-captured account, position, and open-order
+    GET results.  It reserves existing open buys, counts long positions across
+    equities/options/crypto, and rejects margin-like buying power or ambiguous
+    inventory.  It never fetches provider state or permits broker submission.
+    """
+    if not isinstance(snapshot, dict) or not isinstance(contract, dict):
+        raise ValueError("Snapshot and validated contract must be objects")
+    required_snapshot = {
+        "paper_endpoint_verified", "positions_complete", "open_orders_complete",
+        "account", "positions", "open_orders",
+    }
+    if set(snapshot) != required_snapshot:
+        raise ValueError("Exact account snapshot fields are required")
+    if not all(snapshot[name] is True for name in (
+            "paper_endpoint_verified", "positions_complete", "open_orders_complete")):
+        raise ValueError("Paper account inventory is incomplete or unverified")
+    if (contract.get("broker_submit_allowed") is not False
+            or contract.get("execution_evidence") is not False):
+        raise ValueError("Only an offline validated contract is accepted")
+    symbol = contract.get("symbol")
+    client_id = contract.get("client_order_id")
+    if not isinstance(symbol, str) or not symbol or not isinstance(client_id, str):
+        raise ValueError("Contract symbol and stable client_order_id are required")
+    new_debit = _snapshot_amount(contract.get("estimated_total_debit"),
+                                 "contract total debit")
+
+    account = snapshot["account"]
+    positions = snapshot["positions"]
+    open_orders = snapshot["open_orders"]
+    if not isinstance(account, dict) or not isinstance(positions, list) \
+            or not isinstance(open_orders, list):
+        raise ValueError("Malformed account inventory snapshot")
+    if (account.get("status") != "ACTIVE"
+            or account.get("crypto_status") not in {"APPROVED", "PAPER_ONLY"}
+            or any(account.get(flag) is not False for flag in (
+                "trading_blocked", "account_blocked", "trade_suspended_by_user"))):
+        raise ValueError("Paper account or crypto trading is not active")
+    if str(account.get("multiplier")) != "1":
+        raise ValueError("Cash-only account multiplier is not verified")
+    cash = _snapshot_amount(account.get("cash"), "account cash", allow_zero=True)
+    buying_power = _snapshot_amount(account.get("buying_power"),
+                                    "account buying power", allow_zero=True)
+    equity = _snapshot_amount(account.get("equity"), "account equity")
+    last_equity = _snapshot_amount(account.get("last_equity"),
+                                   "prior account equity")
+    if buying_power > cash:
+        raise ValueError("Buying power exceeds cash; margin-like capacity blocked")
+    daily_loss = max(Decimal("0"), last_equity - equity)
+    if daily_loss >= policy.max_daily_loss:
+        raise ValueError("Account-wide daily loss limit reached")
+
+    allowed_assets = {"us_equity", "us_option", "crypto"}
+    seen_positions: set[tuple[str, str]] = set()
+    position_symbols: set[str] = set()
+    exposure = Decimal("0")
+    for position in positions:
+        if not isinstance(position, dict) or set(position) != {
+                "symbol", "asset_class", "side", "qty", "cost_basis"}:
+            raise ValueError("Malformed position inventory")
+        key = (position.get("asset_class"), position.get("symbol"))
+        if (key[0] not in allowed_assets or not isinstance(key[1], str)
+                or not key[1] or key in seen_positions):
+            raise ValueError("Unsupported or duplicate position inventory")
+        if position.get("side") != "long":
+            raise ValueError("Short positions violate cash-only policy")
+        _snapshot_amount(position.get("qty"), "position quantity")
+        exposure += _snapshot_amount(position.get("cost_basis"),
+                                     "position cost basis")
+        seen_positions.add(key)
+        position_symbols.add(key[1])
+
+    if symbol in position_symbols:
+        raise ValueError("Existing position duplicates intended crypto symbol")
+    if len(positions) + 1 > policy.max_open_positions:
+        raise ValueError("Maximum open-position count would be exceeded")
+
+    open_statuses = {
+        "new", "accepted", "pending_new", "partially_filled",
+        "pending_cancel", "pending_replace", "accepted_for_bidding", "held",
+    }
+    seen_order_ids: set[str] = set()
+    seen_client_ids: set[str] = set()
+    reserved_buys = Decimal("0")
+    for order in open_orders:
+        if not isinstance(order, dict) or set(order) != {
+                "id", "client_order_id", "symbol", "asset_class", "side",
+                "status", "type", "qty", "notional", "limit_price"}:
+            raise ValueError("Malformed open-order inventory")
+        order_id = order.get("id")
+        order_client_id = order.get("client_order_id")
+        order_symbol = order.get("symbol")
+        if (not isinstance(order_id, str) or not order_id
+                or not isinstance(order_client_id, str) or not order_client_id
+                or order_id in seen_order_ids or order_client_id in seen_client_ids):
+            raise ValueError("Duplicate or missing open-order identity")
+        if (order.get("asset_class") not in allowed_assets
+                or order.get("status") not in open_statuses
+                or order.get("side") not in {"buy", "sell"}
+                or not isinstance(order_symbol, str) or not order_symbol):
+            raise ValueError("Unsupported open-order inventory")
+        if order_symbol == symbol or order_client_id == client_id:
+            raise ValueError("Duplicate position/order intent detected")
+        if order.get("side") == "buy":
+            has_qty = order.get("qty") is not None
+            has_notional = order.get("notional") is not None
+            if has_qty == has_notional:
+                raise ValueError("Open buy requires exactly one sizing mode")
+            if has_notional:
+                reserved_buys += _snapshot_amount(order["notional"],
+                                                  "open-order notional")
+            else:
+                if order.get("type") not in {"limit", "stop_limit"} \
+                        or order.get("limit_price") is None:
+                    raise ValueError("Open market buy cannot be reserved safely")
+                reserved_buys += (
+                    _snapshot_amount(order["qty"], "open-order quantity")
+                    * _snapshot_amount(order["limit_price"],
+                                       "open-order limit price")
+                )
+        seen_order_ids.add(order_id)
+        seen_client_ids.add(order_client_id)
+
+    if reserved_buys + new_debit > buying_power:
+        raise ValueError("Open buys plus intended order exceed cash buying power")
+    projected_exposure = exposure + reserved_buys + new_debit
+    if projected_exposure > policy.max_total_exposure:
+        raise ValueError("Projected account-wide exposure exceeds policy")
+    return {
+        "paper_endpoint_verified": True,
+        "existing_positions": len(positions),
+        "existing_exposure": str(exposure),
+        "reserved_open_buys": str(reserved_buys),
+        "intended_total_debit": str(new_debit),
+        "projected_exposure": str(projected_exposure),
+        "account_daily_loss": str(daily_loss),
+        "broker_submit_allowed": False,
+        "execution_evidence": False,
+        "warning": "Offline inventory preflight only; independent broker readback still required.",
+    }
+
+
+@dataclass(frozen=True)
 class RiskPolicy:
     max_order_cost: Decimal
     max_total_exposure: Decimal

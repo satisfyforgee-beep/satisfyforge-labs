@@ -69,6 +69,15 @@ rejects DAY, stop-market, bracket/OCO/OTO, ambiguous sizing and missing risk
 metadata before anything can touch the journal. Its output explicitly forbids
 broker submission and is not a fill, signal, adapter, or profit result.
 
+`validate_crypto_account_preflight` adds a second offline boundary around that
+contract. It requires complete paper-account, position, and open-order captures;
+counts long equity, option, and crypto cost basis together; reserves unfilled
+buy orders; and rejects margin-like buying power, shorts, duplicate symbol or
+client intent, ambiguous market-order reservations, daily-loss breaches, and
+projected cash/exposure/position-cap breaches. It still returns
+`broker_submit_allowed=false`: provider GETs and an independent post-order
+readback are intentionally absent.
+
 ## Important boundaries and roadmap
 
 1. No broker API keys in this public GitHub repository or test logs. Future
