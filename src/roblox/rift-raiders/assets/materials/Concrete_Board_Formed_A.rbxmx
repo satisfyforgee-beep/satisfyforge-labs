@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<roblox version="4"><External>null</External><External>nil</External><Item class="MaterialVariant" referent="RBX2807af323cdf4c9c84e0730497642943">
+			<Properties>
+				<token name="AlphaMode">3</token>
+				<token name="BaseMaterial">1376</token>
+				<Content name="ColorMap"><url>rbxassetid://9942998923</url></Content>
+				<PhysicalProperties name="CustomPhysicalProperties">
+					<CustomPhysics>false</CustomPhysics>
+				</PhysicalProperties>
+				<Content name="EmissiveMaskContent">
+					<null />
+				</Content>
+				<float name="EmissiveStrength">1</float>
+				<Color3 name="EmissiveTint">
+					<R>1</R>
+					<G>1</G>
+					<B>1</B>
+				</Color3>
+				<token name="MaterialPattern">0</token>
+				<Content name="MetalnessMap"><null /></Content>
+				<Content name="NormalMap"><url>rbxassetid://9942998998</url></Content>
+				<Content name="RoughnessMap"><url>rbxassetid://9942998661</url></Content>
+				<float name="StudsPerTile">10</float>
+				<Content name="TexturePack"><url>rbxassetid://9942999057</url></Content>
+				<string name="Name">Concrete_Board_Formed_A</string>
+				</Properties>
+		</Item>
+		</roblox>

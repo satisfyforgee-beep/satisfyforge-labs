@@ -1,0 +1,2933 @@
+<roblox version="4">
+  <Item class="ReplicatedStorage" referent="0">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="ModuleScript" referent="1">
+      <Properties>
+        <string name="Name">PrestigeCatalog</string>
+        <string name="Source"><![CDATA[-- Earned prestige catalog. Every item is earned with in-game coins.
+-- NO Robux product IDs or purchase prompts are configured in this prototype.
+local Catalog={}
+Catalog.Items={
+ {id="CITY_WRAP",name="Midnight City Car Wrap",category="vehicle",
+  level=3,coins=450,description="Deep midnight paint for your personal car"},
+ {id="ESTATE_ROOF",name="Modern Estate Roof",category="home",
+  level=5,coins=1200,description="Slate roof and warm exterior lighting"},
+ {id="PLATINUM_WRAP",name="Platinum Hypercar Finish",category="vehicle",
+  level=10,coins=3800,description="Reflective platinum finish for personal vehicles"},
+ {id="HOME_GARAGE",name="Luxury Home Garage",category="home",
+  level=12,coins=6000,wood=10,metal=8,
+  description="Build a full garage and private driveway at your house"},
+ {id="SNOWMOBILE_LICENSE",name="Snowmobile Driver License",category="vehicle",
+  level=5,coins=1400,description="Earn permanent access to ride snowmobiles"},
+ {id="JETPACK_LICENSE",name="Jetpack Pilot License",category="vehicle",
+  level=7,coins=2200,description="Unlock jetpack launches at the Arctic station"},
+ {id="FLIGHT_LICENSE",name="Flying Car Pilot License",category="vehicle",
+  level=12,coins=6500,description="Unlock flying cars for advanced exploration"},
+ {id="AURORA_TRAIL",name="Aurora Legend Trail",category="avatar",
+  level=18,coins=9000,description="An animated glowing trail following your character"},
+}
+Catalog.ById={}
+for _,entry in ipairs(Catalog.Items) do Catalog.ById[entry.id]=entry end
+function Catalog.ValidateOwned(value)
+ local clean={}
+ if type(value)=="table" then
+  for _,entry in ipairs(Catalog.Items) do
+   if value[entry.id]==true then clean[entry.id]=true end
+  end
+ end
+ return clean
+end
+function Catalog.PriceText(entry)
+ local extra=(entry.wood and (" + "..entry.wood.." wood + "..entry.metal.." metal")) or ""
+ return entry.coins.." coins"..extra.." | level "..entry.level
+end
+return Catalog
+]]></string>
+      </Properties>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="2">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Script" referent="3">
+      <Properties>
+        <string name="Name">RiftRaidersServer</string>
+        <token name="RunContext">0</token>
+        <string name="Source"><![CDATA[-- RIFT RAIDERS: CHAOS ISLANDS. Original, free-to-play multiplayer prototype.
+-- All rewards, combat, abilities and progression are validated on the server.
+local Players=game:GetService("Players")
+local ReplicatedStorage=game:GetService("ReplicatedStorage")
+local RunService=game:GetService("RunService")
+local Lighting=game:GetService("Lighting")
+local DataStoreService=game:GetService("DataStoreService")
+local HttpService=game:GetService("HttpService")
+local Debris=game:GetService("Debris")
+local ServerScriptService=game:GetService("ServerScriptService")
+local WorldKit=require(ServerScriptService:WaitForChild("WorldKit"))
+local WorldExpansion=require(ServerScriptService:WaitForChild("WorldExpansion"))
+local WorldActivities=require(ServerScriptService:WaitForChild("WorldActivities"))
+local WorldPolish=require(ServerScriptService:WaitForChild("WorldPolish"))
+local Catalog=require(ReplicatedStorage:WaitForChild("PrestigeCatalog"))
+local Vehicles=require(ServerScriptService:WaitForChild("VehicleService"))
+local world=Instance.new("Folder"); world.Name="RiftRaidersWorld"; world.Parent=workspace
+world:SetAttribute("Version","0.5.0")
+world:SetAttribute("Phase","CALM")
+world:SetAttribute("SecondsLeft",75)
+local palette={Color3.fromRGB(54,232,244),Color3.fromRGB(255,96,164),Color3.fromRGB(171,110,255),Color3.fromRGB(255,209,75),Color3.fromRGB(91,244,149)}
+local biomes={
+ {id="CYBER",name="Neon Metropolis",center=Vector3.new(180,0,0),color=palette[1]},
+ {id="CRYSTAL",name="Prism Wilds",center=Vector3.new(-180,0,0),color=palette[3]},
+ {id="VOLCANO",name="Magma Outpost",center=Vector3.new(0,0,180),color=palette[2]},
+ {id="SKY",name="Cloud Kingdom",center=Vector3.new(0,0,-180),color=palette[4]},
+}
+local function part(name,size,pos,color,material,collide)
+ local p=Instance.new("Part"); p.Name=name; p.Anchored=true; p.Size=size; p.Position=pos
+ p.Material=material or Enum.Material.SmoothPlastic; p.Color=color
+ p.CanCollide=collide~=false; p.TopSurface=Enum.SurfaceType.Smooth
+ p.BottomSurface=Enum.SurfaceType.Smooth; p.Parent=world; return p
+end
+local function sign(text,pos,color,width)
+ local anchor=part("SignAnchor",Vector3.new(1,1,1),pos,color,nil,false)
+ anchor.Transparency=1
+ local gui=Instance.new("BillboardGui"); gui.Size=UDim2.fromOffset(width or 280,64)
+ gui.MaxDistance=160; gui.AlwaysOnTop=true; gui.Parent=anchor
+ local label=Instance.new("TextLabel"); label.Size=UDim2.fromScale(1,1)
+ label.BackgroundTransparency=1; label.Text=text; label.TextScaled=true
+ label.TextColor3=color; label.TextStrokeTransparency=.3
+ label.Font=Enum.Font.GothamBlack; label.Parent=gui
+ return anchor
+end
+local function glow(p,color,range)
+ local light=Instance.new("PointLight"); light.Color=color; light.Range=range or 14
+ light.Brightness=1.2; light.Parent=p
+end
+Lighting.ClockTime=16; Lighting.Brightness=2.5
+Lighting.Ambient=Color3.fromRGB(120,132,179)
+local atmosphere=Instance.new("Atmosphere"); atmosphere.Density=.18
+atmosphere.Color=Color3.fromRGB(155,176,236); atmosphere.Parent=Lighting
+local bloom=Instance.new("BloomEffect"); bloom.Intensity=.22; bloom.Threshold=1.8
+bloom.Size=24; bloom.Parent=Lighting
+part("Void Floor",Vector3.new(650,2,650),Vector3.new(0,-70,0),Color3.fromRGB(14,13,32),nil,false)
+local hub=part("Central Hub",Vector3.new(120,4,120),Vector3.new(0,-1,0),Color3.fromRGB(38,45,85))
+local spawn=Instance.new("SpawnLocation"); spawn.Name="RiftRaidersSpawn"
+spawn.Neutral=true; spawn.Anchored=true; spawn.Size=Vector3.new(22,1,22)
+spawn.Position=Vector3.new(0,2,0); spawn.Material=Enum.Material.Neon
+spawn.Color=palette[5]; spawn.Parent=world
+sign("RIFT RAIDERS | CHAOS ISLANDS",Vector3.new(0,23,0),palette[4],460)
+sign("BLAST DRONES • COLLECT SHARDS • SEAL RIFTS",Vector3.new(0,15,0),palette[1],460)
+-- Central arena, tower, rings and colored paths: readable on a small screen.
+for i=1,8 do
+ local angle=(i-1)*math.pi/4
+ local pos=Vector3.new(math.cos(angle)*47,8,math.sin(angle)*47)
+ local tower=part("Hub Beacon Pillar",Vector3.new(6,16,6),pos,palette[(i-1)%5+1],Enum.Material.Metal)
+ local lamp=part("Hub Beacon Light",Vector3.new(8,2,8),pos+Vector3.new(0,9,0),palette[(i-1)%5+1],Enum.Material.Neon)
+ glow(lamp,lamp.Color)
+end
+local bridgeData={
+ {Vector3.new(90,0,0),Vector3.new(75,2,22)},
+ {Vector3.new(-90,0,0),Vector3.new(75,2,22)},
+ {Vector3.new(0,0,90),Vector3.new(22,2,75)},
+ {Vector3.new(0,0,-90),Vector3.new(22,2,75)},
+}
+for i,b in ipairs(bridgeData) do
+ local walkway=part("Safe Skybridge",b[2],b[1],palette[i],Enum.Material.SmoothPlastic)
+ for side=-1,1,2 do
+  local railSize=i<=2 and Vector3.new(75,3,2) or Vector3.new(2,3,75)
+  local offset=i<=2 and Vector3.new(0,2,side*11) or Vector3.new(side*11,2,0)
+  part("Bridge Rail",railSize,b[1]+offset,Color3.fromRGB(31,40,76),Enum.Material.Metal)
+ end
+end
+local shards={}
+local drones={}
+local beacons={}
+-- Co-op Chaos Titan: a shared boss that appears during Rift Surge.
+local boss=part("Chaos Titan",Vector3.new(17,17,17),Vector3.new(0,17,0),
+ palette[2],Enum.Material.Neon,false)
+boss.Shape=Enum.PartType.Ball; boss.Transparency=1; boss.CanTouch=false
+boss:SetAttribute("Health",0)
+glow(boss,palette[2],35)
+local bossActive=false; local bossHP=0; local bossContributors={}
+local bossAttackAt=0
+for index,biome in ipairs(biomes) do
+ local center=biome.center
+ local base=part(biome.id.." Island",Vector3.new(115,4,115),center+Vector3.new(0,-1,0),
+  Color3.fromRGB(38+index*9,37+index*7,75+index*7))
+ sign(biome.name:upper(),center+Vector3.new(0,22,0),biome.color,360)
+ for i=1,8 do
+  local angle=i*math.pi/4
+  local x=math.cos(angle)*42; local z=math.sin(angle)*42
+  local height=9+(i%3)*9
+  local p=part(biome.id.." Landmark",Vector3.new(9,height,9),
+   center+Vector3.new(x,height/2,z),Color3.fromRGB(30,40,74),Enum.Material.Metal)
+  local cap=part(biome.id.." Glow Roof",Vector3.new(11,2,11),
+   p.Position+Vector3.new(0,height/2+1,0),biome.color,Enum.Material.Neon,false)
+  if index==2 then
+   local crystal=part("Prism Spire",Vector3.new(5,height+8,5),
+    p.Position+Vector3.new(0,7,0),biome.color,Enum.Material.Glass,false)
+   crystal.CFrame=crystal.CFrame*CFrame.Angles(0,math.rad(i*30),math.rad(10))
+  elseif index==3 then
+   local fire=Instance.new("Fire"); fire.Size=7; fire.Heat=5; fire.Parent=cap
+  elseif index==4 then
+   local cloud=part("Cloud Platform",Vector3.new(16,2,16),
+    p.Position+Vector3.new(0,height/2+8,0),Color3.fromRGB(235,239,255),nil,false)
+   cloud.Shape=Enum.PartType.Ball
+  end
+ end
+ local beacon=part("Rift Core "..biome.id,Vector3.new(10,13,10),
+  center+Vector3.new(0,8,28),biome.color,Enum.Material.Neon,false)
+ beacon.Shape=Enum.PartType.Ball; glow(beacon,biome.color,22)
+ local prompt=Instance.new("ProximityPrompt"); prompt.ActionText="Seal Rift (12 shards)"
+ prompt.ObjectText=biome.name; prompt.HoldDuration=1; prompt.MaxActivationDistance=14
+ prompt.RequiresLineOfSight=false; prompt.Parent=beacon
+ beacons[beacon]=biome
+ sign("SEAL RIFT: 12 SHARDS",beacon.Position+Vector3.new(0,12,0),biome.color,280)
+ for i=1,9 do
+  local angle=i*math.pi*2/9
+  local radius=20+(i%3)*10
+  local orb=part("Rift Shard",Vector3.new(4,4,4),
+   center+Vector3.new(math.cos(angle)*radius,5,math.sin(angle)*radius),
+   palette[(index+i-2)%5+1],Enum.Material.Neon,false)
+  orb.Shape=Enum.PartType.Ball; orb:SetAttribute("Biome",biome.id)
+  glow(orb,orb.Color,10)
+  table.insert(shards,orb)
+ end
+ for i=1,3 do
+  local a=i*math.pi*2/3
+  local spawnPos=center+Vector3.new(math.cos(a)*28,6,math.sin(a)*28)
+  local drone=part("Rift Drone",Vector3.new(7,7,7),spawnPos,
+   biome.color,Enum.Material.Neon,false)
+  drone.Shape=Enum.PartType.Ball; drone:SetAttribute("Health",3)
+  drone:SetAttribute("Biome",biome.id)
+  glow(drone,biome.color)
+  drones[drone]={home=spawnPos,health=3,alive=true,attackAt=0}
+ end
+end
+-- Reusable hand-built asset kit populates the islands without external downloads.
+WorldKit.Populate(world,biomes)
+-- A small physical skill course with a real summit reward.
+local sky=biomes[4].center
+for i=1,5 do
+ part("Cloud Jump "..i,Vector3.new(13,2,13),
+  sky+Vector3.new(-27+i*10,4+i*5,-18+((i%2)*10)),
+  Color3.fromRGB(228,239,255))
+end
+local summit=part("Cloud Summit",Vector3.new(13,3,13),
+ sky+Vector3.new(23,32,-8),palette[4],Enum.Material.Neon,false)
+sign("SUMMIT BONUS +80 COINS",summit.Position+Vector3.new(0,7,0),palette[4])
+local event=Instance.new("RemoteEvent"); event.Name="RiftRaidersEvent"; event.Parent=ReplicatedStorage
+local action=Instance.new("RemoteEvent"); action.Name="RiftRaidersAction"; action.Parent=ReplicatedStorage
+local activitySignal=Instance.new("RemoteEvent"); activitySignal.Name="RiftActivitiesSignal"; activitySignal.Parent=ReplicatedStorage
+-- Two reusable first-person/third-person sci-fi weapons. The server decides hits.
+local ServerStorage=game:GetService("ServerStorage")
+local function makeWeapon(name,color,length)
+ local tool=Instance.new("Tool"); tool.Name=name
+ tool.ToolTip="Aim with camera, tap or click to fire"
+ tool.RequiresHandle=true; tool.CanBeDropped=false
+ tool.Grip=CFrame.new(0,-.2,-.6)*CFrame.Angles(0,math.rad(90),0)
+ local handle=Instance.new("Part"); handle.Name="Handle"
+ handle.Size=Vector3.new(1,1.2,3.2); handle.Color=Color3.fromRGB(38,45,63)
+ handle.Material=Enum.Material.Metal; handle.CanCollide=false; handle.Massless=true
+ handle.Parent=tool
+ local barrel=Instance.new("Part"); barrel.Name="Glowing Barrel"
+ barrel.Size=Vector3.new(.7,.7,length); barrel.Material=Enum.Material.Neon
+ barrel.Color=color; barrel.CanCollide=false; barrel.Massless=true
+ barrel.CFrame=handle.CFrame*CFrame.new(0,0,-length*.45)
+ barrel.Parent=tool
+ local weld=Instance.new("WeldConstraint"); weld.Part0=handle; weld.Part1=barrel; weld.Parent=handle
+ tool.Parent=ServerStorage
+ return tool
+end
+local pulseTemplate=makeWeapon("Pulse Rifle",palette[1],4)
+local scatterTemplate=makeWeapon("Scatter Blaster",palette[2],2.5)
+local function grantWeapon(p,template)
+ local backpack=p:FindFirstChildOfClass("Backpack")
+ if not backpack then return end
+ if backpack:FindFirstChild(template.Name) or (p.Character and p.Character:FindFirstChild(template.Name)) then return end
+ template:Clone().Parent=backpack
+end
+local profiles={}
+local store=nil
+if not RunService:IsStudio() and game.GameId~=0 then
+ store=DataStoreService:GetDataStore("RiftRaidersProfiles_v1")
+end
+local function cleanInt(n,max)
+ return (type(n)=="number" and n==n and n>=0) and math.clamp(math.floor(n),0,max) or 0
+end
+local function tell(p,msg) event:FireClient(p,tostring(msg)) end
+local function applyTrail(p)
+ local s=profiles[p]
+ local root=p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+ if not s or not root or not s.owned.AURORA_TRAIL then return end
+ if root:FindFirstChild("AuroraLegendTrail") then return end
+ local a=Instance.new("Attachment"); a.Name="AuroraTrailTop"
+ a.Position=Vector3.new(0,1,0); a.Parent=root
+ local b=Instance.new("Attachment"); b.Name="AuroraTrailBottom"
+ b.Position=Vector3.new(0,-1,0); b.Parent=root
+ local t=Instance.new("Trail"); t.Name="AuroraLegendTrail"
+ t.Attachment0=a; t.Attachment1=b; t.Lifetime=.65
+ t.MinLength=.12; t.LightEmission=.8; t.FaceCamera=true
+ t.Color=ColorSequence.new(Color3.fromRGB(103,255,218),
+  Color3.fromRGB(160,104,255))
+ t.Transparency=NumberSequence.new(0.22,1)
+ t.Parent=root
+end
+local function sync(p)
+ local s=profiles[p]; if not s then return end
+ p:SetAttribute("RRCoins",s.coins); p:SetAttribute("RRShards",s.shards)
+ p:SetAttribute("RRLevel",s.level); p:SetAttribute("RRXP",s.xp)
+ p:SetAttribute("RRBlaster",s.blaster); p:SetAttribute("RRShield",s.shieldOwned)
+ p:SetAttribute("RRPet",s.petOwned); p:SetAttribute("RRSeals",s.seals)
+ p:SetAttribute("RRScatter",s.scatterOwned)
+ p:SetAttribute("RRQuestShards",s.quest.shards)
+ p:SetAttribute("RRQuestDrones",s.quest.drones)
+ p:SetAttribute("RRQuestSeals",s.quest.seals)
+ local r=s.resources or {}
+ p:SetAttribute("RRWood",r.wood or 0); p:SetAttribute("RRMetal",r.metal or 0)
+ p:SetAttribute("RRFish",r.fish or 0); p:SetAttribute("RRHide",r.hide or 0)
+ p:SetAttribute("RRToolkits",r.toolkit or 0)
+ p:SetAttribute("RRHeat",s.heat or 0)
+ p:SetAttribute("RRSportsWins",(s.jobs and s.jobs.sports) or 0)
+ p:SetAttribute("RRHeists",(s.jobs and s.jobs.heists) or 0)
+ p:SetAttribute("RRHouseOwned",(s.jobs and s.jobs.houseOwned) or false)
+ for _,item in ipairs(Catalog.Items) do
+  p:SetAttribute("RROwn_"..item.id,s.owned[item.id]==true)
+ end
+ p:SetAttribute("RRActiveVehicleWrap",
+  s.owned.PLATINUM_WRAP and "PLATINUM" or
+  s.owned.CITY_WRAP and "MIDNIGHT" or "DEFAULT")
+ local ls=p:FindFirstChild("leaderstats")
+ if ls then
+  ls.Level.Value=s.level; ls.Coins.Value=s.coins; ls.Rifts.Value=s.seals
+ end
+end
+local function reward(p,coins,xp,shards)
+ local s=profiles[p]; if not s then return end
+ local boost=world:GetAttribute("Phase")=="SURGE" and 2 or 1
+ s.coins=math.min(1000000,s.coins+math.max(0,coins or 0)*boost)
+ s.shards=math.min(100000,s.shards+math.max(0,shards or 0))
+ s.xp+=math.max(0,xp or 0)
+ while s.xp>=80+s.level*25 and s.level<100 do
+  s.xp-=80+s.level*25; s.level+=1
+  s.coins=math.min(1000000,s.coins+50)
+  tell(p,"LEVEL UP! LEVEL "..s.level.." +50 COINS")
+ end
+ sync(p)
+end
+-- Seven terrain-based regions, interactive landmarks and server-owned portals.
+local newDestinations=WorldExpansion.Build(world,WorldKit,reward,tell,Vehicles.Spawn)
+local activityDestinations=WorldActivities.Build(world,{
+ getProfile=function(p) return profiles[p] end,
+ reward=reward,sync=sync,tell=tell,signal=activitySignal,
+ spawnVehicle=Vehicles.Spawn,hasVehicle=Vehicles.HasActive
+})
+WorldPolish.Build(world,WorldKit)
+local function quest(p,kind,n)
+ local s=profiles[p]; if not s then return end
+ s.quest[kind]=math.min(({shards=8,drones=3,seals=1})[kind],s.quest[kind]+(n or 1))
+ if s.quest.shards==8 and s.quest.drones==3 and s.quest.seals==1 then
+  s.quest={shards=0,drones=0,seals=0}
+  reward(p,250,120,0); tell(p,"MISSION COMPLETE! +250 COINS +120 XP")
+ end
+ sync(p)
+end
+local function save(p)
+ local s=profiles[p]
+ if not store or not s or not s.loaded then return end
+ local payload={version=3,coins=s.coins,shards=s.shards,level=s.level,xp=s.xp,
+  blaster=s.blaster,shieldOwned=s.shieldOwned,petOwned=s.petOwned,
+  scatterOwned=s.scatterOwned,seals=s.seals,
+  resources={
+   wood=cleanInt(s.resources.wood,9999),metal=cleanInt(s.resources.metal,9999),
+   fish=cleanInt(s.resources.fish,9999),hide=cleanInt(s.resources.hide,9999),
+   toolkit=cleanInt(s.resources.toolkit,9999)
+  },
+  jobs={
+   sports=cleanInt(s.jobs.sports,100000),heists=cleanInt(s.jobs.heists,100000),
+   bankCooldownUntil=cleanInt(s.jobs.bankCooldownUntil,9999999999),
+   carCooldownUntil=cleanInt(s.jobs.carCooldownUntil,9999999999),
+   houseOwned=s.jobs.houseOwned==true
+  },
+  prestige=Catalog.ValidateOwned(s.owned)}
+ local key="Player_"..p.UserId
+ local ok,err=pcall(function()
+  store:UpdateAsync(key,function(previous)
+   local value=type(previous)=="table" and previous or {}
+   -- Never regress an existing account to an older schema.
+   if type(value.version)=="number" and value.version>3 then return nil end
+   return payload
+  end)
+ end)
+ if not ok then warn("RiftRaiders save failed",p.UserId,err) end
+end
+local function init(p)
+ local s={coins=0,shards=0,level=1,xp=0,blaster=1,shieldOwned=false,
+  petOwned=false,scatterOwned=false,seals=0,quest={shards=0,drones=0,seals=0},
+  shardTimes={},beaconTimes={},summitAt=0,lastBlast=0,lastDash=0,lastShield=0,
+  shieldUntil=0,travelAt=0,lastShoot=0,loaded=false,pet=nil,
+  resources={wood=0,metal=0,fish=0,hide=0,toolkit=0},
+  jobs={sports=0,heists=0,bankCooldownUntil=0,carCooldownUntil=0,
+   houseOwned=false},owned={},heat=0}
+ if store then
+  local ok,data=pcall(function() return store:GetAsync("Player_"..p.UserId) end)
+  if ok then
+   if type(data)=="table" and (data.version==nil or data.version==1 or data.version==2 or data.version==3) then
+    s.coins=cleanInt(data.coins,1000000); s.shards=cleanInt(data.shards,100000)
+    s.level=math.max(1,cleanInt(data.level,100)); s.xp=cleanInt(data.xp,100000)
+    s.blaster=math.clamp(cleanInt(data.blaster,4),1,4)
+    s.shieldOwned=data.shieldOwned==true; s.petOwned=data.petOwned==true
+    s.scatterOwned=data.scatterOwned==true
+    s.seals=cleanInt(data.seals,1000000)
+    if type(data.resources)=="table" then
+     for _,key in ipairs({"wood","metal","fish","hide","toolkit"}) do
+      s.resources[key]=cleanInt(data.resources[key],9999)
+     end
+    end
+    if type(data.jobs)=="table" then
+     s.jobs.sports=cleanInt(data.jobs.sports,100000)
+     s.jobs.heists=cleanInt(data.jobs.heists,100000)
+     s.jobs.bankCooldownUntil=cleanInt(data.jobs.bankCooldownUntil,9999999999)
+     s.jobs.carCooldownUntil=cleanInt(data.jobs.carCooldownUntil,9999999999)
+     s.jobs.houseOwned=data.jobs.houseOwned==true
+    end
+    s.owned=Catalog.ValidateOwned(data.prestige)
+   end
+   s.loaded=true
+  else
+   warn("RiftRaiders load failed; save disabled for session",p.UserId,data)
+  end
+ end
+ if not p.Parent then return end
+ profiles[p]=s
+ WorldActivities.PlayerJoined(p)
+ local ls=Instance.new("Folder"); ls.Name="leaderstats"; ls.Parent=p
+ for _,name in ipairs({"Level","Coins","Rifts"}) do
+  local v=Instance.new("IntValue"); v.Name=name; v.Parent=ls
+ end
+ sync(p)
+ task.defer(function()
+  grantWeapon(p,pulseTemplate)
+  if s.scatterOwned then grantWeapon(p,scatterTemplate) end
+ end)
+ p.CharacterAdded:Connect(function()
+  task.wait(.25)
+  if profiles[p] then
+   sync(p)
+   grantWeapon(p,pulseTemplate)
+   if profiles[p].scatterOwned then grantWeapon(p,scatterTemplate) end
+   applyTrail(p)
+  end
+ end)
+ tell(p,"WELCOME! COLLECT SHARDS, BLAST DRONES, SEAL RIFTS!")
+end
+Players.PlayerAdded:Connect(init)
+Players.PlayerRemoving:Connect(function(p)
+ WorldActivities.PlayerRemoving(p)
+ save(p)
+ local s=profiles[p]; if s and s.pet then s.pet:Destroy() end
+ profiles[p]=nil
+end)
+for _,p in ipairs(Players:GetPlayers()) do task.spawn(init,p) end
+task.spawn(function()
+ while world.Parent do
+  task.wait(90)
+  for p in pairs(profiles) do task.spawn(save,p) end
+ end
+end)
+if store then
+ game:BindToClose(function()
+  for p in pairs(profiles) do task.spawn(save,p) end
+  task.wait(3)
+ end)
+end
+
+local function rootFor(p)
+ return p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+end
+local function spawnPet(p)
+ local s=profiles[p]; if not s or not s.petOwned or s.pet then return end
+ local pet=part("Riftling Companion",Vector3.new(3.4,3.4,3.4),
+  Vector3.new(0,10,0),palette[3],Enum.Material.Neon,false)
+ pet.Shape=Enum.PartType.Ball; pet.CanTouch=false; s.pet=pet
+ glow(pet,pet.Color,12)
+end
+local destinations={HUB=Vector3.new(0,6,0)}
+for _,b in ipairs(biomes) do destinations[b.id]=b.center+Vector3.new(0,6,0) end
+for id,pos in pairs(newDestinations) do destinations[id]=pos end
+for id,pos in pairs(activityDestinations) do destinations[id]=pos end
+local function blast(p)
+ local s=profiles[p]; local root=rootFor(p)
+ if not s or not root then return end
+ local now=os.clock()
+ if now-s.lastBlast<.55 then return end
+ s.lastBlast=now
+ if bossActive and (root.Position-boss.Position).Magnitude<48 then
+  bossHP=math.max(0,bossHP-s.blaster)
+  boss:SetAttribute("Health",bossHP)
+  bossContributors[p]=true
+  tell(p,"CHAOS TITAN HIT! "..bossHP.." HP LEFT!")
+  if bossHP==0 then
+   bossActive=false; boss.Transparency=1
+   world:SetAttribute("BossHealth",0)
+   for contributor in pairs(bossContributors) do
+    if profiles[contributor] then
+     reward(contributor,300,120,10)
+     tell(contributor,"TITAN DEFEATED! +300 COINS +10 SHARDS!")
+    end
+   end
+   bossContributors={}
+  else
+   world:SetAttribute("BossHealth",bossHP)
+  end
+  return
+ end
+ local target=nil; local best=32
+ for drone,d in pairs(drones) do
+  if d.alive then
+   local delta=drone.Position-root.Position
+   local distance=delta.Magnitude
+   if distance<best then
+    target=drone; best=distance
+   end
+  end
+ end
+ if not target then tell(p,"MOVE CLOSER TO A DRONE TO BLAST!"); return end
+ local d=drones[target]
+ d.health-=s.blaster
+ target:SetAttribute("Health",math.max(0,d.health))
+ tell(p,"ZAP! DRONE HIT "..s.blaster.." DAMAGE!")
+ if d.health<=0 then
+  d.alive=false; target.Transparency=1; target.CanTouch=false
+  reward(p,30,25,2); quest(p,"drones",1)
+  tell(p,"DRONE DEFEATED! +30 COINS +2 SHARDS!")
+  task.delay(9,function()
+   if target.Parent then
+    d.alive=true; d.health=3; target.Position=d.home
+    target.Transparency=0; target.CanTouch=true
+    target:SetAttribute("Health",3)
+   end
+  end)
+ end
+end
+-- Long-range pulse and scatter weapons: the client supplies aim, never a hit.
+local function shoot(p,aim,weaponName)
+ local s=profiles[p]; local root=rootFor(p)
+ if not s or not root or typeof(aim)~="Vector3" then return end
+ if aim.X~=aim.X or aim.Y~=aim.Y or aim.Z~=aim.Z then return end
+ if aim.Magnitude<.9 or aim.Magnitude>1.1 then return end
+ if weaponName~="Pulse Rifle" and weaponName~="Scatter Blaster" then return end
+ if weaponName=="Scatter Blaster" and not s.scatterOwned then return end
+ local backpack=p:FindFirstChildOfClass("Backpack")
+ if not ((p.Character and p.Character:FindFirstChild(weaponName)) or
+  (backpack and backpack:FindFirstChild(weaponName))) then return end
+ local now=os.clock()
+ local scatter=weaponName=="Scatter Blaster"
+ if now-s.lastShoot<(scatter and .85 or .22) then return end
+ s.lastShoot=now
+ local origin=root.Position+Vector3.new(0,1.8,0)
+ local params=RaycastParams.new()
+ params.FilterType=Enum.RaycastFilterType.Exclude
+ params.FilterDescendantsInstances={p.Character}
+ params.IgnoreWater=true
+ local count=scatter and 4 or 1
+ local maxDistance=scatter and 70 or 125
+ for i=1,count do
+  local spread=scatter and Vector3.new((i-2.5)*.045,((i%2)*2-1)*.035,0) or Vector3.zero
+  local direction=(aim+spread).Unit
+  local hit=workspace:Raycast(origin,direction*maxDistance,params)
+  local endpoint=hit and hit.Position or origin+direction*maxDistance
+  local length=(endpoint-origin).Magnitude
+  if length>.1 then
+   local tracer=Instance.new("Part"); tracer.Name="Pulse Tracer"
+   tracer.Size=Vector3.new(.17,.17,length)
+   tracer.CFrame=CFrame.lookAt((origin+endpoint)*.5,endpoint)
+   tracer.Material=Enum.Material.Neon
+   tracer.Color=scatter and palette[2] or palette[1]
+   tracer.CanCollide=false; tracer.CanTouch=false; tracer.CanQuery=false
+   tracer.Anchored=true; tracer.Parent=world
+   Debris:AddItem(tracer,.12)
+  end
+  local target=hit and hit.Instance
+  if target==boss and bossActive then
+   bossHP=math.max(0,bossHP-1)
+   boss:SetAttribute("Health",bossHP)
+   bossContributors[p]=true
+   world:SetAttribute("BossHealth",bossHP)
+   if bossHP==0 then
+    bossActive=false; boss.Transparency=1
+    for contributor in pairs(bossContributors) do
+     if profiles[contributor] then
+      reward(contributor,300,120,10)
+      tell(contributor,"TITAN DEFEATED! +300 COINS +10 SHARDS!")
+     end
+    end
+    bossContributors={}
+   end
+  elseif target and drones[target] and drones[target].alive then
+   local d=drones[target]
+   d.health-=1
+   target:SetAttribute("Health",math.max(0,d.health))
+   if d.health<=0 then
+    d.alive=false; target.Transparency=1; target.CanTouch=false
+    reward(p,30,25,2); quest(p,"drones",1)
+    tell(p,"DRONE DOWN! +30 COINS +2 SHARDS!")
+    task.delay(9,function()
+     if target.Parent then
+      d.alive=true; d.health=3; target.Position=d.home
+      target.Transparency=0; target.CanTouch=true
+      target:SetAttribute("Health",3)
+     end
+    end)
+   end
+  end
+ end
+end
+for _,shard in ipairs(shards) do
+ shard.Touched:Connect(function(hit)
+  local char=hit:FindFirstAncestorOfClass("Model")
+  local p=char and Players:GetPlayerFromCharacter(char)
+  local s=p and profiles[p]; local root=p and rootFor(p)
+  if not s or not root or (root.Position-shard.Position).Magnitude>14 then return end
+  local now=os.clock()
+  if s.shardTimes[shard] and now-s.shardTimes[shard]<25 then return end
+  s.shardTimes[shard]=now
+  reward(p,5,8,1); quest(p,"shards",1)
+  tell(p,"+1 RIFT SHARD • +5 COINS")
+ end)
+end
+for beacon,biome in pairs(beacons) do
+ local prompt=beacon:FindFirstChildOfClass("ProximityPrompt")
+ prompt.Triggered:Connect(function(p)
+  local s=profiles[p]; local root=rootFor(p)
+  if not s or not root or (root.Position-beacon.Position).Magnitude>17 then return end
+  local now=os.clock()
+  if s.beaconTimes[beacon] and now-s.beaconTimes[beacon]<50 then
+   tell(p,"THIS RIFT NEEDS TIME TO RECHARGE!"); return
+  end
+  if s.shards<12 then tell(p,"NEED 12 SHARDS TO SEAL THIS RIFT!"); return end
+  s.shards-=12; s.beaconTimes[beacon]=now; s.seals+=1
+  reward(p,75,80,0); quest(p,"seals",1)
+  tell(p,"RIFT SEALED! "..biome.name:upper().." +75 COINS!")
+ end)
+end
+summit.Touched:Connect(function(hit)
+ local char=hit:FindFirstAncestorOfClass("Model")
+ local p=char and Players:GetPlayerFromCharacter(char)
+ local s=p and profiles[p]; local root=p and rootFor(p)
+ if not s or not root or (root.Position-summit.Position).Magnitude>15 then return end
+ if root.Position.Y<26 then return end
+ local now=os.clock()
+ if now-s.summitAt<60 then return end
+ s.summitAt=now
+ reward(p,80,65,3)
+ tell(p,"SKY SUMMIT! +80 COINS +3 SHARDS!")
+end)
+action.OnServerEvent:Connect(function(p,kind,arg,extra)
+ local s=profiles[p]; local root=rootFor(p)
+ if not s or not root or type(kind)~="string" then return end
+ local now=os.clock()
+ if kind=="ActivityHit" then
+  if type(arg)=="string" and #arg<32 then WorldActivities.Hit(p,arg) end
+  return
+ end
+ if kind=="Blast" then blast(p); return end
+ if kind=="Shoot" then shoot(p,arg,extra); return end
+ if kind=="SpawnCar" or kind=="SpawnSnowmobile" or kind=="SpawnFlyingCar" then
+  local vehicleKind=kind=="SpawnSnowmobile" and "snowmobile" or
+   kind=="SpawnFlyingCar" and "flyingcar" or "car"
+  local ok,message=Vehicles.Spawn(world,p,vehicleKind)
+  tell(p,message)
+  return
+ end
+ if kind=="Dash" then
+  if now-s.lastDash<6 then return end
+  s.lastDash=now
+  local direction=root.CFrame.LookVector
+  root.AssemblyLinearVelocity=Vector3.new(direction.X*72,18,direction.Z*72)
+  tell(p,"DASH!")
+ elseif kind=="Shield" then
+  if not s.shieldOwned then tell(p,"UNLOCK SHIELD IN SHOP FOR 150 COINS!"); return end
+  if now-s.lastShield<20 then return end
+  s.lastShield=now; s.shieldUntil=now+6
+  local char=p.Character
+  if char then
+   local old=char:FindFirstChild("RiftShield")
+   if old then old:Destroy() end
+   local force=Instance.new("ForceField"); force.Name="RiftShield"
+   force.Parent=char
+   task.delay(6,function() if force.Parent then force:Destroy() end end)
+  end
+  tell(p,"SHIELD ACTIVE FOR 6 SECONDS!")
+ elseif kind=="Travel" then
+  if type(arg)~="string" or not destinations[arg] then return end
+  if now-s.travelAt<2 then return end
+  s.travelAt=now
+  p.Character:PivotTo(CFrame.new(destinations[arg]))
+  tell(p,"ARRIVED: "..arg)
+ elseif kind=="BuyPrestige" then
+  if type(arg)~="string" then return end
+  local item=Catalog.ById[arg]
+  if not item then return end
+  if s.owned[item.id] then tell(p,"ALREADY OWNED: "..item.name); return end
+  if s.level<item.level then
+   tell(p,item.name.." UNLOCKS AT LEVEL "..item.level); return
+  end
+  if s.coins<item.coins then
+   tell(p,"EARN "..(item.coins-s.coins).." MORE COINS FOR "..item.name); return
+  end
+  local wood=item.wood or 0; local metal=item.metal or 0
+  if s.resources.wood<wood or s.resources.metal<metal then
+   tell(p,"NEED "..wood.." WOOD AND "..metal.." METAL"); return
+  end
+  s.coins-=item.coins
+  s.resources.wood-=wood; s.resources.metal-=metal
+  s.owned[item.id]=true
+  sync(p)
+  WorldActivities.RefreshHouse(p)
+  applyTrail(p)
+  tell(p,"PRESTIGE UNLOCKED: "..item.name.."!")
+  return
+ elseif kind=="Buy" then
+  if arg=="BLASTER" then
+   if s.blaster>=4 then tell(p,"BLASTER MAX LEVEL!"); return end
+   local cost=s.blaster*90
+   if s.coins<cost then tell(p,"NEED "..cost.." COINS!"); return end
+   s.coins-=cost; s.blaster+=1
+   tell(p,"BLASTER UPGRADED TO LEVEL "..s.blaster.."!")
+  elseif arg=="SHIELD" then
+   if s.shieldOwned then tell(p,"SHIELD ALREADY OWNED!"); return end
+   if s.coins<150 then tell(p,"NEED 150 COINS!"); return end
+   s.coins-=150; s.shieldOwned=true
+   tell(p,"SHIELD UNLOCKED! PRESS SHIELD TO ACTIVATE!")
+  elseif arg=="SCATTER" then
+   if s.scatterOwned then tell(p,"SCATTER BLASTER ALREADY OWNED!"); return end
+   if s.coins<175 then tell(p,"NEED 175 COINS!"); return end
+   s.coins-=175; s.scatterOwned=true
+   grantWeapon(p,scatterTemplate)
+   tell(p,"SCATTER BLASTER UNLOCKED! EQUIP IT FROM BACKPACK!")
+  elseif arg=="PET" then
+   if s.petOwned then tell(p,"RIFTLING ALREADY OWNED!"); return end
+   if s.coins<250 then tell(p,"NEED 250 COINS!"); return end
+   s.coins-=250; s.petOwned=true; spawnPet(p)
+   tell(p,"YOU ADOPTED A RIFTLING!")
+  else return end
+  sync(p)
+ end
+end)
+local tickAccum=0
+RunService.Heartbeat:Connect(function(dt)
+ tickAccum+=dt
+ if tickAccum<.18 then return end
+ local step=math.min(tickAccum,.3); tickAccum=0
+ for drone,d in pairs(drones) do
+  if d.alive then
+   local closest=nil; local best=52
+   for p,s in pairs(profiles) do
+    local root=rootFor(p)
+    local hum=p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+    if root and hum and hum.Health>0 then
+     local dist=(root.Position-drone.Position).Magnitude
+     if dist<best then closest=p; best=dist end
+    end
+   end
+   if closest then
+    local root=rootFor(closest)
+    local delta=root.Position-drone.Position
+    if delta.Magnitude>4 then
+     local nextPos=drone.Position+delta.Unit*math.min(delta.Magnitude,step*13)
+     drone.Position=Vector3.new(nextPos.X,d.home.Y,nextPos.Z)
+    elseif os.clock()-d.attackAt>2.2 then
+     d.attackAt=os.clock()
+     local s=profiles[closest]
+     if s and os.clock()>s.shieldUntil then
+      local hum=closest.Character and closest.Character:FindFirstChildOfClass("Humanoid")
+      if hum then hum:TakeDamage(8) end
+      tell(closest,"DRONE HIT! BLAST OR DASH TO ESCAPE!")
+     end
+    end
+   else
+    drone.Position=drone.Position:Lerp(d.home,.07)
+   end
+  end
+ end
+ if bossActive then
+  boss.CFrame=boss.CFrame*CFrame.Angles(0,step*.5,0)
+  if os.clock()-bossAttackAt>2.4 then
+   bossAttackAt=os.clock()
+   for p,s in pairs(profiles) do
+    local root=rootFor(p)
+    if root and (root.Position-boss.Position).Magnitude<24 and os.clock()>s.shieldUntil then
+     local hum=p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+     if hum then hum:TakeDamage(10) end
+     tell(p,"CHAOS TITAN SHOCKWAVE! DASH AWAY!")
+    end
+   end
+  end
+ end
+ for p,s in pairs(profiles) do
+  if s.petOwned and not s.pet then spawnPet(p) end
+  local root=rootFor(p)
+  if root and s.pet then s.pet.CFrame=root.CFrame*CFrame.new(3,3,3) end
+ end
+end)
+task.spawn(function()
+ while world.Parent do
+  for remaining=75,0,-1 do
+   world:SetAttribute("Phase","CALM")
+   world:SetAttribute("SecondsLeft",remaining)
+   task.wait(1)
+  end
+  world:SetAttribute("Phase","SURGE")
+  bossHP=26; bossActive=true; bossContributors={}
+  boss.Transparency=0; boss:SetAttribute("Health",bossHP)
+  world:SetAttribute("BossHealth",bossHP)
+  for _,p in ipairs(Players:GetPlayers()) do
+   tell(p,"RIFT SURGE! DOUBLE COINS! DEFEAT THE CHAOS TITAN AT HUB!")
+  end
+  Lighting.Ambient=Color3.fromRGB(180,75,210)
+  for remaining=25,0,-1 do
+   world:SetAttribute("SecondsLeft",remaining)
+   task.wait(1)
+  end
+  bossActive=false; bossHP=0; bossContributors={}
+  boss.Transparency=1; boss:SetAttribute("Health",0)
+  world:SetAttribute("BossHealth",0)
+  Lighting.Ambient=Color3.fromRGB(120,132,179)
+ end
+end)
+print("SF_RIFT_RAIDERS_SERVER_READY v0.5.0")
+]]></string>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="4">
+      <Properties>
+        <string name="Name">VehicleService</string>
+        <string name="Source"><![CDATA[-- Reusable, server-controlled arcade hovercar service.
+-- VehicleSeat supplies keyboard/gamepad/touch throttle and steering.
+local RunService=game:GetService("RunService")
+local Players=game:GetService("Players")
+local Kit=require(script.Parent:WaitForChild("WorldKit"))
+local Expansion=require(script.Parent:WaitForChild("WorldExpansion"))
+local Cars={}
+local active={}
+local cooldown={}
+local function permitted(v)
+ if v.Y<2 or v.Y>40 then return false end
+ local x,z=v.X,v.Z
+ if math.abs(x)<52 and math.abs(z)<52 then return true end
+ if math.abs(x-180)<52 and math.abs(z)<52 then return true end
+ if math.abs(x+180)<52 and math.abs(z)<52 then return true end
+ if math.abs(z-180)<52 and math.abs(x)<52 then return true end
+ if math.abs(z+180)<52 and math.abs(x)<52 then return true end
+ for _,region in ipairs(Expansion.Worlds) do
+  local c=region.center
+  if math.abs(x-c.X)<68 and math.abs(z-c.Z)<68 then return true end
+ end
+ if math.abs(x)<129 and math.abs(z)<9 then return true end
+ if math.abs(z)<129 and math.abs(x)<9 then return true end
+ return false
+end
+function Cars.Spawn(world,player,kind)
+ kind=kind or "car"
+ local now=os.clock()
+ if cooldown[player] and now-cooldown[player]<8 then return false,"WAIT BEFORE SPAWNING ANOTHER CAR" end
+ local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+ if not root or not permitted(root.Position) then return false,"GO TO A SAFE ISLAND TO SPAWN A VEHICLE" end
+ if kind=="snowmobile" and (root.Position-Vector3.new(0,root.Position.Y,-520)).Magnitude>75 then
+  return false,"SNOWMOBILES ARE AVAILABLE IN SNOWBOUND NORTH!"
+ end
+ if kind~="car" and kind~="snowmobile" and kind~="flyingcar" and kind~="stolen" then
+  return false,"UNKNOWN VEHICLE"
+ end
+ if kind=="snowmobile" and player:GetAttribute("RROwn_SNOWMOBILE_LICENSE")~=true then
+  return false,"EARN THE SNOWMOBILE LICENSE IN THE COIN SHOP FIRST!"
+ end
+ if kind=="flyingcar" and player:GetAttribute("RROwn_FLIGHT_LICENSE")~=true then
+  return false,"EARN THE FLYING CAR LICENSE IN THE COIN SHOP FIRST!"
+ end
+ cooldown[player]=now
+ local previous=active[player]
+ if previous and previous.model then previous.model:Destroy() end
+ local direction=root.CFrame.LookVector
+ local spot=root.Position+direction*17
+ if not permitted(spot) then spot=root.Position end
+ local cf=CFrame.lookAt(Vector3.new(spot.X,5,spot.Z),
+  Vector3.new(spot.X+direction.X,5,spot.Z+direction.Z))
+ local m,seat
+ if kind=="snowmobile" then
+  m,seat=Expansion.Prefabs.Snowmobile(world,Vector3.new(spot.X,2,spot.Z),true)
+ else
+  local wrap=player:GetAttribute("RRActiveVehicleWrap")
+  local ownedPaint=wrap=="PLATINUM" and Color3.fromRGB(205,216,231) or
+   wrap=="MIDNIGHT" and Color3.fromRGB(28,36,59) or
+   Color3.fromRGB(74,215,245)
+  m,seat=Kit.Car(world,cf,
+   kind=="flyingcar" and Color3.fromRGB(196,94,252) or
+   kind=="stolen" and Color3.fromRGB(48,54,69) or ownedPaint,true)
+  if kind=="stolen" then m.Name="Mission Getaway Car" end
+  if kind=="flyingcar" then
+   m.Name="Player Flying Car"
+   for _,x in ipairs({-3.5,3.5}) do
+    local jet=Instance.new("Part"); jet.Name="Anti-Gravity Thruster"
+    jet.Size=Vector3.new(2,1,4)
+    jet.CFrame=cf*CFrame.new(x,-2,0)
+    jet.Color=Color3.fromRGB(119,246,255); jet.Material=Enum.Material.Neon
+    jet.Anchored=true; jet.CanCollide=false; jet.CanTouch=false; jet.Parent=m
+   end
+  end
+ end
+ m:SetAttribute("OwnerUserId",player.UserId)
+ active[player]={model=m,seat=seat,owner=player,lastOccupied=now,speed=0,kind=kind}
+ return true,(kind=="snowmobile" and "SNOWMOBILE" or
+  kind=="flyingcar" and "FLYING CAR" or
+  kind=="stolen" and "MISSION GETAWAY CAR" or "HOVERCAR")..
+  " SPAWNED! SIT IN THE DRIVER SEAT TO DRIVE."
+end
+function Cars.HasActive(player,kind)
+ local car=active[player]
+ return car~=nil and car.kind==kind and car.model~=nil and car.model.Parent~=nil
+  and car.model:GetPivot().Position or nil
+end
+local elapsed=0
+RunService.Heartbeat:Connect(function(dt)
+ elapsed+=dt
+ if elapsed<.06 then return end
+ local step=math.min(elapsed,.12); elapsed=0
+ for owner,car in pairs(active) do
+  local m,seat=car.model,car.seat
+  if not owner.Parent or not m.Parent then
+   if m.Parent then m:Destroy() end
+   active[owner]=nil
+  else
+   local hum=seat.Occupant
+   local driver=hum and Players:GetPlayerFromCharacter(hum.Parent)
+   if driver and hum.Health>0 then
+    car.lastOccupied=os.clock()
+    local throttle=math.clamp(seat.ThrottleFloat,-1,1)
+    local steer=math.clamp(seat.SteerFloat,-1,1)
+    car.speed+=(throttle*34-car.speed)*math.min(1,step*3)
+    if math.abs(throttle)<.03 then car.speed*=math.max(0,1-step*2) end
+    local current=m:GetPivot()
+    local yaw=-steer*step*1.7*math.clamp(math.abs(car.speed)/20,.25,1)
+    local turn=current*CFrame.Angles(0,yaw,0)
+    local displacement=turn.LookVector*car.speed*step
+    local climb=car.kind=="flyingcar" and math.clamp(21-current.Position.Y,-step*12,step*12) or 0
+    local target=turn+Vector3.new(displacement.X,climb,displacement.Z)
+    if permitted(target.Position) then
+     m:PivotTo(target)
+    else
+     car.speed=0
+    end
+   elseif os.clock()-car.lastOccupied>240 then
+    m:Destroy(); active[owner]=nil
+   end
+  end
+ end
+end)
+Players.PlayerRemoving:Connect(function(p)
+ local car=active[p]
+ if car and car.model then car.model:Destroy() end
+ active[p]=nil; cooldown[p]=nil
+end)
+return Cars
+]]></string>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="5">
+      <Properties>
+        <string name="Name">WorldActivities</string>
+        <string name="Source"><![CDATA[-- WORLD ACTIVITIES v0.4: original reusable server-authoritative minigames,
+-- resource gathering, crafting and fictional crime jobs. No Robux transactions.
+local Players=game:GetService("Players")
+local Terrain=workspace.Terrain
+local TweenService=game:GetService("TweenService")
+local Debris=game:GetService("Debris")
+local Kit={}
+local sessions={}
+local cooldowns={}
+local stolen={}
+local plotOwners={}
+local playerPlots={}
+local playerHouses={}
+local plotCenters={}
+local housingFolder=nil
+local stations={}
+local activityDefs={}
+local function part(parent,name,size,cf,color,material,collide)
+ local p=Instance.new("Part"); p.Name=name; p.Size=size; p.CFrame=cf
+ p.Anchored=true; p.CanCollide=collide~=false; p.CanTouch=collide~=false
+ p.Color=color; p.Material=material or Enum.Material.SmoothPlastic
+ p.TopSurface=Enum.SurfaceType.Smooth; p.BottomSurface=Enum.SurfaceType.Smooth
+ p.Parent=parent
+ return p
+end
+local function label(parent,title,pos,color)
+ local anchor=part(parent,"Venue Sign",Vector3.new(1,1,1),CFrame.new(pos),color,nil,false)
+ anchor.Transparency=1
+ local gui=Instance.new("BillboardGui"); gui.Name="VenueLabel"
+ gui.Size=UDim2.fromOffset(310,62); gui.MaxDistance=190
+ gui.AlwaysOnTop=true; gui.Parent=anchor
+ local text=Instance.new("TextLabel"); text.Size=UDim2.fromScale(1,1)
+ text.BackgroundTransparency=1; text.Text=title; text.TextScaled=true
+ text.Font=Enum.Font.GothamBlack; text.TextColor3=color
+ text.TextStrokeTransparency=.2; text.Parent=gui
+end
+local function within(player,anchor,maxDistance)
+ local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+ return root and (root.Position-anchor.Position).Magnitude<=(maxDistance or 18)
+end
+local function station(parent,id,title,actionText,position,color,callback)
+ local base=part(parent,title,Vector3.new(6,6,6),CFrame.new(position),color,Enum.Material.Metal,true)
+ base:SetAttribute("ActivityId",id)
+ local p=Instance.new("ProximityPrompt")
+ p.Name="ActivityPrompt"; p.ActionText=actionText; p.ObjectText=title
+ p.HoldDuration=.35; p.MaxActivationDistance=12; p.RequiresLineOfSight=false
+ p.Parent=base
+ stations[id]=base
+ p.Triggered:Connect(function(player)
+  if within(player,base,17) then callback(player,id) end
+ end)
+ return base
+end
+local function safeResources(s)
+ if type(s.resources)~="table" then s.resources={} end
+ for _,key in ipairs({"wood","metal","fish","hide","toolkit"}) do
+  local n=s.resources[key]
+  s.resources[key]=(type(n)=="number" and n==n and n>=0)
+   and math.clamp(math.floor(n),0,9999) or 0
+ end
+ if type(s.jobs)~="table" then s.jobs={} end
+ s.jobs.sports=math.clamp(tonumber(s.jobs.sports) or 0,0,100000)
+ s.jobs.bankCooldownUntil=math.max(0,tonumber(s.jobs.bankCooldownUntil) or 0)
+ s.jobs.carCooldownUntil=math.max(0,tonumber(s.jobs.carCooldownUntil) or 0)
+ s.jobs.heists=math.clamp(tonumber(s.jobs.heists) or 0,0,100000)
+ s.jobs.houseOwned=s.jobs.houseOwned==true
+end
+local function cd(player,id,duration)
+ cooldowns[player]=cooldowns[player] or {}
+ local now=os.clock()
+ if now<(cooldowns[player][id] or 0) then return false end
+ cooldowns[player][id]=now+duration
+ return true
+end
+local context=nil
+local function profile(player)
+ local s=context.getProfile(player)
+ if s then safeResources(s) end
+ return s
+end
+local function message(player,text) context.tell(player,text) end
+local function give(player,coins,xp,shards)
+ context.reward(player,coins,xp,shards or 0)
+ context.sync(player)
+end
+local function actionVisual(id,anchor)
+ if not anchor or not anchor.Parent then return end
+ if id=="football" or id=="baseball" or id=="soccer" then
+  local ball=Instance.new("Part"); ball.Name="Sports Shot Visual"
+  ball.Shape=Enum.PartType.Ball
+  ball.Size=Vector3.new(id=="baseball" and 1.1 or 2.5,
+   id=="baseball" and 1.1 or 2.5,id=="baseball" and 1.1 or 2.5)
+  ball.Material=Enum.Material.SmoothPlastic
+  ball.Color=id=="football" and Color3.fromRGB(127,77,49) or Color3.fromRGB(244,246,242)
+  ball.Anchored=true; ball.CanCollide=false; ball.CanTouch=false
+  ball.Position=anchor.Position+Vector3.new(0,2,-4); ball.Parent=anchor.Parent
+  local endPos=ball.Position+(id=="soccer" and Vector3.new(-33,0,0)
+   or id=="football" and Vector3.new(35,0,0) or Vector3.new(0,0,-46))
+  local top=endPos+Vector3.new(0,id=="soccer" and 10 or 22,0)
+  local rise=TweenService:Create(ball,TweenInfo.new(.55,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),
+   {Position=top})
+  local fall=TweenService:Create(ball,TweenInfo.new(.55,Enum.EasingStyle.Quad,Enum.EasingDirection.In),
+   {Position=endPos})
+  rise.Completed:Connect(function()
+   if ball.Parent then fall:Play() end
+  end)
+  rise:Play(); Debris:AddItem(ball,1.4)
+ elseif id=="fishing" then
+  local splash=part(anchor.Parent,"Fishing Splash",Vector3.new(4,.4,4),
+   CFrame.new(anchor.Position+Vector3.new(0,-2,-8)),
+   Color3.fromRGB(119,220,255),Enum.Material.Neon,false)
+  splash.Shape=Enum.PartType.Ball; splash.Transparency=.25
+  TweenService:Create(splash,TweenInfo.new(.65),{
+   Size=Vector3.new(9,.4,9),Transparency=1
+  }):Play()
+  Debris:AddItem(splash,.7)
+ end
+end
+local function updateHeat(player,s,amount)
+ s.heat=math.clamp((s.heat or 0)+amount,0,100)
+ context.sync(player)
+end
+function Kit.Start(player,id)
+ local def=activityDefs[id]
+ local anchor=stations[id]
+ local s=profile(player)
+ if not def or not anchor or not s or not within(player,anchor,17) then return false end
+ local now=os.clock()
+ if sessions[player] and now-sessions[player].started<3.8 then
+  message(player,"FINISH YOUR CURRENT CHALLENGE FIRST!")
+  return false
+ end
+ if not cd(player,"start_"..id,1.5) then return false end
+ if not cd(player,"play_"..id,def.cooldown or 12) then
+  message(player,"ACTIVITY RECHARGING!")
+  return false
+ end
+ local delay=1.9+math.random()*0.7
+ sessions[player]={id=id,started=now,delay=delay}
+ context.signal:FireClient(player,{
+  kind="skill",id=id,title=def.title,delay=delay,duration=3.5
+ })
+ message(player,def.title..": TAP THE ACTION BUTTON WHEN THE METER HITS THE TARGET!")
+ return true
+end
+function Kit.Hit(player,id)
+ local session=sessions[player]
+ local def=activityDefs[id]
+ local anchor=stations[id]
+ local s=profile(player)
+ if not s or not session or session.id~=id or not def or not anchor then return false end
+ sessions[player]=nil
+ if not within(player,anchor,19) then return false end
+ local delta=math.abs(os.clock()-session.started-session.delay)
+ if delta>.58 then
+  message(player,"MISSED! TRY AGAIN AFTER THE SHORT COOLDOWN.")
+  return false
+ end
+ actionVisual(id,anchor)
+ if id=="football" or id=="baseball" or id=="soccer" then
+  s.jobs.sports+=1
+  give(player,def.coins,def.xp,0)
+  message(player,def.title.." SUCCESS! +"..def.coins.." COINS!")
+ elseif id=="fishing" then
+  s.resources.fish=math.min(9999,s.resources.fish+2)
+  give(player,24,22,0)
+  message(player,"CAUGHT 2 FISH! SELL YOUR CATCH AT THE MARKET!")
+ elseif id=="hunting" then
+  -- Fantasy tracking challenge; no gore, torture or realistic animal injuries.
+  s.resources.hide=math.min(9999,s.resources.hide+1)
+  give(player,28,24,0)
+  message(player,"WILDLIFE TRACKED! +1 CRAFTING HIDE!")
+ end
+ context.sync(player)
+ return true
+end
+function Kit.RefreshHouse(player)
+ local s=profile(player)
+ local m=playerHouses[player]
+ if not s or not m then return end
+ local roof=m:FindFirstChild("House Roof")
+ if roof then
+  roof.Color=s.owned.ESTATE_ROOF and Color3.fromRGB(51,63,75)
+   or Color3.fromRGB(73,97,121)
+  if s.owned.ESTATE_ROOF and not m:FindFirstChild("Estate Porch Light") then
+   for _,x in ipairs({-8,8}) do
+    local lamp=part(m,"Estate Porch Light",Vector3.new(1,2,1),
+     CFrame.new(roof.Position+Vector3.new(x,-8,-15)),
+     Color3.fromRGB(255,221,148),Enum.Material.Neon,false)
+    local point=Instance.new("PointLight"); point.Brightness=1
+    point.Range=20; point.Parent=lamp
+   end
+  end
+ end
+ if s.owned.HOME_GARAGE and not m:FindFirstChild("Luxury Garage") then
+  local center=plotCenters[playerPlots[player]]
+  if not center then return end
+  local garage=Instance.new("Model"); garage.Name="Luxury Garage"
+  garage.Parent=m
+  local origin=center+Vector3.new(30,0,1)
+  part(garage,"Garage Slab",Vector3.new(20,1,25),
+   CFrame.new(origin+Vector3.new(0,2,0)),
+   Color3.fromRGB(135,137,138),Enum.Material.Concrete,true)
+  for _,x in ipairs({-10,10}) do
+   part(garage,"Garage Wall",Vector3.new(1,12,25),
+    CFrame.new(origin+Vector3.new(x,9,0)),
+    Color3.fromRGB(205,206,195),Enum.Material.Concrete,true)
+  end
+  part(garage,"Garage Back Wall",Vector3.new(20,12,1),
+   CFrame.new(origin+Vector3.new(0,9,12)),
+   Color3.fromRGB(205,206,195),Enum.Material.Concrete,true)
+  part(garage,"Garage Roof",Vector3.new(22,2,27),
+   CFrame.new(origin+Vector3.new(0,16,0)),
+   Color3.fromRGB(48,62,78),Enum.Material.Slate,true)
+  part(garage,"Garage Door",Vector3.new(18,10,1),
+   CFrame.new(origin+Vector3.new(0,8,-12)),
+   Color3.fromRGB(101,123,141),Enum.Material.Metal,false)
+  part(garage,"Driveway",Vector3.new(18,.5,20),
+   CFrame.new(origin+Vector3.new(0,2,-24)),
+   Color3.fromRGB(108,109,113),Enum.Material.Concrete,true)
+  for _,x in ipairs({-6,6}) do
+   local lamp=part(garage,"Garage Exterior Light",Vector3.new(1.5,1.5,1.5),
+    CFrame.new(origin+Vector3.new(x,12,-13)),
+    Color3.fromRGB(251,229,159),Enum.Material.Neon,false)
+   local point=Instance.new("PointLight"); point.Range=16
+   point.Brightness=.9; point.Parent=lamp
+  end
+ end
+end
+local function buildHouse(player)
+ local slot=playerPlots[player]
+ if not slot or not housingFolder then return false end
+ if playerHouses[player] then return true end
+ local center=plotCenters[slot]
+ if not center then return false end
+ local m=Instance.new("Model"); m.Name="Player Home "..player.UserId
+ m:SetAttribute("OwnerUserId",player.UserId); m:SetAttribute("PlotId",slot)
+ m.Parent=housingFolder
+ local wood=Color3.fromRGB(185,155,124)
+ local trim=Color3.fromRGB(230,218,196)
+ local roof=Color3.fromRGB(73,97,121)
+ local base=part(m,"Home Floor",Vector3.new(32,1,28),
+  CFrame.new(center+Vector3.new(0,2,0)),Color3.fromRGB(165,154,140),
+  Enum.Material.WoodPlanks,true)
+ m.PrimaryPart=base
+ for _,x in ipairs({-16,16}) do
+  part(m,"Side Wall",Vector3.new(1,15,28),
+   CFrame.new(center+Vector3.new(x,10,0)),wood,Enum.Material.WoodPlanks,true)
+  part(m,"House Window",Vector3.new(1.2,5,6),
+   CFrame.new(center+Vector3.new(x*1.01,11,-4)),
+   Color3.fromRGB(139,213,237),Enum.Material.Glass,false)
+ end
+ part(m,"Back Wall",Vector3.new(32,15,1),
+  CFrame.new(center+Vector3.new(0,10,14)),wood,Enum.Material.WoodPlanks,true)
+ for _,x in ipairs({-10,10}) do
+  part(m,"Front Wall",Vector3.new(12,15,1),
+   CFrame.new(center+Vector3.new(x,10,-14)),wood,Enum.Material.WoodPlanks,true)
+ end
+ part(m,"Doorway Header",Vector3.new(8,4,1),
+  CFrame.new(center+Vector3.new(0,15.5,-14)),wood,Enum.Material.WoodPlanks,true)
+ part(m,"House Roof",Vector3.new(37,3,33),
+  CFrame.new(center+Vector3.new(0,19,0)),roof,Enum.Material.Slate,true)
+ part(m,"Front Porch",Vector3.new(13,1,8),
+  CFrame.new(center+Vector3.new(0,2,-18)),trim,Enum.Material.WoodPlanks,true)
+ part(m,"Bed",Vector3.new(7,2,11),
+  CFrame.new(center+Vector3.new(-9,4,7)),Color3.fromRGB(91,141,180),
+  Enum.Material.Fabric,true)
+ part(m,"Table",Vector3.new(6,3,5),
+  CFrame.new(center+Vector3.new(8,4,5)),Color3.fromRGB(113,80,54),
+  Enum.Material.Wood,true)
+ label(m,player.DisplayName.."'S HOME",center+Vector3.new(0,26,0),
+  Color3.fromRGB(243,220,165))
+ playerHouses[player]=m
+ Kit.RefreshHouse(player)
+ return true
+end
+function Kit.PlayerJoined(player)
+ local s=profile(player)
+ if not s then return end
+ for i=1,#plotCenters do
+  if not plotOwners[i] then
+   plotOwners[i]=player; playerPlots[player]=i
+   player:SetAttribute("RRPlot",i)
+   if s.jobs.houseOwned then buildHouse(player) end
+   return
+  end
+ end
+ message(player,"ALL HOME PLOTS ARE OCCUPIED ON THIS SERVER.")
+end
+function Kit.Perform(player,id)
+ local anchor=stations[id]
+ local s=profile(player)
+ if not anchor or not s or not within(player,anchor,17) then return false end
+ local r=s.resources
+ if string.sub(id,1,11)=="gather_wood" then
+  if not cd(player,id,18) then message(player,"TREES ARE REGROWING!"); return false end
+  r.wood=math.min(9999,r.wood+2)
+  give(player,8,10); message(player,"+2 WOOD +8 COINS")
+ elseif string.sub(id,1,12)=="gather_metal" then
+  if not cd(player,id,18) then message(player,"SCRAP IS REPLENISHING!"); return false end
+  r.metal=math.min(9999,r.metal+2)
+  give(player,8,10); message(player,"+2 METAL +8 COINS")
+ elseif id=="craft_toolkit" then
+  if r.wood<2 or r.metal<3 then
+   message(player,"TOOLKIT NEEDS 2 WOOD + 3 METAL!"); return false
+  end
+  r.wood-=2; r.metal-=3; r.toolkit=math.min(9999,r.toolkit+1)
+  context.sync(player); message(player,"CRAFTED A TOOLKIT!")
+ elseif id=="sell_fish" then
+  if r.fish<1 then message(player,"CATCH FISH AT THE MARINA FIRST!"); return false end
+  local amount=math.min(10,r.fish)
+  r.fish-=amount; give(player,amount*18,amount*2)
+  message(player,"SOLD "..amount.." FISH FOR "..(amount*18).." COINS!")
+ elseif id=="build_house" then
+  if s.jobs.houseOwned then message(player,"YOU ALREADY OWN A HOME!"); return false end
+  if s.level<2 then message(player,"HOME BUILDING UNLOCKS AT LEVEL 2!"); return false end
+  if not playerPlots[player] then message(player,"NO FREE HOME PLOTS THIS SERVER!"); return false end
+  if r.wood<8 or r.metal<6 then
+   message(player,"HOUSE NEEDS 8 WOOD + 6 METAL!"); return false
+  end
+  r.wood-=8; r.metal-=6; s.jobs.houseOwned=true
+  buildHouse(player)
+  give(player,0,100)
+  message(player,"HOME BUILT! VISIT YOUR PERSONAL PLOT!")
+ elseif id=="bank_heist" then
+  if s.level<3 then message(player,"BANK JOB UNLOCKS AT LEVEL 3!"); return false end
+  if (s.heat or 0)>45 then message(player,"TOO MUCH HEAT! WAIT FOR THE ALERT TO CLEAR!"); return false end
+  if r.toolkit<1 then message(player,"CRAFT A TOOLKIT AT THE HUB WORKSHOP!"); return false end
+  if os.time()<s.jobs.bankCooldownUntil then
+   message(player,"THE BANK IS ON LOCKDOWN!"); return false
+  end
+  r.toolkit-=1
+  s.jobs.bankCooldownUntil=os.time()+300
+  s.jobs.heists+=1
+  updateHeat(player,s,75)
+  give(player,250,145,3)
+  message(player,"VAULT HEIST COMPLETE! +250 COINS • WANTED LEVEL HIGH!")
+ elseif id=="steal_car" then
+  if s.level<2 then message(player,"VEHICLE MISSION UNLOCKS AT LEVEL 2!"); return false end
+  if r.toolkit<1 then message(player,"NEED A CRAFTED TOOLKIT TO HOTWIRE!"); return false end
+  if os.time()<s.jobs.carCooldownUntil then message(player,"GARAGE SECURITY ALERT!"); return false end
+  if (s.heat or 0)>70 then message(player,"LOSE YOUR WANTED LEVEL FIRST!"); return false end
+  local ok,reason=context.spawnVehicle(context.world,player,"stolen")
+  if not ok then message(player,reason); return false end
+  r.toolkit-=1; s.jobs.carCooldownUntil=os.time()+180
+  stolen[player]=true
+  updateHeat(player,s,40)
+  message(player,"FICTIONAL CAR HEIST! DRIVE TO THE CHOP SHOP!")
+ elseif id=="chop_shop" then
+  if not stolen[player] then message(player,"NO MISSION CAR TO SELL!"); return false end
+  local carPosition=context.hasVehicle(player,"stolen")
+  local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+  if not carPosition or not root or (carPosition-root.Position).Magnitude>45 then
+   message(player,"BRING YOUR MISSION GETAWAY CAR TO THE CHOP SHOP!"); return false
+  end
+  stolen[player]=nil
+  updateHeat(player,s,20)
+  give(player,110,65)
+  message(player,"CAR DELIVERY COMPLETE! +110 COINS!")
+ else
+  return false
+ end
+ context.sync(player)
+ return true
+end
+local function sports(parent,center)
+ local turf=Color3.fromRGB(56,134,83)
+ Terrain:FillBlock(CFrame.new(center+Vector3.new(0,-4,0)),
+  Vector3.new(280,12,225),Enum.Material.Grass)
+ local plaza=part(parent,"Sports Plaza",Vector3.new(30,1,30),
+  CFrame.new(center+Vector3.new(0,2.5,0)),Color3.fromRGB(195,205,212),Enum.Material.Concrete,true)
+ label(parent,"WORLD SPORTS COMPLEX",center+Vector3.new(0,26,0),Color3.fromRGB(255,233,138))
+ local pitch=part(parent,"Soccer Pitch",Vector3.new(83,1,52),
+  CFrame.new(center+Vector3.new(-75,2,34)),turf,Enum.Material.Grass,true)
+ for _,x in ipairs({-113,-37}) do
+  part(parent,"Soccer Goal Crossbar",Vector3.new(2,1,19),
+   CFrame.new(x,8,center.Z+34),Color3.fromRGB(242,245,249),Enum.Material.Metal,false)
+  for _,z in ipairs({-9,9}) do
+   part(parent,"Soccer Goal Post",Vector3.new(2,11,1),
+    CFrame.new(x,7,center.Z+34+z),Color3.fromRGB(242,245,249),Enum.Material.Metal,false)
+  end
+ end
+ station(parent,"soccer","Soccer Penalty Challenge","KICK",center+Vector3.new(-75,6,34),
+  Color3.fromRGB(66,193,124),Kit.Start)
+ local football=part(parent,"Football Field",Vector3.new(85,1,48),
+  CFrame.new(center+Vector3.new(75,2,34)),Color3.fromRGB(48,115,68),Enum.Material.Grass,true)
+ for j=0,10 do
+  part(parent,"Football Yard Line",Vector3.new(.5,.1,47),
+   CFrame.new(center+Vector3.new(33+j*8.3,2.6,34)),
+   Color3.fromRGB(244,245,226),Enum.Material.SmoothPlastic,false)
+ end
+ for _,x in ipairs({34,116}) do
+  part(parent,"Football Goal Crossbar",Vector3.new(1,1,19),
+   CFrame.new(center+Vector3.new(x,14,34)),
+   Color3.fromRGB(247,208,85),Enum.Material.Metal,false)
+  for _,z in ipairs({-9,9}) do
+   part(parent,"Football Upright",Vector3.new(1,10,1),
+    CFrame.new(center+Vector3.new(x,19,34+z)),
+    Color3.fromRGB(247,208,85),Enum.Material.Metal,false)
+  end
+ end
+ station(parent,"football","Football Field Goal","KICK",center+Vector3.new(75,6,34),
+  Color3.fromRGB(244,183,76),Kit.Start)
+ local diamond=part(parent,"Baseball Diamond",Vector3.new(65,1,65),
+  CFrame.new(center+Vector3.new(0,2,-65)),
+  Color3.fromRGB(175,126,86),Enum.Material.Ground,true)
+ diamond.CFrame=diamond.CFrame*CFrame.Angles(0,math.rad(45),0)
+ for _,offset in ipairs({
+  Vector3.new(0,3,-87),Vector3.new(-21,3,-65),
+  Vector3.new(0,3,-43),Vector3.new(21,3,-65)
+ }) do
+  part(parent,"Baseball Base",Vector3.new(4,.3,4),
+   CFrame.new(center+offset),Color3.fromRGB(248,248,242),Enum.Material.SmoothPlastic,true)
+ end
+ station(parent,"baseball","Baseball Batting Cage","SWING",center+Vector3.new(0,6,-65),
+  Color3.fromRGB(226,115,80),Kit.Start)
+ for _,x in ipairs({-122,122}) do
+  for i=1,5 do
+   part(parent,"Stadium Bleacher",Vector3.new(9,2,65),
+    CFrame.new(center+Vector3.new(x,3+i*2,35)),
+    Color3.fromRGB(92,111,137),Enum.Material.Metal,true)
+  end
+ end
+ for _,pos in ipairs({
+  Vector3.new(-112,3,-90),Vector3.new(112,3,-90),
+  Vector3.new(-112,3,90),Vector3.new(112,3,90)
+ }) do
+  local pole=part(parent,"Stadium Floodlight Pole",Vector3.new(2,30,2),
+   CFrame.new(center+pos+Vector3.new(0,15,0)),
+   Color3.fromRGB(82,99,118),Enum.Material.Metal,true)
+  local light=part(parent,"Stadium Floodlight",Vector3.new(10,3,3),
+   CFrame.new(center+pos+Vector3.new(0,31,0)),
+   Color3.fromRGB(241,246,221),Enum.Material.Neon,false)
+  local point=Instance.new("PointLight"); point.Range=55; point.Brightness=1.2; point.Parent=light
+ end
+ return plaza
+end
+function Kit.Build(world,options)
+ context=options
+ context.world=world
+ local area=Instance.new("Folder"); area.Name="Sports and Life Activities"; area.Parent=world
+ local center=Vector3.new(0,0,900)
+ sports(area,center)
+ local homeCenter=Vector3.new(0,0,1260)
+ housingFolder=Instance.new("Folder")
+ housingFolder.Name="Player Housing Neighborhood"; housingFolder.Parent=area
+ Terrain:FillBlock(CFrame.new(homeCenter+Vector3.new(0,-4,0)),
+  Vector3.new(420,12,300),Enum.Material.Grass)
+ local homeRoad=part(housingFolder,"Neighborhood Road",Vector3.new(370,1,14),
+  CFrame.new(homeCenter+Vector3.new(0,2.4,0)),
+  Color3.fromRGB(71,77,84),Enum.Material.Asphalt,true)
+ label(housingFolder,"HOUSING MEADOWS • BUILD YOUR HOME",
+  homeCenter+Vector3.new(0,29,0),Color3.fromRGB(251,225,177))
+ for _,z in ipairs({-95,0,95}) do
+  for _,x in ipairs({-150,-50,50,150}) do
+   local spot=homeCenter+Vector3.new(x,0,z)
+   table.insert(plotCenters,spot)
+   local tile=part(housingFolder,"Home Plot "..#plotCenters,
+    Vector3.new(42,1,42),CFrame.new(spot+Vector3.new(0,2.3,0)),
+    Color3.fromRGB(111,159,96),Enum.Material.Grass,true)
+   tile:SetAttribute("PlotId",#plotCenters)
+  end
+ end
+ station(area,"build_house","Housing Construction Office","BUILD HOME",
+  homeCenter+Vector3.new(0,5,26),Color3.fromRGB(177,133,88),Kit.Perform)
+ activityDefs={
+  football={title="FOOTBALL FIELD GOAL",coins=35,xp=32,cooldown=14},
+  baseball={title="BASEBALL HOME RUN",coins=32,xp=30,cooldown=14},
+  soccer={title="SOCCER PENALTY KICK",coins=33,xp=30,cooldown=14},
+  fishing={title="FISHING CAST",coins=24,xp=22,cooldown=15},
+  hunting={title="WILDLIFE TRACKING HUNT",coins=28,xp=24,cooldown=20},
+ }
+ station(area,"gather_wood","Lumber Camp","GATHER WOOD",
+  Vector3.new(-520+40,5,0-12),Color3.fromRGB(153,104,57),Kit.Perform)
+ for i=2,5 do
+  station(area,"gather_wood_"..i,"Lumber Stand "..i,"GATHER WOOD",
+   Vector3.new(-520+32+i*9,5,-24),
+   Color3.fromRGB(142,102,59),Kit.Perform)
+ end
+ station(area,"gather_metal","Metropolis Scrap Yard","SALVAGE METAL",
+  Vector3.new(180-29,5,-24),Color3.fromRGB(102,144,165),Kit.Perform)
+ station(area,"gather_metal_alt","Salvage Yard Overflow","SALVAGE METAL",
+  Vector3.new(180-31,5,-35),Color3.fromRGB(98,140,160),Kit.Perform)
+ station(area,"gather_metal_alt2","Salvage Yard South","SALVAGE METAL",
+  Vector3.new(180-21,5,-38),Color3.fromRGB(92,133,156),Kit.Perform)
+ for i=3,4 do
+  station(area,"gather_metal_alt"..i,"Scrap Depot "..i,"SALVAGE METAL",
+   Vector3.new(180+5+i*6,5,-34),
+   Color3.fromRGB(90,136,157),Kit.Perform)
+ end
+ station(area,"craft_toolkit","Hub Workshop","CRAFT TOOLKIT",
+  Vector3.new(-23,5,17),Color3.fromRGB(212,158,84),Kit.Perform)
+ station(area,"sell_fish","Marina Fish Market","SELL FISH",
+  Vector3.new(520-22,5,520+28),Color3.fromRGB(79,173,196),Kit.Perform)
+ station(area,"fishing","Fishing Challenge Pier","CAST LINE",
+  Vector3.new(520+7,6,520+116),Color3.fromRGB(66,172,215),Kit.Start)
+ station(area,"hunting","Safari Wildlife Tracking","TRACK GAME",
+  Vector3.new(-520+22,5,-520-22),Color3.fromRGB(164,134,76),Kit.Start)
+ station(area,"bank_heist","Bank Vault Mission","OPEN VAULT",
+  Vector3.new(180+31,6,31-19),Color3.fromRGB(220,100,91),Kit.Perform)
+ station(area,"steal_car","NPC Vehicle Depot","HOTWIRE NPC CAR",
+  Vector3.new(180-27,5,29),Color3.fromRGB(179,109,206),Kit.Perform)
+ station(area,"chop_shop","Chop Shop Delivery","DELIVER MISSION CAR",
+  Vector3.new(180-39,5,45),Color3.fromRGB(198,158,87),Kit.Perform)
+ -- Low-poly physical details, all original and reusable.
+ for i=1,4 do
+  part(area,"Lumber Logs",Vector3.new(2,2,12),
+   CFrame.new(Vector3.new(-520+31+i*3,3,-22)),
+   Color3.fromRGB(129,83,52),Enum.Material.Wood,true)
+  part(area,"Scrap Metal Stack",Vector3.new(4,1+i,6),
+   CFrame.new(Vector3.new(180-38+i*3,3+i*.5,-25)),
+   Color3.fromRGB(92,105,123),Enum.Material.CorrodedMetal,true)
+ end
+ part(area,"Crafting Workbench",Vector3.new(11,2,5),
+  CFrame.new(-23,2,25),Color3.fromRGB(145,103,68),Enum.Material.WoodPlanks,true)
+ for i=1,3 do
+  part(area,"Fish Market Crate",Vector3.new(5,4,5),
+   CFrame.new(Vector3.new(520-31+i*5,4,520+37)),
+   Color3.fromRGB(165,119,72),Enum.Material.WoodPlanks,true)
+ end
+ part(area,"Vault Security Light",Vector3.new(9,1,1),
+  CFrame.new(211,11,11),Color3.fromRGB(255,75,83),Enum.Material.Neon,false)
+ label(area,"SPORTS: FOOTBALL • BASEBALL • SOCCER",
+  center+Vector3.new(0,18,18),Color3.fromRGB(249,242,198))
+ label(area,"BANK HEIST • REQUIRES LEVEL 3 + TOOLKIT",
+  Vector3.new(211,20,12),Color3.fromRGB(241,127,108))
+ -- Server-only heat decay; no realistic death or gore.
+ task.spawn(function()
+  while world.Parent do
+   task.wait(5)
+   for _,player in ipairs(Players:GetPlayers()) do
+    local s=profile(player)
+    if s and (s.heat or 0)>0 then
+     s.heat=math.max(0,s.heat-3)
+     context.sync(player)
+    end
+   end
+  end
+ end)
+ return {SPORTS=center+Vector3.new(0,8,0),HOMES=homeCenter+Vector3.new(0,8,0)}
+end
+function Kit.PlayerRemoving(player)
+ sessions[player]=nil; cooldowns[player]=nil; stolen[player]=nil
+ local slot=playerPlots[player]
+ if slot then plotOwners[slot]=nil; playerPlots[player]=nil end
+ if playerHouses[player] then playerHouses[player]:Destroy(); playerHouses[player]=nil end
+end
+function Kit.GetStation(id)
+ return stations[id]
+end
+return Kit
+]]></string>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="6">
+      <Properties>
+        <string name="Name">WorldExpansion</string>
+        <string name="Source"><![CDATA[-- RIFT RAIDERS: Multiworld Expansion. Original, reusable Roblox models and real terrain.
+-- Keep portal destinations server-owned; never accept arbitrary player coordinates.
+local Expansion={}
+local Players=game:GetService("Players")
+local Terrain=workspace.Terrain
+local function part(parent,name,size,cf,color,material,collide)
+ local p=Instance.new("Part")
+ p.Name=name; p.Size=size; p.CFrame=cf; p.Anchored=true
+ p.Color=color; p.Material=material or Enum.Material.SmoothPlastic
+ p.CanCollide=collide~=false; p.CanTouch=collide~=false
+ p.TopSurface=Enum.SurfaceType.Smooth; p.BottomSurface=Enum.SurfaceType.Smooth
+ p.Parent=parent
+ return p
+end
+local function group(parent,name,kind)
+ local m=Instance.new("Model"); m.Name=name; m:SetAttribute("AssetType",kind)
+ m.Parent=parent
+ return m
+end
+local function label(parent,title,position,color)
+ local anchor=part(parent,"Landmark Label",Vector3.new(1,1,1),
+  CFrame.new(position),color,Enum.Material.Neon,false)
+ anchor.Transparency=1
+ local gui=Instance.new("BillboardGui")
+ gui.Size=UDim2.fromOffset(280,62); gui.MaxDistance=155
+ gui.AlwaysOnTop=true; gui.Parent=anchor
+ local text=Instance.new("TextLabel")
+ text.Size=UDim2.fromScale(1,1); text.BackgroundTransparency=1
+ text.Text=title; text.TextScaled=true; text.Font=Enum.Font.GothamBlack
+ text.TextColor3=color; text.TextStrokeTransparency=.2; text.Parent=gui
+ return anchor
+end
+local function prompt(target,action,object,callback)
+ local p=Instance.new("ProximityPrompt")
+ p.Name="WorldAction"; p.ActionText=action; p.ObjectText=object
+ p.HoldDuration=.4; p.MaxActivationDistance=13
+ p.RequiresLineOfSight=false; p.Parent=target
+ p.Triggered:Connect(function(player)
+  local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+  if root and (root.Position-target.Position).Magnitude<=19 then
+   callback(player)
+  end
+ end)
+ return p
+end
+local function tower(parent,position,color)
+ local m=group(parent,"Castle Tower","Castle")
+ local wall=part(m,"Stone Tower",Vector3.new(18,33,18),
+  CFrame.new(position+Vector3.new(0,16.5,0)),Color3.fromRGB(124,131,147),Enum.Material.Cobblestone,true)
+ m.PrimaryPart=wall
+ part(m,"Roof",Vector3.new(22,4,22),
+  CFrame.new(position+Vector3.new(0,35,0)),color,Enum.Material.Slate,true)
+ for i=1,4 do
+  local a=i*math.pi/2
+  part(m,"Battlement",Vector3.new(5,5,5),
+   CFrame.new(position+Vector3.new(math.cos(a)*8,39,math.sin(a)*8)),
+   Color3.fromRGB(150,153,169),Enum.Material.Cobblestone,true)
+ end
+ return m
+end
+local function castle(parent,center)
+ local m=group(parent,"Royal Stone Castle","Castle")
+ local wallColor=Color3.fromRGB(140,144,159)
+ local keep=part(m,"Grand Keep",Vector3.new(39,31,35),
+  CFrame.new(center+Vector3.new(0,15.5,0)),wallColor,Enum.Material.Cobblestone,true)
+ m.PrimaryPart=keep
+ part(m,"Royal Roof",Vector3.new(43,4,39),
+  CFrame.new(center+Vector3.new(0,33,0)),Color3.fromRGB(96,72,141),Enum.Material.Slate,true)
+ part(m,"Gate",Vector3.new(11,15,1),
+  CFrame.new(center+Vector3.new(0,7.5,-18)),Color3.fromRGB(79,59,52),Enum.Material.WoodPlanks,true)
+ for _,x in ipairs({-28,28}) do
+  for _,z in ipairs({-26,26}) do tower(m,center+Vector3.new(x,0,z),Color3.fromRGB(95,75,160)) end
+ end
+ for _,x in ipairs({-16,16}) do
+  part(m,"Stained Glass",Vector3.new(6,10,.5),
+   CFrame.new(center+Vector3.new(x,19,-18)),
+   Color3.fromRGB(114,221,255),Enum.Material.Glass,false)
+ end
+ return m
+end
+local function barn(parent,center)
+ local m=group(parent,"Working Farm Barn","Farm")
+ local body=part(m,"Red Barn",Vector3.new(33,19,27),
+  CFrame.new(center+Vector3.new(0,9.5,0)),Color3.fromRGB(175,63,66),Enum.Material.WoodPlanks,true)
+ m.PrimaryPart=body
+ part(m,"Barn Roof",Vector3.new(37,3,31),
+  CFrame.new(center+Vector3.new(0,20,0)),Color3.fromRGB(61,69,85),Enum.Material.Metal,true)
+ part(m,"Sliding Door",Vector3.new(10,13,.6),
+  CFrame.new(center+Vector3.new(0,6.5,-13.8)),Color3.fromRGB(230,217,180),Enum.Material.Wood,true)
+ for _,x in ipairs({-12,12}) do
+  part(m,"Hay Bale",Vector3.new(7,5,7),
+   CFrame.new(center+Vector3.new(x,2.5,-21)),
+   Color3.fromRGB(211,171,76),Enum.Material.Grass,true)
+ end
+ return m
+end
+local function crop(parent,pos,kind)
+ local m=group(parent,"Harvest "..kind,"Crop")
+ local dirt=part(m,"Soil",Vector3.new(6,.8,6),
+  CFrame.new(pos+Vector3.new(0,.4,0)),Color3.fromRGB(111,76,51),Enum.Material.Ground,true)
+ m.PrimaryPart=dirt
+ for i=1,4 do
+  local x=(i%2)*2.5-1.25; local z=math.floor((i-1)/2)*2.5-1.25
+  local plant=part(m,"Growing "..kind,Vector3.new(1.2,3.2,1.2),
+   CFrame.new(pos+Vector3.new(x,2.4,z)),
+   kind=="Carrot" and Color3.fromRGB(63,175,77) or Color3.fromRGB(208,175,78),
+   Enum.Material.Grass,false)
+  if kind=="Carrot" then
+   part(m,"Carrot",Vector3.new(.8,1.4,.8),
+    CFrame.new(pos+Vector3.new(x,1.2,z)),
+    Color3.fromRGB(241,125,44),Enum.Material.SmoothPlastic,false)
+  end
+ end
+ return m,dirt
+end
+local function torii(parent,pos)
+ local m=group(parent,"Japanese Torii Gate","Japan")
+ local red=Color3.fromRGB(198,56,65)
+ for _,x in ipairs({-9,9}) do
+  part(m,"Torii Pillar",Vector3.new(2.3,19,2.3),
+   CFrame.new(pos+Vector3.new(x,9.5,0)),red,Enum.Material.Wood,true)
+ end
+ local top=part(m,"Torii Roof Beam",Vector3.new(27,2.6,4),
+  CFrame.new(pos+Vector3.new(0,20,0)),Color3.fromRGB(51,52,66),Enum.Material.Wood,true)
+ m.PrimaryPart=top
+ part(m,"Torii Crossbar",Vector3.new(21,2,2),
+  CFrame.new(pos+Vector3.new(0,15,0)),red,Enum.Material.Wood,true)
+ return m
+end
+local function pagoda(parent,pos)
+ local m=group(parent,"Five-Level Pagoda","Japan")
+ local body=part(m,"Pagoda Center",Vector3.new(18,38,18),
+  CFrame.new(pos+Vector3.new(0,19,0)),
+  Color3.fromRGB(220,195,164),Enum.Material.WoodPlanks,true)
+ m.PrimaryPart=body
+ for floor=1,5 do
+  local width=29-(floor-1)*3.4
+  part(m,"Pagoda Eaves",Vector3.new(width,2.2,width),
+   CFrame.new(pos+Vector3.new(0,7.5*floor,0)),
+   Color3.fromRGB(51,62,84),Enum.Material.Slate,true)
+ end
+ return m
+end
+local function airport(parent,pos)
+ local m=group(parent,"Airport Terminal","Airport")
+ local terminal=part(m,"Terminal Building",Vector3.new(62,15,30),
+  CFrame.new(pos+Vector3.new(0,7.5,0)),
+  Color3.fromRGB(144,169,183),Enum.Material.Concrete,true)
+ m.PrimaryPart=terminal
+ part(m,"Terminal Glass",Vector3.new(56,9,.5),
+  CFrame.new(pos+Vector3.new(0,7,-15.3)),
+  Color3.fromRGB(102,207,235),Enum.Material.Glass,false)
+ part(m,"Terminal Roof",Vector3.new(66,2,34),
+  CFrame.new(pos+Vector3.new(0,16,0)),
+  Color3.fromRGB(53,72,92),Enum.Material.Metal,true)
+ return m
+end
+local function plane(parent,pos)
+ local m=group(parent,"Passenger Jet Display","Airplane")
+ local body=part(m,"Fuselage",Vector3.new(9,8,55),
+  CFrame.new(pos+Vector3.new(0,10,0)),
+  Color3.fromRGB(226,235,241),Enum.Material.Metal,true)
+ m.PrimaryPart=body
+ part(m,"Main Wings",Vector3.new(57,1.5,13),
+  CFrame.new(pos+Vector3.new(0,10,0)),
+  Color3.fromRGB(164,191,213),Enum.Material.Metal,true)
+ part(m,"Tail Fin",Vector3.new(2,14,8),
+  CFrame.new(pos+Vector3.new(0,17,23)),
+  Color3.fromRGB(52,142,211),Enum.Material.Metal,true)
+ for _,x in ipairs({-14,14}) do
+  part(m,"Jet Engine",Vector3.new(5,5,10),
+   CFrame.new(pos+Vector3.new(x,7,2)),
+   Color3.fromRGB(57,72,93),Enum.Material.Metal,true)
+ end
+ return m
+end
+local function snowmobile(parent,pos,drivable)
+ local m=group(parent,"Snowmobile Display","Snowmobile")
+ local body=part(m,"Snowmobile Body",Vector3.new(5,2.5,11),
+  CFrame.new(pos+Vector3.new(0,3,0)),
+  Color3.fromRGB(236,84,91),Enum.Material.Metal,true)
+ m.PrimaryPart=body
+ part(m,"Snow Track",Vector3.new(4,1.3,8),
+  CFrame.new(pos+Vector3.new(0,1,1)),
+  Color3.fromRGB(41,46,61),Enum.Material.Rubber,true)
+ for _,x in ipairs({-2.3,2.3}) do
+  part(m,"Front Ski",Vector3.new(.6,.7,8),
+   CFrame.new(pos+Vector3.new(x,.5,-4)),
+   Color3.fromRGB(36,48,63),Enum.Material.Metal,true)
+ end
+ part(m,"Windshield",Vector3.new(4,3,.4),
+  CFrame.new(pos+Vector3.new(0,5,-2.5)),
+  Color3.fromRGB(143,222,243),Enum.Material.Glass,false)
+ if drivable then
+  local seat=Instance.new("VehicleSeat"); seat.Name="DriverSeat"
+  seat.Size=Vector3.new(2,1,2)
+  seat.CFrame=CFrame.new(pos+Vector3.new(0,5.2,1))
+  seat.Anchored=true; seat.CanCollide=false
+  seat.Color=Color3.fromRGB(34,41,59); seat.Parent=m
+  m.Name="Player Snowmobile"; m:SetAttribute("Drivable",true)
+  return m,seat
+ end
+ return m
+end
+local function boat(parent,pos)
+ local m=group(parent,"Marina Motorboat Display","Boat")
+ local hull=part(m,"Boat Hull",Vector3.new(11,4,24),
+  CFrame.new(pos+Vector3.new(0,2,0)),
+  Color3.fromRGB(238,239,227),Enum.Material.SmoothPlastic,true)
+ m.PrimaryPart=hull
+ part(m,"Boat Cabin",Vector3.new(9,5,9),
+  CFrame.new(pos+Vector3.new(0,6,3)),
+  Color3.fromRGB(63,135,189),Enum.Material.Glass,false)
+ part(m,"Motor",Vector3.new(4,4,4),
+  CFrame.new(pos+Vector3.new(0,1.5,13)),
+  Color3.fromRGB(38,50,65),Enum.Material.Metal,true)
+ return m
+end
+local function bank(parent,pos)
+ local m=group(parent,"City Bank","Bank")
+ local base=part(m,"Bank Building",Vector3.new(39,20,29),
+  CFrame.new(pos+Vector3.new(0,10,0)),
+  Color3.fromRGB(191,196,203),Enum.Material.Concrete,true)
+ m.PrimaryPart=base
+ part(m,"Bank Roof",Vector3.new(43,3,33),
+  CFrame.new(pos+Vector3.new(0,21.5,0)),
+  Color3.fromRGB(66,84,113),Enum.Material.Slate,true)
+ for _,x in ipairs({-13,-6,6,13}) do
+  part(m,"Bank Column",Vector3.new(2,18,2),
+   CFrame.new(pos+Vector3.new(x,9,-16)),
+   Color3.fromRGB(238,237,219),Enum.Material.Marble,true)
+ end
+ part(m,"Vault Door",Vector3.new(9,11,.6),
+  CFrame.new(pos+Vector3.new(0,5.5,-14.9)),
+  Color3.fromRGB(75,91,108),Enum.Material.Metal,true)
+ return m
+end
+local function animal(parent,pos,species)
+ local m=group(parent,species.." Animal","Animal")
+ local fur=species=="Deer" and Color3.fromRGB(151,100,70) or
+  species=="Cow" and Color3.fromRGB(221,217,208) or Color3.fromRGB(179,147,100)
+ local body=part(m,"Animal Body",Vector3.new(5,3.5,8),
+  CFrame.new(pos+Vector3.new(0,4,0)),fur,Enum.Material.SmoothPlastic,true)
+ m.PrimaryPart=body
+ part(m,"Head",Vector3.new(3.5,3.5,3.5),
+  CFrame.new(pos+Vector3.new(0,5.4,-4.3)),fur,Enum.Material.SmoothPlastic,false)
+ for _,x in ipairs({-1.7,1.7}) do
+  for _,z in ipairs({-2.5,2.5}) do
+   part(m,"Leg",Vector3.new(1.1,2.5,1.1),
+    CFrame.new(pos+Vector3.new(x,1.3,z)),fur,Enum.Material.SmoothPlastic,true)
+  end
+ end
+ for _,x in ipairs({-1,1}) do
+  part(m,"Eye",Vector3.new(.45,.45,.45),
+   CFrame.new(pos+Vector3.new(x,5.9,-6.1)),
+   Color3.fromRGB(22,28,33),Enum.Material.SmoothPlastic,false)
+ end
+ return m,body
+end
+local function jetpack(parent,pos)
+ local m=group(parent,"Jetpack Station","Jetpack")
+ local body=part(m,"Jetpack Core",Vector3.new(5,8,2),
+  CFrame.new(pos+Vector3.new(0,4,0)),
+  Color3.fromRGB(53,75,116),Enum.Material.Metal,true)
+ m.PrimaryPart=body
+ for _,x in ipairs({-3,3}) do
+  part(m,"Thruster",Vector3.new(2,6,2),
+   CFrame.new(pos+Vector3.new(x,3,0)),
+   Color3.fromRGB(73,210,255),Enum.Material.Neon,false)
+ end
+ return m,body
+end
+local function portal(parent,pos,color,name)
+ local m=group(parent,"Portal to "..name,"Portal")
+ local frame=part(m,"Portal Frame",Vector3.new(8,12,2),
+  CFrame.new(pos+Vector3.new(0,6,0)),color,Enum.Material.Neon,false)
+ frame.Transparency=.55; m.PrimaryPart=frame
+ part(m,"Portal Base",Vector3.new(12,1,7),
+  CFrame.new(pos+Vector3.new(0,.5,0)),color,Enum.Material.Metal,true)
+ local particle=Instance.new("ParticleEmitter")
+ particle.Rate=6; particle.Lifetime=NumberRange.new(.5,1)
+ particle.Speed=NumberRange.new(1,2); particle.Parent=frame
+ return m,frame
+end
+Expansion.Prefabs={
+ Castle=castle,Barn=barn,Crop=crop,Torii=torii,Pagoda=pagoda,
+ Airport=airport,Plane=plane,Snowmobile=snowmobile,Boat=boat,
+ Bank=bank,Animal=animal,Jetpack=jetpack,Portal=portal,
+}
+Expansion.Worlds={
+ {id="CASTLE",name="Castle Kingdom",center=Vector3.new(520,0,0),ground=Enum.Material.Grass,color=Color3.fromRGB(177,136,255)},
+ {id="FARM",name="Harvest Valley",center=Vector3.new(-520,0,0),ground=Enum.Material.Grass,color=Color3.fromRGB(116,213,93)},
+ {id="JAPAN",name="Sakura Japan",center=Vector3.new(0,0,520),ground=Enum.Material.Grass,color=Color3.fromRGB(255,141,191)},
+ {id="ARCTIC",name="Snowbound North",center=Vector3.new(0,0,-520),ground=Enum.Material.Snow,color=Color3.fromRGB(134,215,255)},
+ {id="MARINA",name="Ocean Marina",center=Vector3.new(520,0,520),ground=Enum.Material.Sand,color=Color3.fromRGB(69,211,221)},
+ {id="SAFARI",name="Wildlife Safari",center=Vector3.new(-520,0,-520),ground=Enum.Material.Grass,color=Color3.fromRGB(241,185,87)},
+ {id="AIRPORT",name="International Airport",center=Vector3.new(-520,0,520),ground=Enum.Material.Ground,color=Color3.fromRGB(185,214,246)},
+}
+function Expansion.Build(world,kit,reward,tell,spawnVehicle)
+ local folder=Instance.new("Folder"); folder.Name="Seven New Worlds"; folder.Parent=world
+ local destinations={}
+ local cooldown={}
+ local deliveries={}
+ local deliveryCompletedAt={}
+ local rng=Random.new(71245)
+ local function earn(id,player,coins,xp)
+  cooldown[player]=cooldown[player] or {}
+  local last=cooldown[player][id] or -math.huge
+  if os.clock()-last<35 then tell(player,"COME BACK AFTER THIS ACTIVITY RECHARGES!"); return end
+  cooldown[player][id]=os.clock()
+  reward(player,coins,xp,0)
+  tell(player,"ACTIVITY COMPLETE! +"..coins.." COINS!")
+ end
+ Players.PlayerRemoving:Connect(function(p)
+  cooldown[p]=nil; deliveries[p]=nil; deliveryCompletedAt[p]=nil
+ end)
+ for i,region in ipairs(Expansion.Worlds) do
+  local c=region.center
+  local area=Instance.new("Folder"); area.Name=region.name; area.Parent=folder
+  area:SetAttribute("WorldId",region.id)
+  area:SetAttribute("Biome",region.name)
+  -- True Roblox Terrain, not flat plastic tiles. Material supports sculpting in Studio.
+  if region.id=="MARINA" then
+   Terrain:FillBlock(CFrame.new(c+Vector3.new(0,-9,0)),
+    Vector3.new(300,12,300),Enum.Material.Water)
+   Terrain:FillBlock(CFrame.new(c+Vector3.new(0,-4,0)),
+    Vector3.new(145,12,145),Enum.Material.Sand)
+  else
+   Terrain:FillBlock(CFrame.new(c+Vector3.new(0,-4,0)),
+    Vector3.new(170,12,170),region.ground)
+   for j=1,5 do
+    local a=j*1.2566
+    Terrain:FillBall(c+Vector3.new(math.cos(a)*76,-5,math.sin(a)*76),
+     18,region.ground)
+   end
+  end
+  local floor=part(area,"Walkable Arrival Plaza",Vector3.new(28,1,28),
+   CFrame.new(c+Vector3.new(0,2.5,0)),region.color,Enum.Material.SmoothPlastic,true)
+  floor.Transparency=.25
+  label(area,region.name:upper(),c+Vector3.new(0,29,0),region.color)
+  destinations[region.id]=c+Vector3.new(0,8,0)
+  local deliveryPoint=part(area,"Interworld Delivery Point",Vector3.new(5,5,5),
+   CFrame.new(c+Vector3.new(-20,4,13)),
+   Color3.fromRGB(244,199,74),Enum.Material.Neon,false)
+  prompt(deliveryPoint,"DELIVER","Interworld Courier",function(p)
+   if deliveries[p]~=region.id then
+    tell(p,"ACCEPT A DELIVERY FROM THE CENTRAL HUB FIRST!")
+    return
+   end
+   deliveries[p]=nil
+   deliveryCompletedAt[p]=os.clock()
+   p:SetAttribute("RRDeliveryTarget","")
+   p:SetAttribute("RRDeliveries",(p:GetAttribute("RRDeliveries") or 0)+1)
+   reward(p,40,45,2)
+   tell(p,"DELIVERY COMPLETE! +40 COINS +2 SHARDS!")
+  end)
+  local hubAngle=(i-1)*math.pi*2/#Expansion.Worlds
+  local hubPos=Vector3.new(math.cos(hubAngle)*37,2,math.sin(hubAngle)*37)
+  local _,hubFrame=portal(area,hubPos,region.color,region.name)
+  prompt(hubFrame,"TRAVEL",region.name,function(p)
+   local root=p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+   if root and (root.Position-hubFrame.Position).Magnitude<19 then
+    p.Character:PivotTo(CFrame.new(destinations[region.id]))
+    tell(p,"WELCOME TO "..region.name:upper())
+   end
+  end)
+  local _,returnFrame=portal(area,c+Vector3.new(0,2,36),region.color,"Central Hub")
+  prompt(returnFrame,"RETURN","Central Hub",function(p)
+   p.Character:PivotTo(CFrame.new(0,8,0))
+   tell(p,"BACK AT THE CENTRAL HUB!")
+  end)
+  for j=1,11 do
+   local a=j*2.39996
+   local radius=45+(j%3)*9
+   local pos=c+Vector3.new(math.cos(a)*radius,2,math.sin(a)*radius)
+   if region.id=="ARCTIC" then
+    kit.Tree(area,pos,"pine",.7)
+   elseif region.id=="JAPAN" then
+    kit.Tree(area,pos,"oak",.6)
+   elseif region.id=="MARINA" or region.id=="AIRPORT" then
+    if j%2==0 then kit.Lamp(area,pos,region.color) end
+   else
+    kit.Tree(area,pos,"oak",.55)
+   end
+  end
+  for j=1,12 do
+   local x=rng:NextNumber(-67,67); local z=rng:NextNumber(-67,67)
+   if x*x+z*z>32*32 then
+    if region.id=="ARCTIC" then
+     kit.Rock(area,c+Vector3.new(x,2,z),Color3.fromRGB(202,222,239),.6)
+    elseif region.id~="AIRPORT" and region.id~="MARINA" then
+     kit.Grass(area,c+Vector3.new(x,2,z))
+    end
+   end
+  end
+  if region.id=="CASTLE" then
+   castle(area,c+Vector3.new(0,2,-36))
+   local relic=part(area,"Royal Relic",Vector3.new(4,6,4),
+    CFrame.new(c+Vector3.new(32,6,-24)),region.color,Enum.Material.Neon,false)
+   prompt(relic,"FIND RELIC","Castle Quest",function(p) earn("relic",p,22,24) end)
+  elseif region.id=="FARM" then
+   barn(area,c+Vector3.new(-33,2,-25))
+   for j=1,12 do
+    local x=(j%4)*9-14; local z=math.floor((j-1)/4)*9+10
+    local _,soil=crop(area,c+Vector3.new(x,2,z),j%2==0 and "Wheat" or "Carrot")
+    prompt(soil,"HARVEST","Farm Crops",function(p) earn("crop_"..j,p,8,8) end)
+   end
+   local cow,body=animal(area,c+Vector3.new(34,2,-25),"Cow")
+   prompt(body,"FEED","Friendly Cow",function(p) earn("cow",p,10,10) end)
+  elseif region.id=="JAPAN" then
+   torii(area,c+Vector3.new(0,2,-33))
+   pagoda(area,c+Vector3.new(0,2,34))
+   for j=1,5 do
+    local lantern=kit.Lamp(area,c+Vector3.new(-45+j*15,2,-9),region.color)
+    if j==3 then
+     prompt(lantern.PrimaryPart,"LIGHT","Sakura Lantern",function(p) earn("lantern",p,14,14) end)
+    end
+   end
+  elseif region.id=="ARCTIC" then
+   for j=1,4 do
+    local display=snowmobile(area,c+Vector3.new(-36+j*17,2,-28))
+    prompt(display.PrimaryPart,"RIDE","Spawn Snowmobile",function(p)
+     if not spawnVehicle then return end
+     local ok,message=spawnVehicle(world,p,"snowmobile")
+     tell(p,message)
+    end)
+   end
+   local pack,core=jetpack(area,c+Vector3.new(32,2,28))
+   prompt(core,"ACTIVATE","Jetpack Launch",function(p)
+    if p:GetAttribute("RROwn_JETPACK_LICENSE")~=true then
+     tell(p,"EARN THE JETPACK LICENSE IN THE COIN SHOP FIRST!")
+     return
+    end
+    local root=p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local k="jetpack"
+    cooldown[p]=cooldown[p] or {}
+    if os.clock()-(cooldown[p][k] or -math.huge)<12 then
+     tell(p,"JETPACK RECHARGING!"); return
+    end
+    cooldown[p][k]=os.clock()
+    local attachment=Instance.new("Attachment"); attachment.Name="JetpackAttachment"
+    attachment.Parent=root
+    local lift=Instance.new("VectorForce")
+    lift.Name="JetpackLift"; lift.Attachment0=attachment
+    lift.RelativeTo=Enum.ActuatorRelativeTo.World
+    lift.ApplyAtCenterOfMass=true
+    lift.Force=Vector3.new(0,root.AssemblyMass*workspace.Gravity*1.25,0)
+    lift.Parent=root
+    root.AssemblyLinearVelocity=Vector3.new(root.AssemblyLinearVelocity.X,25,root.AssemblyLinearVelocity.Z)
+    tell(p,"JETPACK LIFT ACTIVE FOR 3 SECONDS!")
+    task.delay(3,function()
+     if lift.Parent then lift:Destroy() end
+     if attachment.Parent then attachment:Destroy() end
+    end)
+   end)
+  elseif region.id=="MARINA" then
+   local dock=part(area,"Marina Dock",Vector3.new(20,2,110),
+    CFrame.new(c+Vector3.new(0,1,85)),
+    Color3.fromRGB(129,95,70),Enum.Material.WoodPlanks,true)
+   boat(area,c+Vector3.new(23,-1,113))
+   boat(area,c+Vector3.new(-23,-1,105))
+   local fishing=part(area,"Fishing Pier Marker",Vector3.new(5,3,5),
+    CFrame.new(c+Vector3.new(0,4,115)),region.color,Enum.Material.Neon,false)
+   prompt(fishing,"FISH","Ocean Fishing",function(p) earn("fishing",p,18,20) end)
+  elseif region.id=="SAFARI" then
+   local deer,body=animal(area,c+Vector3.new(22,2,-21),"Deer")
+   prompt(body,"FEED","Friendly Deer",function(p) earn("deer",p,12,12) end)
+   for j=1,4 do
+    animal(area,c+Vector3.new(-35+j*14,2,29),j%2==0 and "Cow" or "Deer")
+   end
+   kit.Pond(area,c+Vector3.new(-30,2,-32))
+  elseif region.id=="AIRPORT" then
+   airport(area,c+Vector3.new(0,2,-35))
+   local runway=part(area,"Airport Runway",Vector3.new(120,1,28),
+    CFrame.new(c+Vector3.new(0,2,44)),
+    Color3.fromRGB(41,48,58),Enum.Material.Asphalt,true)
+   plane(area,c+Vector3.new(38,2,41))
+   local bag=part(area,"Luggage Cart",Vector3.new(6,5,7),
+    CFrame.new(c+Vector3.new(-32,4,12)),
+    Color3.fromRGB(232,170,66),Enum.Material.Metal,true)
+   prompt(bag,"DELIVER","Airport Luggage",function(p) earn("luggage",p,16,18) end)
+  end
+ end
+ -- Cross-world courier missions turn exploration into a replayable gameplay loop.
+ local dispatch=part(folder,"Courier Dispatch Terminal",Vector3.new(8,8,6),
+  CFrame.new(0,6,23),Color3.fromRGB(244,190,69),Enum.Material.Metal,true)
+ prompt(dispatch,"TAKE JOB","Interworld Courier",function(p)
+  if deliveries[p] then
+   tell(p,"CURRENT DELIVERY: "..tostring(p:GetAttribute("RRDeliveryTarget")))
+   return
+  end
+  if os.clock()-(deliveryCompletedAt[p] or -math.huge)<25 then
+   tell(p,"NEW COURIER JOB AVAILABLE SOON!")
+   return
+  end
+  local count=p:GetAttribute("RRDeliveries") or 0
+  local nextRegion=Expansion.Worlds[(count+p.UserId%7)%#Expansion.Worlds+1]
+  deliveries[p]=nextRegion.id
+  p:SetAttribute("RRDeliveryTarget",nextRegion.name)
+  tell(p,"COURIER JOB: DELIVER PACKAGE TO "..nextRegion.name:upper())
+ end)
+ -- A bank belongs in the metropolitan island rather than an isolated world.
+ local bankFolder=Instance.new("Folder"); bankFolder.Name="Metropolis Bank"; bankFolder.Parent=folder
+ bank(bankFolder,Vector3.new(180+31,2,31))
+ local atm=part(bankFolder,"Bank ATM",Vector3.new(4,7,3),
+  CFrame.new(180+31,5,31-17),Color3.fromRGB(64,144,179),Enum.Material.Metal,true)
+ prompt(atm,"COLLECT BANK PAYOUT","Bank ATM",function(p) earn("bank",p,12,12) end)
+ return destinations
+end
+return Expansion
+]]></string>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="7">
+      <Properties>
+        <string name="Name">WorldKit</string>
+        <string name="Source"><![CDATA[-- Reusable procedural asset kit for any SatisfyForge Roblox map.
+-- Original geometry only; no external model IDs, untrusted free models or paid assets.
+local Kit={}
+local CollectionService=game:GetService("CollectionService")
+local function piece(parent,name,size,cf,color,material,collide)
+ local p=Instance.new("Part")
+ p.Name=name; p.Size=size; p.CFrame=cf; p.Color=color
+ p.Material=material or Enum.Material.SmoothPlastic
+ p.Anchored=true; p.CanCollide=collide==true
+ p.CanTouch=collide==true
+ p.CastShadow=true; p.Parent=parent
+ return p
+end
+local function model(parent,name,kind)
+ local m=Instance.new("Model"); m.Name=name
+ m:SetAttribute("AssetType",kind); m.Parent=parent
+ CollectionService:AddTag(m,"RiftWorldAsset")
+ return m
+end
+function Kit.Tree(parent,pos,variant,scale)
+ scale=scale or 1; variant=variant or "oak"
+ local m=model(parent,"Tree_"..variant,"Tree")
+ local trunkColor=Color3.fromRGB(104,72,53)
+ local trunk=piece(m,"Trunk",Vector3.new(2.8,14,2.8)*scale,
+  CFrame.new(pos+Vector3.new(0,7*scale,0)),trunkColor,Enum.Material.Wood,true)
+ m.PrimaryPart=trunk
+ if variant=="pine" then
+  for layer=1,3 do
+   local cone=Instance.new("Part"); cone.Name="Pine Crown"
+   cone.Shape=Enum.PartType.Ball
+   cone.Size=Vector3.new(13,9,13)*scale
+   cone.Position=pos+Vector3.new(0,(12+layer*4)*scale,0)
+   cone.Color=Color3.fromRGB(29,110+layer*13,90)
+   cone.Material=Enum.Material.Grass; cone.Anchored=true; cone.CanCollide=false
+   cone.Parent=m
+  end
+ elseif variant=="crystal" then
+  for i=1,4 do
+   local a=i*math.pi/2
+   local crown=piece(m,"Prism Branch",Vector3.new(3,13,3)*scale,
+    CFrame.new(pos+Vector3.new(math.cos(a)*3*scale,16*scale,math.sin(a)*3*scale))*
+     CFrame.Angles(0,a,math.rad(14)),
+    Color3.fromRGB(139+15*i,70+20*i,240),Enum.Material.Glass,false)
+  end
+ else
+  for i=1,5 do
+   local angle=i*math.pi*2/5
+   local leaf=piece(m,"Leaf Crown",Vector3.new(11,10,11)*scale,
+    CFrame.new(pos+Vector3.new(math.cos(angle)*4*scale,17*scale,math.sin(angle)*4*scale)),
+    Color3.fromRGB(40+i*6,137+i*10,85+i*5),Enum.Material.Grass,false)
+   leaf.Shape=Enum.PartType.Ball
+  end
+ end
+ return m
+end
+function Kit.Grass(parent,pos,color)
+ local m=model(parent,"Grass Patch","Grass")
+ for i=1,3 do
+  local a=i*2.1
+  piece(m,"Blade",Vector3.new(.65,2.4,.5),
+   CFrame.new(pos+Vector3.new(math.cos(a)*.5,1.2,math.sin(a)*.5))*
+    CFrame.Angles(math.sin(a)*.2,0,math.cos(a)*.3),
+   color or Color3.fromRGB(69,171,86),Enum.Material.Grass,false)
+ end
+ return m
+end
+function Kit.Rock(parent,pos,color,scale)
+ local m=model(parent,"Rock Cluster","Rock")
+ scale=scale or 1
+ for i=1,3 do
+  local rock=piece(m,"Boulder",Vector3.new(5+i,3+i,4+i)*scale,
+   CFrame.new(pos+Vector3.new(i*2,1.5*scale,i*.6))*
+    CFrame.Angles(i*.3,i*.6,i*.15),
+   color or Color3.fromRGB(96,106,129),Enum.Material.Slate,true)
+  rock.Shape=Enum.PartType.Ball
+ end
+ return m
+end
+function Kit.Lamp(parent,pos,color)
+ local m=model(parent,"Street Lamp","StreetLight")
+ local pole=piece(m,"Pole",Vector3.new(1.1,16,1.1),
+  CFrame.new(pos+Vector3.new(0,8,0)),Color3.fromRGB(46,57,78),Enum.Material.Metal,true)
+ m.PrimaryPart=pole
+ local light=piece(m,"Lamp Head",Vector3.new(4,1.5,4),
+  CFrame.new(pos+Vector3.new(0,16,0)),color or Color3.fromRGB(67,235,255),Enum.Material.Neon,false)
+ local point=Instance.new("PointLight"); point.Color=light.Color
+ point.Brightness=1.4; point.Range=23; point.Parent=light
+ return m
+end
+function Kit.Crate(parent,pos,color)
+ local m=model(parent,"Supply Crate","Crate")
+ local box=piece(m,"Box",Vector3.new(7,6,7),CFrame.new(pos+Vector3.new(0,3,0)),
+  Color3.fromRGB(90,72,62),Enum.Material.WoodPlanks,true)
+ m.PrimaryPart=box
+ for _,x in ipairs({-3.6,3.6}) do
+  piece(m,"Metal Strap",Vector3.new(.6,6.5,7.6),
+   CFrame.new(pos+Vector3.new(x,3,0)),color or Color3.fromRGB(241,171,66),Enum.Material.Metal,false)
+ end
+ return m
+end
+function Kit.Road(parent,pos,size)
+ local m=model(parent,"Road Segment","Road")
+ local road=piece(m,"Asphalt",size,CFrame.new(pos),
+  Color3.fromRGB(29,34,48),Enum.Material.Asphalt,true)
+ m.PrimaryPart=road
+ local longX=size.X>size.Z
+ for offset=-1,1,2 do
+  local stripeSize=longX and Vector3.new(6,.13,.6) or Vector3.new(.6,.13,6)
+  local stripeOffset=longX and Vector3.new(offset*size.X*.25,size.Y/2+.1,0)
+   or Vector3.new(0,size.Y/2+.1,offset*size.Z*.25)
+  piece(m,"Road Stripe",stripeSize,CFrame.new(pos+stripeOffset),
+   Color3.fromRGB(255,214,95),Enum.Material.Neon,false)
+ end
+ return m
+end
+function Kit.Car(parent,cf,paint,drivable)
+ local m=model(parent,drivable and "Player Hovercar" or "Parked Future Car",
+  drivable and "Vehicle" or "CarProp")
+ local body=piece(m,"Chassis",Vector3.new(11,2.2,18),
+  cf,paint or Color3.fromRGB(62,203,230),Enum.Material.Metal,true)
+ m.PrimaryPart=body
+ local cockpit=piece(m,"Cabin",Vector3.new(9,3.5,8),
+  cf*CFrame.new(0,2.5,1.8),Color3.fromRGB(30,51,78),Enum.Material.Glass,false)
+ local seat=Instance.new("VehicleSeat"); seat.Name="DriverSeat"
+ seat.Size=Vector3.new(2,1,2); seat.CFrame=cf*CFrame.new(0,2.5,1.8)
+ seat.Color=Color3.fromRGB(30,38,56); seat.Material=Enum.Material.SmoothPlastic
+ seat.Anchored=true; seat.CanCollide=false; seat.Parent=m
+ seat.HeadsUpDisplay=true; seat.MaxSpeed=40; seat.Torque=8; seat.TurnSpeed=2
+ local function wheel(x,z)
+  local w=piece(m,"Wheel",Vector3.new(4,2.5,4),
+   cf*CFrame.new(x,-1.3,z)*CFrame.Angles(0,0,math.pi/2),
+   Color3.fromRGB(24,29,44),Enum.Material.Rubber,true)
+  w.Shape=Enum.PartType.Cylinder
+  local hub=piece(m,"Wheel Glow",Vector3.new(4.2,.3,4.2),
+   cf*CFrame.new(x*1.02,-1.3,z)*CFrame.Angles(0,0,math.pi/2),
+   Color3.fromRGB(93,224,255),Enum.Material.Neon,false)
+  hub.Shape=Enum.PartType.Cylinder
+ end
+ for _,x in ipairs({-5.1,5.1}) do
+  for _,z in ipairs({-5.8,5.8}) do wheel(x,z) end
+ end
+ for _,x in ipairs({-3.4,3.4}) do
+  piece(m,"Headlight",Vector3.new(2,1,.3),
+   cf*CFrame.new(x,.4,-9.2),Color3.fromRGB(244,247,255),Enum.Material.Neon,false)
+  piece(m,"Tail Light",Vector3.new(2,1,.3),
+   cf*CFrame.new(x,.4,9.2),Color3.fromRGB(255,69,101),Enum.Material.Neon,false)
+ end
+ if drivable then
+  -- Arcade handling: server moves an anchored model only while its real
+  -- VehicleSeat is occupied. PivotTo moves the seat and attached rider.
+  m:SetAttribute("Drivable",true)
+ else
+  seat.Disabled=true
+ end
+ return m,seat
+end
+function Kit.Bush(parent,pos,color)
+ local m=model(parent,"Flowering Bush","Bush")
+ for i=1,3 do
+  local p=piece(m,"Foliage",Vector3.new(5,3.5,5),
+   CFrame.new(pos+Vector3.new((i-2)*2.1,2,math.sin(i)*1.5)),
+   color or Color3.fromRGB(65,165,95),Enum.Material.Grass,false)
+  p.Shape=Enum.PartType.Ball
+ end
+ return m
+end
+function Kit.Flower(parent,pos,color)
+ local m=model(parent,"Wild Flower","Flower")
+ piece(m,"Stem",Vector3.new(.25,2,.25),
+  CFrame.new(pos+Vector3.new(0,1,0)),Color3.fromRGB(57,161,73),Enum.Material.Grass,false)
+ local head=piece(m,"Bloom",Vector3.new(1.6,1.6,1.6),
+  CFrame.new(pos+Vector3.new(0,2.2,0)),color or Color3.fromRGB(255,131,190),
+  Enum.Material.SmoothPlastic,false)
+ head.Shape=Enum.PartType.Ball
+ return m
+end
+function Kit.Bench(parent,pos,color)
+ local m=model(parent,"Park Bench","Bench")
+ local seat=piece(m,"Seat",Vector3.new(9,.8,3),
+  CFrame.new(pos+Vector3.new(0,2.4,0)),color or Color3.fromRGB(135,91,61),
+  Enum.Material.WoodPlanks,true)
+ m.PrimaryPart=seat
+ piece(m,"Backrest",Vector3.new(9,3,.8),
+  CFrame.new(pos+Vector3.new(0,4,-1.2)),seat.Color,Enum.Material.WoodPlanks,true)
+ for _,x in ipairs({-3.4,3.4}) do
+  piece(m,"Bench Leg",Vector3.new(.8,2.4,.8),
+   CFrame.new(pos+Vector3.new(x,1.2,0)),Color3.fromRGB(43,49,67),Enum.Material.Metal,true)
+ end
+ return m
+end
+function Kit.Fence(parent,pos,length,color)
+ local m=model(parent,"Fence","Fence")
+ length=math.max(8,length or 24)
+ for i=0,math.floor(length/6) do
+  local x=-length/2+i*6
+  piece(m,"Fence Post",Vector3.new(.8,5,.8),
+   CFrame.new(pos+Vector3.new(x,2.5,0)),
+   color or Color3.fromRGB(102,81,70),Enum.Material.Wood,true)
+ end
+ for _,height in ipairs({1.6,3.5}) do
+  piece(m,"Fence Rail",Vector3.new(length,.6,.65),
+   CFrame.new(pos+Vector3.new(0,height,0)),
+   color or Color3.fromRGB(102,81,70),Enum.Material.Wood,true)
+ end
+ return m
+end
+function Kit.House(parent,pos,color)
+ local m=model(parent,"Modular House","Building")
+ local foundation=piece(m,"House Base",Vector3.new(16,12,14),
+  CFrame.new(pos+Vector3.new(0,6,0)),
+  color or Color3.fromRGB(79,116,155),Enum.Material.Concrete,true)
+ m.PrimaryPart=foundation
+ local roof=piece(m,"Roof",Vector3.new(19,2,17),
+  CFrame.new(pos+Vector3.new(0,13,0)),Color3.fromRGB(50,59,90),Enum.Material.Metal,true)
+ piece(m,"Door",Vector3.new(3,6,.4),
+  CFrame.new(pos+Vector3.new(0,3,-7.3)),
+  Color3.fromRGB(44,47,66),Enum.Material.Wood,true)
+ for _,x in ipairs({-5,5}) do
+  piece(m,"Window",Vector3.new(3,3,.3),
+   CFrame.new(pos+Vector3.new(x,8,-7.3)),
+   Color3.fromRGB(119,236,255),Enum.Material.Glass,false)
+ end
+ return m
+end
+function Kit.Pond(parent,pos)
+ local m=model(parent,"Crystal Pond","WaterFeature")
+ local rim=piece(m,"Pond Rim",Vector3.new(21,.4,15),
+  CFrame.new(pos+Vector3.new(0,.1,0)),
+  Color3.fromRGB(87,112,140),Enum.Material.Slate,true)
+ m.PrimaryPart=rim
+ local water=piece(m,"Water Surface",Vector3.new(18,.15,12),
+  CFrame.new(pos+Vector3.new(0,.35,0)),
+  Color3.fromRGB(77,177,217),Enum.Material.Glass,false)
+ water.Transparency=.3
+ return m
+end
+function Kit.Populate(parent,biomes)
+ local rng=Random.new(424242)
+ local folder=Instance.new("Folder"); folder.Name="ReusableWorldKit"; folder.Parent=parent
+ folder:SetAttribute("AssetLibrary","Trees,Grass,Rocks,Lamps,Crates,Roads,Cars,Bushes,Flowers,Benches,Fences,Buildings,Ponds")
+ for index,biome in ipairs(biomes) do
+  local area=Instance.new("Folder"); area.Name=biome.id.." Scenery"; area.Parent=folder
+  local c=biome.center
+  for i=1,9 do
+   local angle=i*2.399
+   local radius=36+(i%3)*6
+   local p=c+Vector3.new(math.cos(angle)*radius,1,math.sin(angle)*radius)
+   if index==1 then
+    Kit.Lamp(area,p,Color3.fromRGB(74,223,252))
+   elseif index==2 then
+    Kit.Tree(area,p,"crystal",.7)
+   elseif index==3 then
+    Kit.Rock(area,p,Color3.fromRGB(94,65,67),.75)
+   else
+    Kit.Tree(area,p,"pine",.65)
+   end
+  end
+  Kit.Bench(area,c+Vector3.new(24,1,-20),biome.color)
+  Kit.Fence(area,c+Vector3.new(-30,1,-51),24,biome.color)
+  for i=1,5 do
+   Kit.Bush(area,c+Vector3.new(-46+i*14,1,49),biome.color)
+  end
+  if index==1 then
+   Kit.House(area,c+Vector3.new(-38,1,26),Color3.fromRGB(85,128,164))
+   Kit.House(area,c+Vector3.new(38,1,26),Color3.fromRGB(130,91,169))
+   Kit.Road(area,c+Vector3.new(0,1,-42),Vector3.new(90,.35,12))
+   for i=1,3 do
+    Kit.Car(area,CFrame.new(c+Vector3.new(-33+i*20,4,-42)),
+     Color3.fromRGB(85+i*35,99+i*25,225-i*30),false)
+   end
+  else
+   if index==2 then Kit.Pond(area,c+Vector3.new(-33,1,-35)) end
+   for i=1,45 do
+    local x=rng:NextNumber(-52,52); local z=rng:NextNumber(-52,52)
+    if x*x+z*z>24*24 then
+     if i%7==0 then
+      Kit.Flower(area,c+Vector3.new(x,1,z),biome.color)
+     end
+     Kit.Grass(area,c+Vector3.new(x,1,z),
+      index==3 and Color3.fromRGB(217,101,64) or
+       index==2 and Color3.fromRGB(159,113,225) or Color3.fromRGB(85,174,119))
+    end
+   end
+  end
+  for i=1,4 do
+   Kit.Crate(area,c+Vector3.new(-44+i*17,1,43),biome.color)
+  end
+ end
+ return folder
+end
+return Kit
+]]></string>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="8">
+      <Properties>
+        <string name="Name">WorldPolish</string>
+        <string name="Source"><![CDATA[-- Original lightweight world atmosphere and ambient NPC behavior.
+-- NPCs are decorative route-following pedestrians/traffic, not full pathfinding AI.
+local Lighting=game:GetService("Lighting")
+local RunService=game:GetService("RunService")
+local TweenService=game:GetService("TweenService")
+local Terrain=workspace.Terrain
+local Polish={}
+local function piece(parent,name,size,cf,color,material,collide)
+ local p=Instance.new("Part")
+ p.Name=name; p.Size=size; p.CFrame=cf; p.Color=color
+ p.Material=material or Enum.Material.SmoothPlastic
+ p.Anchored=true; p.CanCollide=collide==true; p.CanTouch=false
+ p.CastShadow=true; p.Parent=parent
+ return p
+end
+local function pedestrian(parent,id,center,waypoints)
+ local colors={
+  Color3.fromRGB(72,130,180),Color3.fromRGB(198,116,73),
+  Color3.fromRGB(92,155,109),Color3.fromRGB(158,101,166),
+  Color3.fromRGB(183,168,89),Color3.fromRGB(82,94,126)
+ }
+ local m=Instance.new("Model"); m.Name="Ambient Pedestrian "..id
+ m:SetAttribute("NPCType","AmbientCitizen")
+ m:SetAttribute("Behavior","Walking")
+ m.Parent=parent
+ local cf=CFrame.new(center+Vector3.new(0,3,0))
+ local body=piece(m,"Torso",Vector3.new(2.1,3,1.2),cf,
+  colors[(id-1)%#colors+1],Enum.Material.Fabric,false)
+ m.PrimaryPart=body
+ local skin=({Color3.fromRGB(219,170,131),Color3.fromRGB(124,91,69),
+  Color3.fromRGB(178,123,95),Color3.fromRGB(236,200,161)})[(id-1)%4+1]
+ piece(m,"Head",Vector3.new(1.6,1.6,1.6),cf*CFrame.new(0,2.3,0),
+  skin,Enum.Material.SmoothPlastic,false).Shape=Enum.PartType.Ball
+ piece(m,"Hair",Vector3.new(1.7,.45,1.65),cf*CFrame.new(0,3.05,0),
+  Color3.fromRGB(40+id*11,34+id*8,35+id*7),Enum.Material.SmoothPlastic,false)
+ local arms,legs={},{}
+ for _,side in ipairs({-1,1}) do
+  arms[side]=piece(m,"Arm",Vector3.new(.75,2.7,.85),
+   cf*CFrame.new(side*1.5,0,0),skin,Enum.Material.SmoothPlastic,false)
+  legs[side]=piece(m,"Leg",Vector3.new(.9,2.8,1),
+   cf*CFrame.new(side*.56,-2.8,0),
+   Color3.fromRGB(42,49,63),Enum.Material.Fabric,false)
+ end
+ local data={model=m,body=body,arms=arms,legs=legs,waypoints=waypoints,
+  next=2,position=waypoints[1],wait=0,speed=5.5+(id%4),
+  distance=0,seed=id*1.2}
+ return data
+end
+function Polish.Build(world,kit)
+ local folder=Instance.new("Folder"); folder.Name="Living World Atmosphere"
+ folder.Parent=world
+ local clouds=Terrain:FindFirstChildOfClass("Clouds")
+ if not clouds then clouds=Instance.new("Clouds"); clouds.Parent=Terrain end
+ clouds.Name="Dynamic Weather Clouds"; clouds.Cover=.25
+ clouds.Density=.42; clouds.Color=Color3.fromRGB(240,241,250)
+ local atmosphere=Lighting:FindFirstChildOfClass("Atmosphere")
+ if not atmosphere then atmosphere=Instance.new("Atmosphere"); atmosphere.Parent=Lighting end
+ atmosphere.Density=.19; atmosphere.Offset=.1; atmosphere.Haze=1.3
+ atmosphere.Glare=.18
+ Lighting.GlobalShadows=true
+ Lighting.Brightness=2.3
+ Lighting.EnvironmentDiffuseScale=.5
+ Lighting.EnvironmentSpecularScale=.6
+ Lighting.ExposureCompensation=-.1
+ pcall(function() Lighting.LightingStyle=Enum.LightingStyle.Realistic end)
+ local grading=Lighting:FindFirstChild("RiftNaturalColorGrade")
+ if not grading then
+  grading=Instance.new("ColorCorrectionEffect"); grading.Name="RiftNaturalColorGrade"
+  grading.Parent=Lighting
+ end
+ grading.Brightness=.015; grading.Contrast=.08
+ grading.Saturation=-.04; grading.TintColor=Color3.fromRGB(251,248,241)
+ local rays=Lighting:FindFirstChild("RiftSunRays")
+ if not rays then
+  rays=Instance.new("SunRaysEffect"); rays.Name="RiftSunRays"; rays.Parent=Lighting
+ end
+ rays.Intensity=.055; rays.Spread=.75
+ local people={}
+ for i=1,6 do
+  local c=Vector3.new(180,0,0)
+  local x=-32+((i-1)%3)*32
+  local z=(i<=3 and 22 or -20)
+  local a=c+Vector3.new(x,0,z)
+  local b=c+Vector3.new(x+11,0,z)
+  local d=c+Vector3.new(x+11,0,z+7)
+  table.insert(people,pedestrian(folder,i,a,{a,b,d,a}))
+ end
+ for i=1,4 do
+  local c=Vector3.new(0,0,1260)
+  local x=-125+(i-1)*80
+  local a=c+Vector3.new(x,0,-6)
+  local b=c+Vector3.new(x+32,0,-6)
+  table.insert(people,pedestrian(folder,i+6,a,{a,b,a}))
+ end
+ local traffic={}
+ local roadCenter=Vector3.new(180,2.3,0)
+ for _,z in ipairs({-39,39}) do
+  piece(folder,"City Ring Road",Vector3.new(92,.6,12),
+   CFrame.new(roadCenter+Vector3.new(0,0,z)),
+   Color3.fromRGB(52,57,65),Enum.Material.Asphalt,true)
+ end
+ for _,x in ipairs({-39,39}) do
+  piece(folder,"City Ring Road",Vector3.new(12,.6,88),
+   CFrame.new(roadCenter+Vector3.new(x,0,0)),
+   Color3.fromRGB(52,57,65),Enum.Material.Asphalt,true)
+ end
+ for i=1,2 do
+  local c=Vector3.new(180,0,0)
+  local waypoints={
+   c+Vector3.new(-39,5,-39),c+Vector3.new(39,5,-39),
+   c+Vector3.new(39,5,39),c+Vector3.new(-39,5,39)
+  }
+  local start=i==1 and 1 or 3
+  local car=kit.Car(folder,CFrame.new(waypoints[start]),
+   i==1 and Color3.fromRGB(135,150,161) or Color3.fromRGB(189,98,77),false)
+  car.Name="Ambient City Traffic "..i
+  car:SetAttribute("NPCType","Traffic")
+  for _,desc in ipairs(car:GetDescendants()) do
+   if desc:IsA("BasePart") then desc.CanCollide=false; desc.CanTouch=false end
+  end
+  table.insert(traffic,{model=car,waypoints=waypoints,next=start%4+1,
+   position=waypoints[start],speed=14+i*3,wait=0})
+ end
+ local weatherStates={"CLEAR","CLOUDY","RAIN","MIST"}
+ local weatherIndex=1
+ world:SetAttribute("Weather",weatherStates[weatherIndex])
+ world:SetAttribute("TimeOfDay","DAY")
+ local function setWeather(index)
+  local state=weatherStates[index]
+  world:SetAttribute("Weather",state)
+  local cover=state=="CLEAR" and .18 or state=="CLOUDY" and .57
+   or state=="RAIN" and .85 or .7
+  local density=state=="MIST" and .38 or state=="RAIN" and .27 or .19
+  TweenService:Create(clouds,TweenInfo.new(5),{Cover=cover}):Play()
+  TweenService:Create(atmosphere,TweenInfo.new(5),{
+   Density=density,Haze=state=="MIST" and 2.9 or 1.3
+  }):Play()
+  TweenService:Create(grading,TweenInfo.new(5),{
+   Saturation=state=="RAIN" and -.22 or -.04,
+   Brightness=state=="RAIN" and -.05 or .015
+  }):Play()
+ end
+ task.spawn(function()
+  while world.Parent do
+   task.wait(115)
+   weatherIndex=weatherIndex%#weatherStates+1
+   setWeather(weatherIndex)
+  end
+ end)
+ task.spawn(function()
+  local time=8
+  while world.Parent do
+   task.wait(1)
+   time=(time+.025)%24
+   Lighting.ClockTime=time
+   local night=time>=19 or time<6
+   world:SetAttribute("TimeOfDay",night and "NIGHT" or "DAY")
+   Lighting.OutdoorAmbient=night and Color3.fromRGB(52,68,92)
+    or Color3.fromRGB(122,131,148)
+  end
+ end)
+ local accumulator=0
+ RunService.Heartbeat:Connect(function(dt)
+  if not world.Parent then return end
+  accumulator+=dt
+  if accumulator<.14 then return end
+  local step=math.min(accumulator,.2); accumulator=0
+  local now=os.clock()
+  for _,npc in ipairs(people) do
+   if npc.wait>now then continue end
+   local goal=npc.waypoints[npc.next]
+   local delta=goal-npc.position
+   if delta.Magnitude<1 then
+    npc.wait=now+1+(npc.seed%3)
+    npc.next=npc.next%#npc.waypoints+1
+    npc.model:SetAttribute("Behavior","Waiting")
+   else
+    npc.model:SetAttribute("Behavior","Walking")
+    local direction=delta.Unit
+    npc.position+=direction*math.min(delta.Magnitude,step*npc.speed)
+    local cf=CFrame.lookAt(npc.position+Vector3.new(0,3,0),
+     npc.position+Vector3.new(0,3,0)+direction)
+    npc.model:PivotTo(cf)
+    local stride=math.sin(now*8+npc.seed)*.55
+    for _,side in ipairs({-1,1}) do
+     npc.arms[side].CFrame=cf*CFrame.new(side*1.5,0,0)*
+      CFrame.Angles(side*stride,0,0)
+     npc.legs[side].CFrame=cf*CFrame.new(side*.56,-2.8,0)*
+      CFrame.Angles(-side*stride,0,0)
+    end
+   end
+  end
+  for _,car in ipairs(traffic) do
+   if car.wait>now then continue end
+   local goal=car.waypoints[car.next]
+   local delta=goal-car.position
+   if delta.Magnitude<1 then
+    car.wait=now+1.2
+    car.next=car.next%#car.waypoints+1
+   else
+    local direction=delta.Unit
+    car.position+=direction*math.min(delta.Magnitude,car.speed*step)
+    car.model:PivotTo(CFrame.lookAt(car.position,car.position+direction))
+   end
+  end
+ end)
+ return folder
+end
+return Polish
+]]></string>
+      </Properties>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="9">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="10">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="LocalScript" referent="11">
+        <Properties>
+          <string name="Name">RiftRaidersHUD</string>
+          <string name="Source"><![CDATA[-- Rift Raiders responsive HUD; no Robux purchase prompts in the prototype.
+local Players=game:GetService("Players")
+local ReplicatedStorage=game:GetService("ReplicatedStorage")
+local TweenService=game:GetService("TweenService")
+local Lighting=game:GetService("Lighting")
+local RunService=game:GetService("RunService")
+local player=Players.LocalPlayer
+local action=ReplicatedStorage:WaitForChild("RiftRaidersAction")
+local event=ReplicatedStorage:WaitForChild("RiftRaidersEvent")
+local activitySignal=ReplicatedStorage:WaitForChild("RiftActivitiesSignal")
+local world=workspace:WaitForChild("RiftRaidersWorld")
+local Catalog=require(ReplicatedStorage:WaitForChild("PrestigeCatalog"))
+local gui=Instance.new("ScreenGui"); gui.Name="RiftRaidersHUD"
+gui.ResetOnSpawn=false; gui.IgnoreGuiInset=false; gui.Parent=player:WaitForChild("PlayerGui")
+local function round(object,radius)
+ local corner=Instance.new("UICorner"); corner.CornerRadius=UDim.new(0,radius or 12)
+ corner.Parent=object
+ local stroke=Instance.new("UIStroke"); stroke.Color=Color3.fromRGB(100,151,220)
+ stroke.Transparency=.5; stroke.Thickness=1.5; stroke.Parent=object
+end
+local function text(name,content,size,position,color)
+ local label=Instance.new("TextLabel"); label.Name=name; label.Size=size; label.Position=position
+ label.BackgroundColor3=Color3.fromRGB(18,24,53); label.BackgroundTransparency=.12
+ label.TextColor3=color or Color3.new(1,1,1); label.Font=Enum.Font.GothamBold
+ label.TextSize=15; label.Text=content; label.TextWrapped=true
+ label.BorderSizePixel=0; label.Parent=gui; round(label,10)
+ return label
+end
+local function button(name,content,size,position,color,parent)
+ local b=Instance.new("TextButton"); b.Name=name; b.Size=size; b.Position=position
+ b.BackgroundColor3=color; b.TextColor3=Color3.new(1,1,1)
+ b.Font=Enum.Font.GothamBlack; b.TextSize=16; b.Text=content
+ b.TextWrapped=true; b.BorderSizePixel=0; b.Parent=parent or gui; round(b,12)
+ return b
+end
+local title=text("Title","RIFT RAIDERS  ⚡  CHAOS ISLANDS",
+ UDim2.new(.62,0,0,39),UDim2.new(.02,0,0,8),Color3.fromRGB(255,222,97))
+local stats=text("Stats","LEVEL 1  |  0 COINS  |  0 SHARDS",
+ UDim2.new(.62,0,0,33),UDim2.new(.02,0,0,52),Color3.fromRGB(110,250,236))
+local progression=text("Progression","BLASTER 1  |  RIFTS 0  |  XP 0",
+ UDim2.new(.62,0,0,29),UDim2.new(.02,0,0,90),Color3.fromRGB(196,168,255))
+local phase=text("Surge","CALM | NEXT SURGE: 75s",
+ UDim2.new(.32,0,0,34),UDim2.new(.66,0,0,8),Color3.fromRGB(255,154,210))
+local missions=text("Missions","MISSIONS: SHARDS 0/8 | DRONES 0/3 | RIFTS 0/1",
+ UDim2.new(.96,0,0,34),UDim2.new(.02,0,0,130),Color3.fromRGB(255,221,119))
+local hint=text("Hint","EXPLORE PORTALS • DRIVE CARS • HARVEST CROPS • VISIT JAPAN & CASTLES",
+ UDim2.new(.96,0,0,32),UDim2.new(.02,0,0,169),Color3.fromRGB(228,239,255))
+local resourcesHud=text("ResourceHud","WOOD 0 • METAL 0 • FISH 0 • TOOLKITS 0 • HEAT 0",
+ UDim2.new(.64,0,0,31),UDim2.new(.02,0,1,-85),Color3.fromRGB(225,237,214))
+resourcesHud.TextSize=12
+local toast=text("Toast","",UDim2.new(.82,0,0,55),UDim2.new(.09,0,.68,0),Color3.fromRGB(255,222,99))
+toast.Visible=false
+local blast=button("Blast","⚡ BLAST",UDim2.fromOffset(112,62),
+ UDim2.new(1,-126,1,-88),Color3.fromRGB(239,67,134))
+blast.AnchorPoint=Vector2.new(0,0)
+local dash=button("Dash","➤ DASH",UDim2.fromOffset(104,57),
+ UDim2.new(1,-242,1,-85),Color3.fromRGB(56,178,239))
+local shield=button("Shield","⬡ SHIELD",UDim2.fromOffset(108,51),
+ UDim2.new(1,-126,1,-150),Color3.fromRGB(145,85,231))
+local fireButton=button("Fire","FIRE",UDim2.fromOffset(108,56),
+ UDim2.new(1,-126,1,-214),Color3.fromRGB(235,169,66))
+local carButton=button("Car","SPAWN CAR",UDim2.fromOffset(110,44),
+ UDim2.new(1,-118,0,50),Color3.fromRGB(60,148,177))
+local flyingCarButton=button("FlyingCar","FLYING CAR",UDim2.fromOffset(110,44),
+ UDim2.new(1,-118,0,210),Color3.fromRGB(140,87,218))
+local crosshair=Instance.new("TextLabel"); crosshair.Name="Crosshair"
+crosshair.Size=UDim2.fromOffset(22,22)
+crosshair.Position=UDim2.new(.5,-11,.5,-11)
+crosshair.BackgroundTransparency=1; crosshair.Text="+"
+crosshair.TextSize=25; crosshair.Font=Enum.Font.GothamBlack
+crosshair.TextColor3=Color3.fromRGB(255,246,166); crosshair.Parent=gui
+local shopButton=button("ShopToggle","SHOP",UDim2.fromOffset(98,47),
+ UDim2.new(.02,0,1,-145),Color3.fromRGB(90,194,128))
+local mapButton=button("MapToggle","WORLD",UDim2.fromOffset(98,47),
+ UDim2.new(.02,107,1,-145),Color3.fromRGB(87,149,229))
+local qualityButton=button("GraphicsQuality","GRAPHICS: MED",
+ UDim2.fromOffset(110,40),UDim2.new(1,-118,0,269),
+ Color3.fromRGB(82,117,130))
+local packButton=button("PackToggle","PACK",UDim2.fromOffset(98,47),
+ UDim2.new(.02,0,1,-202),Color3.fromRGB(144,117,86))
+blast.Activated:Connect(function() action:FireServer("Blast") end)
+dash.Activated:Connect(function() action:FireServer("Dash") end)
+shield.Activated:Connect(function() action:FireServer("Shield") end)
+carButton.Activated:Connect(function() action:FireServer("SpawnCar") end)
+flyingCarButton.Activated:Connect(function() action:FireServer("SpawnFlyingCar") end)
+local function fireWeapon()
+ local char=player.Character
+ local root=char and char:FindFirstChild("HumanoidRootPart")
+ local camera=workspace.CurrentCamera
+ if not root or not camera then return end
+ local equipped=char:FindFirstChildOfClass("Tool")
+ local name=equipped and equipped.Name or "Pulse Rifle"
+ if name~="Pulse Rifle" and name~="Scatter Blaster" then name="Pulse Rifle" end
+ local viewport=camera.ViewportSize
+ local ray=camera:ViewportPointToRay(viewport.X*.5,viewport.Y*.5)
+ local params=RaycastParams.new()
+ params.FilterType=Enum.RaycastFilterType.Exclude
+ params.FilterDescendantsInstances={char}
+ local result=workspace:Raycast(ray.Origin,ray.Direction*250,params)
+ local target=result and result.Position or ray.Origin+ray.Direction*250
+ local origin=root.Position+Vector3.new(0,1.8,0)
+ local delta=target-origin
+ if delta.Magnitude>.1 then action:FireServer("Shoot",delta.Unit,name) end
+end
+fireButton.Activated:Connect(fireWeapon)
+local attached={}
+local function bindTool(child)
+ if not child:IsA("Tool") or attached[child] then return end
+ if child.Name~="Pulse Rifle" and child.Name~="Scatter Blaster" then return end
+ attached[child]=true
+ child.Activated:Connect(fireWeapon)
+ child.Destroying:Connect(function() attached[child]=nil end)
+end
+local backpack=player:WaitForChild("Backpack")
+backpack.ChildAdded:Connect(bindTool)
+for _,child in ipairs(backpack:GetChildren()) do bindTool(child) end
+local function bindCharacter(char)
+ char.ChildAdded:Connect(bindTool)
+ for _,child in ipairs(char:GetChildren()) do bindTool(child) end
+end
+player.CharacterAdded:Connect(bindCharacter)
+if player.Character then bindCharacter(player.Character) end
+local function panel(name,heading)
+ local f=Instance.new("Frame"); f.Name=name
+ f.Size=UDim2.new(.86,0,.49,0); f.Position=UDim2.new(.07,0,.28,0)
+ f.BackgroundColor3=Color3.fromRGB(19,27,61); f.BorderSizePixel=0
+ f.Visible=false; f.Parent=gui; round(f,16)
+ local header=Instance.new("TextLabel"); header.Size=UDim2.new(1,-55,0,48)
+ header.Position=UDim2.fromOffset(12,2); header.BackgroundTransparency=1
+ header.Font=Enum.Font.GothamBlack; header.TextSize=20; header.TextColor3=Color3.fromRGB(255,221,110)
+ header.Text=heading; header.Parent=f
+ local close=button("Close","X",UDim2.fromOffset(43,42),
+  UDim2.new(1,-49,0,5),Color3.fromRGB(200,73,113),f)
+ close.Activated:Connect(function() f.Visible=false end)
+ local scroll=Instance.new("ScrollingFrame"); scroll.Name="Options"
+ scroll.Size=UDim2.new(1,-24,1,-64); scroll.Position=UDim2.fromOffset(12,55)
+ scroll.BackgroundTransparency=1; scroll.ScrollBarThickness=5
+ scroll.BorderSizePixel=0; scroll.Parent=f
+ local layout=Instance.new("UIListLayout"); layout.Padding=UDim.new(0,8); layout.Parent=scroll
+ layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+  scroll.CanvasSize=UDim2.fromOffset(0,layout.AbsoluteContentSize.Y+12)
+ end)
+ return f,scroll
+end
+local shop,shopList=panel("ShopPanel","EARNED COIN SHOP + PRESTIGE")
+local map,mapList=panel("MapPanel","EXPLORE 14 WORLD LOCATIONS")
+local pack,packList=panel("PackPanel","YOUR RESOURCES & PROGRESS")
+local function item(parent,name,content,color,fn)
+ local b=button(name,content,UDim2.new(1,-12,0,53),UDim2.fromOffset(0,0),color,parent)
+ b.Activated:Connect(fn)
+ return b
+end
+local blasterItem=item(shopList,"Blaster","BLASTER LEVEL UP • COST: 90+ COINS",
+ Color3.fromRGB(224,77,133),function() action:FireServer("Buy","BLASTER") end)
+local shieldItem=item(shopList,"ShieldUpgrade","SHIELD ABILITY • 150 COINS",
+ Color3.fromRGB(126,86,219),function() action:FireServer("Buy","SHIELD") end)
+local scatterItem=item(shopList,"ScatterUpgrade","SCATTER BLASTER • 175 COINS",
+ Color3.fromRGB(233,120,74),function() action:FireServer("Buy","SCATTER") end)
+local petItem=item(shopList,"PetUpgrade","ADOPT RIFTLING PET • 250 COINS",
+ Color3.fromRGB(71,172,153),function() action:FireServer("Buy","PET") end)
+local prestigeItems={}
+for _,entry in ipairs(Catalog.Items) do
+ prestigeItems[entry.id]=item(shopList,"Prestige_"..entry.id,
+  entry.name.." • "..Catalog.PriceText(entry),
+  Color3.fromRGB(80,100,132),
+  function() action:FireServer("BuyPrestige",entry.id) end)
+end
+local premiumInfo=item(shopList,"RobuxNotice",
+ "ROBUX COSMETICS: NOT FOR SALE YET • ALL ITEMS ABOVE EARNABLE",
+ Color3.fromRGB(65,78,102),function() end)
+premiumInfo.Active=false
+local places={
+ {"HUB","CENTRAL HUB"},{"CYBER","NEON METROPOLIS"},{"CRYSTAL","PRISM WILDS"},
+ {"VOLCANO","MAGMA OUTPOST"},{"SKY","CLOUD KINGDOM"},
+ {"CASTLE","CASTLE KINGDOM"},{"FARM","HARVEST VALLEY"},
+ {"JAPAN","SAKURA JAPAN"},{"ARCTIC","SNOWBOUND NORTH"},
+ {"MARINA","OCEAN MARINA"},{"SAFARI","WILDLIFE SAFARI"},
+ {"AIRPORT","INTERNATIONAL AIRPORT"},{"SPORTS","WORLD SPORTS COMPLEX"},{"HOMES","HOUSING MEADOWS"},
+}
+for i,entry in ipairs(places) do
+ item(mapList,"Map"..entry[1],entry[2],
+  ({Color3.fromRGB(64,177,204),Color3.fromRGB(171,101,219),
+    Color3.fromRGB(227,103,143)})[(i-1)%3+1],function()
+   action:FireServer("Travel",entry[1]); map.Visible=false
+  end)
+end
+shopButton.Activated:Connect(function()
+ map.Visible=false; pack.Visible=false; shop.Visible=not shop.Visible
+end)
+mapButton.Activated:Connect(function()
+ shop.Visible=false; pack.Visible=false; map.Visible=not map.Visible
+end)
+packButton.Activated:Connect(function()
+ shop.Visible=false; map.Visible=false; pack.Visible=not pack.Visible
+end)
+local packSummary=item(packList,"PackSummary","RESOURCE INVENTORY",
+ Color3.fromRGB(66,93,124),function() end)
+packSummary.Active=false
+local packGuide=item(packList,"PackGuide",
+ "WOOD AT FARM + METAL IN CITY • BUILD HOME IN HOUSING MEADOWS",
+ Color3.fromRGB(80,105,135),function() end)
+packGuide.Active=false
+local packJobs=item(packList,"PackJobs",
+ "SPORTS IN SPORTS WORLD • FISH AT MARINA • HUNT/TRACK AT SAFARI",
+ Color3.fromRGB(80,105,135),function() end)
+packJobs.Active=false
+local packCrime=item(packList,"PackCrime",
+ "LEVEL 2: NPC CAR JOB • LEVEL 3: BANK VAULT • HEAT COOLS DOWN",
+ Color3.fromRGB(113,81,109),function() end)
+packCrime.Active=false
+local skill=Instance.new("Frame")
+skill.Name="SkillChallenge"; skill.AnchorPoint=Vector2.new(.5,.5)
+skill.Size=UDim2.new(.84,0,0,145); skill.Position=UDim2.new(.5,0,.43,0)
+skill.BackgroundColor3=Color3.fromRGB(17,31,51); skill.BorderSizePixel=0
+skill.Visible=false; skill.Parent=gui; round(skill,16)
+local skillTitle=Instance.new("TextLabel"); skillTitle.Name="ChallengeTitle"
+skillTitle.Size=UDim2.new(1,-20,0,34); skillTitle.Position=UDim2.fromOffset(10,5)
+skillTitle.BackgroundTransparency=1; skillTitle.Font=Enum.Font.GothamBlack
+skillTitle.TextSize=18; skillTitle.TextColor3=Color3.fromRGB(250,235,185)
+skillTitle.Text="TIME YOUR ACTION"; skillTitle.Parent=skill
+local meter=Instance.new("Frame"); meter.Name="TimingMeter"
+meter.Size=UDim2.new(1,-40,0,23); meter.Position=UDim2.fromOffset(20,45)
+meter.BackgroundColor3=Color3.fromRGB(66,85,110); meter.BorderSizePixel=0
+meter.Parent=skill; round(meter,5)
+local target=Instance.new("Frame"); target.Name="SuccessZone"
+target.Size=UDim2.new(.11,0,1,0); target.BackgroundColor3=Color3.fromRGB(99,243,149)
+target.BorderSizePixel=0; target.Parent=meter
+local marker=Instance.new("Frame"); marker.Name="MovingMarker"
+marker.Size=UDim2.fromOffset(6,28); marker.Position=UDim2.new(0,0,0,-2)
+marker.BackgroundColor3=Color3.fromRGB(255,241,163)
+marker.BorderSizePixel=0; marker.Parent=meter
+local skillHit=button("SkillHit","HIT / KICK / CAST",UDim2.new(.85,0,0,53),
+ UDim2.new(.075,0,0,79),Color3.fromRGB(54,158,198),skill)
+local currentSkill=nil
+local challengeSeq=0
+local activeTween=nil
+activitySignal.OnClientEvent:Connect(function(payload)
+ if type(payload)~="table" or payload.kind~="skill" or type(payload.id)~="string" then return end
+ challengeSeq+=1
+ local seq=challengeSeq
+ currentSkill=payload.id
+ skillTitle.Text=tostring(payload.title or "SKILL CHALLENGE")
+ skillHit.Text="TAP WHEN MARKER REACHES GREEN!"
+ skill.Visible=true
+ local duration=math.clamp(tonumber(payload.duration) or 3.5,2,5)
+ local delay=math.clamp(tonumber(payload.delay) or 2,0,duration)
+ target.Position=UDim2.new(math.clamp(delay/duration-.055,0,.89),0,0,0)
+ marker.Position=UDim2.new(0,0,0,-2)
+ if activeTween then activeTween:Cancel() end
+ activeTween=TweenService:Create(marker,TweenInfo.new(duration,Enum.EasingStyle.Linear),
+  {Position=UDim2.new(1,-6,0,-2)})
+ activeTween:Play()
+ task.delay(duration+.3,function()
+  if challengeSeq==seq then skill.Visible=false; currentSkill=nil end
+ end)
+end)
+skillHit.Activated:Connect(function()
+ if not currentSkill then return end
+ local id=currentSkill
+ currentSkill=nil; skill.Visible=false
+ if activeTween then activeTween:Cancel() end
+ action:FireServer("ActivityHit",id)
+end)
+local seq=0
+event.OnClientEvent:Connect(function(message)
+ seq+=1; local current=seq
+ toast.Text=tostring(message); toast.Visible=true
+ task.delay(2.7,function() if current==seq then toast.Visible=false end end)
+end)
+local function update()
+ local target=player:GetAttribute("RRDeliveryTarget")
+ hint.Text=(type(target)=="string" and target~="" and
+  ("COURIER JOB: DELIVER TO "..target:upper()) or
+  "EXPLORE PORTALS • DRIVE CARS • HARVEST CROPS • VISIT JAPAN & CASTLES")
+ local coins=player:GetAttribute("RRCoins") or 0
+ local shards=player:GetAttribute("RRShards") or 0
+ local level=player:GetAttribute("RRLevel") or 1
+ local xp=player:GetAttribute("RRXP") or 0
+ local blasterLevel=player:GetAttribute("RRBlaster") or 1
+ local seals=player:GetAttribute("RRSeals") or 0
+ stats.Text="LEVEL "..level.."  |  "..coins.." COINS  |  "..shards.." SHARDS"
+ resourcesHud.Text="WOOD "..(player:GetAttribute("RRWood") or 0)..
+  " • METAL "..(player:GetAttribute("RRMetal") or 0)..
+  " • FISH "..(player:GetAttribute("RRFish") or 0)..
+  " • TOOLS "..(player:GetAttribute("RRToolkits") or 0)..
+  " • HEAT "..(player:GetAttribute("RRHeat") or 0)
+ packSummary.Text="WOOD "..(player:GetAttribute("RRWood") or 0)..
+  " • METAL "..(player:GetAttribute("RRMetal") or 0)..
+  " • FISH "..(player:GetAttribute("RRFish") or 0)..
+  " • HIDES "..(player:GetAttribute("RRHide") or 0)..
+  " • TOOLKITS "..(player:GetAttribute("RRToolkits") or 0)..
+  " • SPORTS WINS "..(player:GetAttribute("RRSportsWins") or 0)..
+  " • HEISTS "..(player:GetAttribute("RRHeists") or 0)..
+  " • HOME "..(player:GetAttribute("RRHouseOwned") and "BUILT" or "NOT BUILT")
+ progression.Text="BLASTER "..blasterLevel.."  |  RIFTS "..seals.."  |  XP "..xp
+ missions.Text="MISSIONS: SHARDS "..(player:GetAttribute("RRQuestShards") or 0)..
+  "/8  •  DRONES "..(player:GetAttribute("RRQuestDrones") or 0)..
+  "/3  •  RIFTS "..(player:GetAttribute("RRQuestSeals") or 0).."/1"
+ blasterItem.Text=blasterLevel>=4 and "BLASTER MAXED" or
+  "BLASTER LEVEL "..(blasterLevel+1).." • "..(blasterLevel*90).." COINS"
+ shieldItem.Text=player:GetAttribute("RRShield") and "SHIELD OWNED • USE SHIELD BUTTON" or
+  "UNLOCK SHIELD • 150 COINS"
+ scatterItem.Text=player:GetAttribute("RRScatter") and "SCATTER BLASTER OWNED" or
+  "UNLOCK SCATTER BLASTER • 175 COINS"
+ petItem.Text=player:GetAttribute("RRPet") and "RIFTLING PET OWNED" or
+  "ADOPT RIFTLING PET • 250 COINS"
+ for _,entry in ipairs(Catalog.Items) do
+  local owned=player:GetAttribute("RROwn_"..entry.id)==true
+  local enoughLevel=level>=entry.level
+  local status=owned and "OWNED" or
+   (not enoughLevel and ("LOCKED UNTIL LEVEL "..entry.level)) or
+   (coins<entry.coins and "KEEP EARNING COINS") or "AVAILABLE TO EARN"
+  prestigeItems[entry.id].Text=entry.name.." | "..Catalog.PriceText(entry)..
+   " | "..status
+  prestigeItems[entry.id].BackgroundColor3=owned and Color3.fromRGB(49,112,88)
+   or enoughLevel and Color3.fromRGB(90,102,137)
+   or Color3.fromRGB(59,68,82)
+ end
+end
+for _,name in ipairs({"RRCoins","RRShards","RRLevel","RRXP","RRBlaster",
+ "RRShield","RRPet","RRScatter","RRSeals","RRDeliveryTarget","RRQuestShards",
+ "RRWood","RRMetal","RRFish","RRHide","RRToolkits","RRHeat","RRSportsWins","RRHeists","RRHouseOwned","RRQuestDrones","RRQuestSeals",
+ "RROwn_CITY_WRAP","RROwn_ESTATE_ROOF","RROwn_PLATINUM_WRAP",
+ "RROwn_HOME_GARAGE","RROwn_AURORA_TRAIL",
+ "RROwn_SNOWMOBILE_LICENSE","RROwn_JETPACK_LICENSE","RROwn_FLIGHT_LICENSE"}) do
+ player:GetAttributeChangedSignal(name):Connect(update)
+end
+local function phaseUpdate()
+ local current=world:GetAttribute("Phase") or "CALM"
+ phase.Text=current.." | "..(world:GetAttribute("SecondsLeft") or 0).."s"..
+  " | "..(world:GetAttribute("Weather") or "CLEAR")..
+  (current=="SURGE" and (" TITAN HP: "..(world:GetAttribute("BossHealth") or 0)) or " TO SURGE")
+end
+world:GetAttributeChangedSignal("Phase"):Connect(phaseUpdate)
+world:GetAttributeChangedSignal("SecondsLeft"):Connect(phaseUpdate)
+world:GetAttributeChangedSignal("BossHealth"):Connect(phaseUpdate)
+world:GetAttributeChangedSignal("Weather"):Connect(phaseUpdate)
+local qualityModes={"LOW","MED","HIGH"}
+local qualityIndex=2
+local rainStreaks={}
+for i=1,22 do
+ local streak=Instance.new("Part")
+ streak.Name="LocalRainStreak"
+ streak.Size=Vector3.new(.09,3.5,.09)
+ streak.Color=Color3.fromRGB(175,207,241)
+ streak.Material=Enum.Material.Glass
+ streak.Transparency=.35
+ streak.Anchored=true; streak.CanCollide=false; streak.CanTouch=false
+ streak.CanQuery=false; streak.CastShadow=false
+ streak.Parent=workspace
+ streak.LocalTransparencyModifier=1
+ table.insert(rainStreaks,streak)
+end
+local function applyGraphics()
+ local quality=qualityModes[qualityIndex]
+ qualityButton.Text="GRAPHICS: "..quality
+ for _,effect in ipairs(Lighting:GetChildren()) do
+  if effect:IsA("BloomEffect") or effect:IsA("SunRaysEffect") or
+   effect:IsA("ColorCorrectionEffect") then
+   effect.Enabled=quality~="LOW" and
+    (quality=="HIGH" or not effect:IsA("SunRaysEffect"))
+  end
+ end
+ local clouds=workspace.Terrain:FindFirstChildOfClass("Clouds")
+ if clouds then clouds.Enabled=quality~="LOW" end
+ Lighting.GlobalShadows=quality~="LOW"
+end
+qualityButton.Activated:Connect(function()
+ qualityIndex=qualityIndex%#qualityModes+1
+ applyGraphics()
+end)
+task.defer(applyGraphics)
+local rainAccum=0
+RunService.Heartbeat:Connect(function(dt)
+ rainAccum+=dt
+ if rainAccum<.085 then return end
+ rainAccum=0
+ local count=qualityIndex==3 and 22 or qualityIndex==2 and 8 or 0
+ local raining=world:GetAttribute("Weather")=="RAIN"
+ local camera=workspace.CurrentCamera
+ for i,streak in ipairs(rainStreaks) do
+  local show=raining and i<=count and camera~=nil
+  streak.LocalTransparencyModifier=show and 0 or 1
+  if show then
+   streak.CFrame=CFrame.new(camera.CFrame.Position+
+    Vector3.new(math.random(-28,28),math.random(-7,22),math.random(-25,25)))*
+    CFrame.Angles(0,0,math.rad(10))
+  end
+ end
+end)
+update(); phaseUpdate()
+print("SF_RIFT_RAIDERS_CLIENT_READY")
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+</roblox>

@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<roblox version="4"><External>null</External><External>nil</External><Item class="MaterialVariant" referent="RBX323112cfa6454464b7a752bd96b39653">
+			<Properties>
+				<token name="AlphaMode">3</token>
+				<token name="BaseMaterial">816</token>
+				<Content name="ColorMap"><url>rbxassetid://10960894634</url></Content>
+				<PhysicalProperties name="CustomPhysicalProperties">
+					<CustomPhysics>false</CustomPhysics>
+				</PhysicalProperties>
+				<Content name="EmissiveMaskContent">
+					<null />
+				</Content>
+				<float name="EmissiveStrength">1</float>
+				<Color3 name="EmissiveTint">
+					<R>1</R>
+					<G>1</G>
+					<B>1</B>
+				</Color3>
+				<token name="MaterialPattern">1</token>
+				<Content name="MetalnessMap"><null /></Content>
+				<Content name="NormalMap"><url>rbxassetid://10960879839</url></Content>
+				<Content name="RoughnessMap"><url>rbxassetid://10960879369</url></Content>
+				<float name="StudsPerTile">10</float>
+				<Content name="TexturePack"><url>rbxassetid://10965689132</url></Content>
+				<string name="Name">Plaster_A</string>
+				</Properties>
+		</Item>
+		</roblox>
