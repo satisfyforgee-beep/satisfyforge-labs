@@ -6,7 +6,8 @@ from pathlib import Path
 
 from paper_engine import (
     AccountInventoryPolicy, CryptoOrderRules, Instrument, PaperEngine,
-    PaperOrder, Quote, RiskPolicy, amount, validate_crypto_account_preflight,
+    PaperOrder, Quote, RiskPolicy, amount, normalize_alpaca_inventory_capture,
+    validate_crypto_account_preflight,
     validate_crypto_buy_contract,
 )
 
@@ -282,6 +283,7 @@ class CryptoOrderContractTests(unittest.TestCase):
 
 class CryptoAccountPreflightTests(unittest.TestCase):
     POLICY = AccountInventoryPolicy(D("500"), D("50"), 5)
+    NOW = datetime(2026, 11, 25, 15, 0, 10, tzinfo=timezone.utc)
 
     def contract(self, **changes):
         value = {
@@ -294,6 +296,9 @@ class CryptoAccountPreflightTests(unittest.TestCase):
 
     def snapshot(self, **changes):
         value = {
+            "provider": "alpaca",
+            "paper_base_url": "https://paper-api.alpaca.markets",
+            "captured_at": "2026-11-25T15:00:05+00:00",
             "paper_endpoint_verified": True,
             "positions_complete": True,
             "open_orders_complete": True,
@@ -323,7 +328,7 @@ class CryptoAccountPreflightTests(unittest.TestCase):
     def check(self, snapshot=None, contract=None, policy=None):
         return validate_crypto_account_preflight(
             snapshot or self.snapshot(), contract=contract or self.contract(),
-            policy=policy or self.POLICY)
+            policy=policy or self.POLICY, observed_at=self.NOW)
 
     def test_multi_asset_inventory_and_open_buy_are_reserved_offline(self):
         result = self.check()
@@ -375,6 +380,164 @@ class CryptoAccountPreflightTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.check(snapshot=snapshot, contract=contract,
                                policy=policy)
+
+    def test_stale_future_or_wrong_provider_snapshot_fails_closed(self):
+        for snapshot in (
+            self.snapshot(captured_at="2026-11-25T14:59:00Z"),
+            self.snapshot(captured_at="2026-11-25T15:00:11Z"),
+            self.snapshot(paper_base_url="https://api.alpaca.markets"),
+        ):
+            with self.subTest(snapshot=snapshot):
+                with self.assertRaises(ValueError):
+                    self.check(snapshot=snapshot)
+
+    def test_option_open_buy_reserves_standard_contract_multiplier(self):
+        option = [{
+            "id": "option-order", "client_order_id": "option-existing",
+            "symbol": "AAPL261218C00150000", "asset_class": "us_option",
+            "side": "buy", "status": "new", "type": "limit", "qty": "1",
+            "notional": None, "limit_price": "2",
+        }]
+        result = self.check(snapshot=self.snapshot(open_orders=option))
+        self.assertEqual(result["reserved_open_buys"], "200")
+
+    def test_open_sells_cannot_exceed_or_bypass_long_inventory(self):
+        sell = {
+            "id": "sell-order", "client_order_id": "sell-existing",
+            "symbol": "AAPL", "asset_class": "us_equity", "side": "sell",
+            "status": "new", "type": "limit", "qty": "1",
+            "notional": None, "limit_price": "95",
+        }
+        result = self.check(snapshot=self.snapshot(open_orders=[sell]))
+        self.assertEqual(result["reserved_open_buys"], "0")
+        for orders in (
+            [{**sell, "qty": "2"}],
+            [sell, {**sell, "id": "sell-order-2",
+                    "client_order_id": "sell-existing-2"}],
+            [{**sell, "symbol": "MISSING"}],
+            [{**sell, "qty": None, "notional": "95"}],
+        ):
+            with self.subTest(orders=orders):
+                with self.assertRaises(ValueError):
+                    self.check(snapshot=self.snapshot(open_orders=orders))
+
+    def test_option_notional_buy_is_rejected(self):
+        option = [{
+            "id": "option-order", "client_order_id": "option-existing",
+            "symbol": "AAPL261218C00150000", "asset_class": "us_option",
+            "side": "buy", "status": "new", "type": "limit", "qty": None,
+            "notional": "2", "limit_price": "2",
+        }]
+        with self.assertRaises(ValueError):
+            self.check(snapshot=self.snapshot(open_orders=option))
+
+
+class AlpacaInventoryNormalizerTests(unittest.TestCase):
+    NOW = datetime(2026, 11, 25, 15, 0, 10, tzinfo=timezone.utc)
+
+    def envelope(self, path, body, *, query=None, requested=0, received=1):
+        base = datetime(2026, 11, 25, 15, 0, tzinfo=timezone.utc)
+        return {
+            "method": "GET", "path": path, "query": query or {},
+            "status_code": 200,
+            "requested_at": (base + timedelta(seconds=requested)).isoformat(),
+            "received_at": (base + timedelta(seconds=received)).isoformat(),
+            "body": body,
+        }
+
+    def capture(self, **changes):
+        account = {
+            "status": "ACTIVE", "crypto_status": "ACTIVE",
+            "trading_blocked": False, "account_blocked": False,
+            "trade_suspended_by_user": False, "multiplier": "1",
+            "cash": "400", "buying_power": "400", "equity": "500",
+            "last_equity": "500", "account_number": "must-not-be-copied",
+        }
+        positions = [{
+            "symbol": "AAPL", "asset_class": "us_equity", "side": "long",
+            "qty": "1", "cost_basis": "100", "asset_id": "not-copied",
+        }]
+        orders = [{
+            "id": "order-1", "client_order_id": "existing-1",
+            "symbol": "MSFT", "asset_class": "us_equity", "side": "buy",
+            "status": "new", "type": "limit", "qty": "1",
+            "notional": None, "limit_price": "75", "legs": None,
+        }]
+        value = {
+            "provider": "alpaca",
+            "base_url": "https://paper-api.alpaca.markets",
+            "account": self.envelope("/v2/account", account),
+            "positions": self.envelope("/v2/positions", positions,
+                                       requested=1, received=2),
+            "open_orders": self.envelope(
+                "/v2/orders", orders, requested=2, received=3,
+                query={"status": "open", "limit": 500, "nested": False,
+                       "direction": "asc"}),
+        }
+        value.update(changes)
+        return value
+
+    def test_normalizes_exact_read_only_paper_capture_without_sensitive_fields(self):
+        result = normalize_alpaca_inventory_capture(
+            self.capture(), observed_at=self.NOW)
+        self.assertEqual(result["provider"], "alpaca")
+        self.assertEqual(result["account"]["crypto_status"], "ACTIVE")
+        self.assertNotIn("account_number", result["account"])
+        self.assertNotIn("asset_id", result["positions"][0])
+        self.assertNotIn("legs", result["open_orders"][0])
+        validated = validate_crypto_account_preflight(
+            result,
+            contract=CryptoAccountPreflightTests().contract(),
+            policy=CryptoAccountPreflightTests.POLICY,
+            observed_at=self.NOW,
+        )
+        self.assertFalse(validated["broker_submit_allowed"])
+
+    def test_live_host_write_method_bad_query_and_stale_capture_fail_closed(self):
+        live = self.capture(base_url="https://api.alpaca.markets")
+        write = self.capture()
+        write["account"] = {**write["account"], "method": "POST"}
+        query = self.capture()
+        query["open_orders"] = {
+            **query["open_orders"], "query": {"status": "closed"}}
+        stale = self.capture()
+        stale["open_orders"] = self.envelope(
+            "/v2/orders", [], requested=2, received=3,
+            query={"status": "open", "limit": 500, "nested": False,
+                   "direction": "asc"})
+        with self.assertRaises(ValueError):
+            normalize_alpaca_inventory_capture(live, observed_at=self.NOW)
+        with self.assertRaises(ValueError):
+            normalize_alpaca_inventory_capture(write, observed_at=self.NOW)
+        with self.assertRaises(ValueError):
+            normalize_alpaca_inventory_capture(query, observed_at=self.NOW)
+        with self.assertRaises(ValueError):
+            normalize_alpaca_inventory_capture(
+                stale, observed_at=self.NOW + timedelta(minutes=1))
+
+    def test_full_order_page_slow_capture_and_missing_fields_fail_closed(self):
+        full = self.capture()
+        full["open_orders"] = {**full["open_orders"], "body": [
+            {**full["open_orders"]["body"][0], "id": f"order-{index}",
+             "client_order_id": f"client-{index}"}
+            for index in range(500)
+        ]}
+        slow = self.capture()
+        slow["open_orders"] = self.envelope(
+            "/v2/orders", [], requested=2, received=20,
+            query={"status": "open", "limit": 500, "nested": False,
+                   "direction": "asc"})
+        missing = self.capture()
+        missing["account"] = {
+            **missing["account"],
+            "body": {name: value for name, value in missing["account"]["body"].items()
+                     if name != "multiplier"},
+        }
+        for capture in (full, slow, missing):
+            with self.subTest(capture=capture):
+                with self.assertRaises(ValueError):
+                    normalize_alpaca_inventory_capture(
+                        capture, observed_at=self.NOW)
 
 
 if __name__ == "__main__":

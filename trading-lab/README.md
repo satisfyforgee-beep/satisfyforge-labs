@@ -78,6 +78,15 @@ projected cash/exposure/position-cap breaches. It still returns
 `broker_submit_allowed=false`: provider GETs and an independent post-order
 readback are intentionally absent.
 
+`normalize_alpaca_inventory_capture` is the offline adapter into that boundary.
+It accepts only timestamped `GET` responses from the exact Alpaca paper host for
+account, positions, and `status=open` orders with the documented 500-order page
+limit. It rejects live-host/write-method drift, malformed or slow/stale captures,
+and a full page whose completeness cannot be proved; it strips account numbers,
+asset IDs, and unrelated provider fields. The downstream preflight rechecks the
+provider, host, and freshness and reserves standard option buys at the 100-share
+contract multiplier. Neither function performs a request or authorizes an order.
+
 ## Important boundaries and roadmap
 
 1. No broker API keys in this public GitHub repository or test logs. Future
