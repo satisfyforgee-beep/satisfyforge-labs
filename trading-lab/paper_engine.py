@@ -256,8 +256,134 @@ def _snapshot_amount(value: object, label: str, *, allow_zero: bool = False) -> 
     return number
 
 
+def _snapshot_time(value: object, label: str) -> datetime:
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError(f"{label} must be an RFC3339 timestamp") from exc
+    if (not isinstance(value, datetime) or value.tzinfo is None
+            or value.utcoffset() is None):
+        raise ValueError(f"{label} must be timezone-aware")
+    return value.astimezone(timezone.utc)
+
+
+def normalize_alpaca_inventory_capture(capture: dict, *, observed_at: datetime,
+                                       max_capture_span_seconds: int = 10,
+                                       max_snapshot_age_seconds: int = 30) -> dict:
+    """Normalize three read-only Alpaca paper GET responses for preflight.
+
+    The caller must capture the account, complete positions list, and a single
+    maximum-size ``status=open`` orders page from the documented paper host.
+    This function performs no network request and never enables submission.
+    A full 500-order page is rejected because completeness cannot be proved.
+    """
+    if (not isinstance(capture, dict) or set(capture) != {
+            "provider", "base_url", "account", "positions", "open_orders"}):
+        raise ValueError("Exact Alpaca capture fields are required")
+    if capture["provider"] != "alpaca" \
+            or capture["base_url"] != "https://paper-api.alpaca.markets":
+        raise ValueError("Exact Alpaca paper provider and host are required")
+    if (not isinstance(max_capture_span_seconds, int)
+            or isinstance(max_capture_span_seconds, bool)
+            or not isinstance(max_snapshot_age_seconds, int)
+            or isinstance(max_snapshot_age_seconds, bool)
+            or min(max_capture_span_seconds, max_snapshot_age_seconds) <= 0):
+        raise ValueError("Snapshot timing limits must be positive integers")
+    now = _snapshot_time(observed_at, "observed_at")
+
+    specifications = {
+        "account": ("/v2/account", {}, dict),
+        "positions": ("/v2/positions", {}, list),
+        "open_orders": (
+            "/v2/orders",
+            {"status": "open", "limit": 500, "nested": False,
+             "direction": "asc"},
+            list,
+        ),
+    }
+    bodies: dict[str, object] = {}
+    started: list[datetime] = []
+    finished: list[datetime] = []
+    envelope_fields = {
+        "method", "path", "query", "status_code", "requested_at",
+        "received_at", "body",
+    }
+    for name, (path, query, body_type) in specifications.items():
+        envelope = capture[name]
+        if not isinstance(envelope, dict) or set(envelope) != envelope_fields:
+            raise ValueError(f"Exact {name} response envelope is required")
+        if (envelope["method"] != "GET" or envelope["path"] != path
+                or envelope["query"] != query or envelope["status_code"] != 200
+                or not isinstance(envelope["body"], body_type)):
+            raise ValueError(f"Unverified or malformed {name} response")
+        requested = _snapshot_time(envelope["requested_at"],
+                                   f"{name} requested_at")
+        received = _snapshot_time(envelope["received_at"],
+                                  f"{name} received_at")
+        if received < requested or received > now:
+            raise ValueError(f"Invalid {name} response timing")
+        started.append(requested)
+        finished.append(received)
+        bodies[name] = envelope["body"]
+
+    captured_at = max(finished)
+    if (captured_at - min(started)).total_seconds() > max_capture_span_seconds:
+        raise ValueError("Account inventory capture span is too wide")
+    if (now - captured_at).total_seconds() > max_snapshot_age_seconds:
+        raise ValueError("Account inventory capture is stale")
+
+    account_body = bodies["account"]
+    positions_body = bodies["positions"]
+    orders_body = bodies["open_orders"]
+    assert isinstance(account_body, dict)
+    assert isinstance(positions_body, list)
+    assert isinstance(orders_body, list)
+    if len(orders_body) >= 500:
+        raise ValueError("Open-order inventory may be truncated at page limit")
+
+    account_fields = {
+        "status", "crypto_status", "trading_blocked", "account_blocked",
+        "trade_suspended_by_user", "multiplier", "cash", "buying_power",
+        "equity", "last_equity",
+    }
+    if not account_fields.issubset(account_body):
+        raise ValueError("Alpaca account response is missing required fields")
+    position_fields = {"symbol", "asset_class", "side", "qty", "cost_basis"}
+    order_fields = {
+        "id", "client_order_id", "symbol", "asset_class", "side", "status",
+        "type", "qty", "notional", "limit_price",
+    }
+    if any(not isinstance(row, dict) or not position_fields.issubset(row)
+           for row in positions_body):
+        raise ValueError("Alpaca position response is missing required fields")
+    if any(not isinstance(row, dict) or not order_fields.issubset(row)
+           for row in orders_body):
+        raise ValueError("Alpaca order response is missing required fields")
+
+    return {
+        "provider": "alpaca",
+        "paper_base_url": capture["base_url"],
+        "captured_at": captured_at.isoformat(),
+        "paper_endpoint_verified": True,
+        "positions_complete": True,
+        "open_orders_complete": True,
+        "account": {name: account_body[name] for name in account_fields},
+        "positions": [
+            {name: row[name] for name in position_fields}
+            for row in positions_body
+        ],
+        "open_orders": [
+            {name: row[name] for name in order_fields}
+            for row in orders_body
+        ],
+    }
+
+
 def validate_crypto_account_preflight(snapshot: dict, *, contract: dict,
-                                      policy: AccountInventoryPolicy) -> dict:
+                                      policy: AccountInventoryPolicy,
+                                      observed_at: datetime,
+                                      max_snapshot_age_seconds: int = 30) -> dict:
     """Audit a complete paper-account snapshot before one crypto buy.
 
     This pure function accepts caller-captured account, position, and open-order
@@ -268,6 +394,7 @@ def validate_crypto_account_preflight(snapshot: dict, *, contract: dict,
     if not isinstance(snapshot, dict) or not isinstance(contract, dict):
         raise ValueError("Snapshot and validated contract must be objects")
     required_snapshot = {
+        "provider", "paper_base_url", "captured_at",
         "paper_endpoint_verified", "positions_complete", "open_orders_complete",
         "account", "positions", "open_orders",
     }
@@ -276,6 +403,18 @@ def validate_crypto_account_preflight(snapshot: dict, *, contract: dict,
     if not all(snapshot[name] is True for name in (
             "paper_endpoint_verified", "positions_complete", "open_orders_complete")):
         raise ValueError("Paper account inventory is incomplete or unverified")
+    if (snapshot["provider"] != "alpaca"
+            or snapshot["paper_base_url"] != "https://paper-api.alpaca.markets"):
+        raise ValueError("Alpaca paper snapshot provenance is unverified")
+    if (not isinstance(max_snapshot_age_seconds, int)
+            or isinstance(max_snapshot_age_seconds, bool)
+            or max_snapshot_age_seconds <= 0):
+        raise ValueError("Snapshot freshness limit must be a positive integer")
+    captured_at = _snapshot_time(snapshot["captured_at"], "captured_at")
+    now = _snapshot_time(observed_at, "observed_at")
+    age = (now - captured_at).total_seconds()
+    if age < 0 or age > max_snapshot_age_seconds:
+        raise ValueError("Account inventory snapshot is stale or future-dated")
     if (contract.get("broker_submit_allowed") is not False
             or contract.get("execution_evidence") is not False):
         raise ValueError("Only an offline validated contract is accepted")
@@ -293,7 +432,8 @@ def validate_crypto_account_preflight(snapshot: dict, *, contract: dict,
             or not isinstance(open_orders, list):
         raise ValueError("Malformed account inventory snapshot")
     if (account.get("status") != "ACTIVE"
-            or account.get("crypto_status") not in {"APPROVED", "PAPER_ONLY"}
+            or account.get("crypto_status") not in {
+                "ACTIVE", "APPROVED", "PAPER_ONLY"}
             or any(account.get(flag) is not False for flag in (
                 "trading_blocked", "account_blocked", "trade_suspended_by_user"))):
         raise ValueError("Paper account or crypto trading is not active")
@@ -314,6 +454,7 @@ def validate_crypto_account_preflight(snapshot: dict, *, contract: dict,
     allowed_assets = {"us_equity", "us_option", "crypto"}
     seen_positions: set[tuple[str, str]] = set()
     position_symbols: set[str] = set()
+    position_quantities: dict[tuple[str, str], Decimal] = {}
     exposure = Decimal("0")
     for position in positions:
         if not isinstance(position, dict) or set(position) != {
@@ -325,11 +466,13 @@ def validate_crypto_account_preflight(snapshot: dict, *, contract: dict,
             raise ValueError("Unsupported or duplicate position inventory")
         if position.get("side") != "long":
             raise ValueError("Short positions violate cash-only policy")
-        _snapshot_amount(position.get("qty"), "position quantity")
+        position_quantity = _snapshot_amount(position.get("qty"),
+                                               "position quantity")
         exposure += _snapshot_amount(position.get("cost_basis"),
                                      "position cost basis")
         seen_positions.add(key)
         position_symbols.add(key[1])
+        position_quantities[key] = position_quantity
 
     if symbol in position_symbols:
         raise ValueError("Existing position duplicates intended crypto symbol")
@@ -342,6 +485,7 @@ def validate_crypto_account_preflight(snapshot: dict, *, contract: dict,
     }
     seen_order_ids: set[str] = set()
     seen_client_ids: set[str] = set()
+    pending_sell_quantities: dict[tuple[str, str], Decimal] = {}
     reserved_buys = Decimal("0")
     for order in open_orders:
         if not isinstance(order, dict) or set(order) != {
@@ -362,12 +506,25 @@ def validate_crypto_account_preflight(snapshot: dict, *, contract: dict,
             raise ValueError("Unsupported open-order inventory")
         if order_symbol == symbol or order_client_id == client_id:
             raise ValueError("Duplicate position/order intent detected")
-        if order.get("side") == "buy":
+        if order.get("side") == "sell":
+            if order.get("qty") is None or order.get("notional") is not None:
+                raise ValueError("Open sell must use an exact closing quantity")
+            position_key = (order.get("asset_class"), order_symbol)
+            sell_quantity = _snapshot_amount(order["qty"],
+                                              "open sell quantity")
+            pending = pending_sell_quantities.get(position_key, Decimal("0"))
+            if (position_key not in position_quantities
+                    or pending + sell_quantity > position_quantities[position_key]):
+                raise ValueError("Open sells could create a short position")
+            pending_sell_quantities[position_key] = pending + sell_quantity
+        else:
             has_qty = order.get("qty") is not None
             has_notional = order.get("notional") is not None
             if has_qty == has_notional:
                 raise ValueError("Open buy requires exactly one sizing mode")
             if has_notional:
+                if order.get("asset_class") == "us_option":
+                    raise ValueError("Option buys cannot use notional sizing")
                 reserved_buys += _snapshot_amount(order["notional"],
                                                   "open-order notional")
             else:
@@ -378,6 +535,8 @@ def validate_crypto_account_preflight(snapshot: dict, *, contract: dict,
                     _snapshot_amount(order["qty"], "open-order quantity")
                     * _snapshot_amount(order["limit_price"],
                                        "open-order limit price")
+                    * (Decimal("100") if order.get("asset_class") == "us_option"
+                       else Decimal("1"))
                 )
         seen_order_ids.add(order_id)
         seen_client_ids.add(order_client_id)
