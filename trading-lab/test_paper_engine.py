@@ -300,6 +300,7 @@ class CryptoAccountPreflightTests(unittest.TestCase):
             "paper_base_url": "https://paper-api.alpaca.markets",
             "captured_at": "2026-11-25T15:00:05+00:00",
             "paper_endpoint_verified": True,
+            "account_fenced": True,
             "positions_complete": True,
             "open_orders_complete": True,
             "account": {
@@ -466,13 +467,15 @@ class AlpacaInventoryNormalizerTests(unittest.TestCase):
         value = {
             "provider": "alpaca",
             "base_url": "https://paper-api.alpaca.markets",
-            "account": self.envelope("/v2/account", account),
+            "account_before": self.envelope("/v2/account", account),
             "positions": self.envelope("/v2/positions", positions,
                                        requested=1, received=2),
             "open_orders": self.envelope(
                 "/v2/orders", orders, requested=2, received=3,
                 query={"status": "open", "limit": 500, "nested": False,
                        "direction": "asc"}),
+            "account_after": self.envelope(
+                "/v2/account", account, requested=3, received=4),
         }
         value.update(changes)
         return value
@@ -481,6 +484,7 @@ class AlpacaInventoryNormalizerTests(unittest.TestCase):
         result = normalize_alpaca_inventory_capture(
             self.capture(), observed_at=self.NOW)
         self.assertEqual(result["provider"], "alpaca")
+        self.assertTrue(result["account_fenced"])
         self.assertEqual(result["account"]["crypto_status"], "ACTIVE")
         self.assertNotIn("account_number", result["account"])
         self.assertNotIn("asset_id", result["positions"][0])
@@ -496,7 +500,8 @@ class AlpacaInventoryNormalizerTests(unittest.TestCase):
     def test_live_host_write_method_bad_query_and_stale_capture_fail_closed(self):
         live = self.capture(base_url="https://api.alpaca.markets")
         write = self.capture()
-        write["account"] = {**write["account"], "method": "POST"}
+        write["account_before"] = {
+            **write["account_before"], "method": "POST"}
         query = self.capture()
         query["open_orders"] = {
             **query["open_orders"], "query": {"status": "closed"}}
@@ -528,9 +533,9 @@ class AlpacaInventoryNormalizerTests(unittest.TestCase):
             query={"status": "open", "limit": 500, "nested": False,
                    "direction": "asc"})
         missing = self.capture()
-        missing["account"] = {
-            **missing["account"],
-            "body": {name: value for name, value in missing["account"]["body"].items()
+        missing["account_before"] = {
+            **missing["account_before"],
+            "body": {name: value for name, value in missing["account_before"]["body"].items()
                      if name != "multiplier"},
         }
         for capture in (full, slow, missing):
@@ -538,6 +543,37 @@ class AlpacaInventoryNormalizerTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     normalize_alpaca_inventory_capture(
                         capture, observed_at=self.NOW)
+
+    def test_account_change_overlap_and_missing_fence_fail_closed(self):
+        changed = self.capture()
+        changed["account_after"] = {
+            **changed["account_after"],
+            "body": {**changed["account_after"]["body"], "cash": "399"},
+        }
+        overlap = self.capture()
+        overlap["positions"] = {
+            **overlap["positions"],
+            "requested_at": "2026-11-25T15:00:00.500000+00:00",
+        }
+        missing = self.capture()
+        del missing["account_after"]
+        for capture in (changed, overlap, missing):
+            with self.subTest(capture=capture):
+                with self.assertRaises(ValueError):
+                    normalize_alpaca_inventory_capture(
+                        capture, observed_at=self.NOW)
+
+    def test_downstream_preflight_requires_account_fence(self):
+        result = normalize_alpaca_inventory_capture(
+            self.capture(), observed_at=self.NOW)
+        result["account_fenced"] = False
+        with self.assertRaises(ValueError):
+            validate_crypto_account_preflight(
+                result,
+                contract=CryptoAccountPreflightTests().contract(),
+                policy=CryptoAccountPreflightTests.POLICY,
+                observed_at=self.NOW,
+            )
 
 
 if __name__ == "__main__":
