@@ -271,15 +271,19 @@ def _snapshot_time(value: object, label: str) -> datetime:
 def normalize_alpaca_inventory_capture(capture: dict, *, observed_at: datetime,
                                        max_capture_span_seconds: int = 10,
                                        max_snapshot_age_seconds: int = 30) -> dict:
-    """Normalize three read-only Alpaca paper GET responses for preflight.
+    """Normalize a read-fenced Alpaca paper inventory capture for preflight.
 
-    The caller must capture the account, complete positions list, and a single
-    maximum-size ``status=open`` orders page from the documented paper host.
-    This function performs no network request and never enables submission.
-    A full 500-order page is rejected because completeness cannot be proved.
+    The caller must read the account immediately before and after the complete
+    positions list and one maximum-size ``status=open`` orders page.  The two
+    account bodies must match exactly on every field consumed by the downstream
+    cash-only preflight.  This rejects a time-of-check/time-of-use race instead
+    of combining inventory from different account states.  The function
+    performs no network request and never enables submission.  A full 500-order
+    page is rejected because completeness cannot be proved.
     """
     if (not isinstance(capture, dict) or set(capture) != {
-            "provider", "base_url", "account", "positions", "open_orders"}):
+            "provider", "base_url", "account_before", "positions",
+            "open_orders", "account_after"}):
         raise ValueError("Exact Alpaca capture fields are required")
     if capture["provider"] != "alpaca" \
             or capture["base_url"] != "https://paper-api.alpaca.markets":
@@ -293,7 +297,7 @@ def normalize_alpaca_inventory_capture(capture: dict, *, observed_at: datetime,
     now = _snapshot_time(observed_at, "observed_at")
 
     specifications = {
-        "account": ("/v2/account", {}, dict),
+        "account_before": ("/v2/account", {}, dict),
         "positions": ("/v2/positions", {}, list),
         "open_orders": (
             "/v2/orders",
@@ -301,6 +305,7 @@ def normalize_alpaca_inventory_capture(capture: dict, *, observed_at: datetime,
              "direction": "asc"},
             list,
         ),
+        "account_after": ("/v2/account", {}, dict),
     }
     bodies: dict[str, object] = {}
     started: list[datetime] = []
@@ -327,16 +332,22 @@ def normalize_alpaca_inventory_capture(capture: dict, *, observed_at: datetime,
         finished.append(received)
         bodies[name] = envelope["body"]
 
+    for previous_received, next_requested in zip(finished, started[1:]):
+        if next_requested < previous_received:
+            raise ValueError("Alpaca inventory reads must be sequential")
+
     captured_at = max(finished)
     if (captured_at - min(started)).total_seconds() > max_capture_span_seconds:
         raise ValueError("Account inventory capture span is too wide")
     if (now - captured_at).total_seconds() > max_snapshot_age_seconds:
         raise ValueError("Account inventory capture is stale")
 
-    account_body = bodies["account"]
+    account_before = bodies["account_before"]
+    account_after = bodies["account_after"]
     positions_body = bodies["positions"]
     orders_body = bodies["open_orders"]
-    assert isinstance(account_body, dict)
+    assert isinstance(account_before, dict)
+    assert isinstance(account_after, dict)
     assert isinstance(positions_body, list)
     assert isinstance(orders_body, list)
     if len(orders_body) >= 500:
@@ -347,8 +358,13 @@ def normalize_alpaca_inventory_capture(capture: dict, *, observed_at: datetime,
         "trade_suspended_by_user", "multiplier", "cash", "buying_power",
         "equity", "last_equity",
     }
-    if not account_fields.issubset(account_body):
+    if (not account_fields.issubset(account_before)
+            or not account_fields.issubset(account_after)):
         raise ValueError("Alpaca account response is missing required fields")
+    fenced_before = {name: account_before[name] for name in account_fields}
+    fenced_after = {name: account_after[name] for name in account_fields}
+    if fenced_before != fenced_after:
+        raise ValueError("Alpaca account changed during inventory capture")
     position_fields = {"symbol", "asset_class", "side", "qty", "cost_basis"}
     order_fields = {
         "id", "client_order_id", "symbol", "asset_class", "side", "status",
@@ -366,9 +382,10 @@ def normalize_alpaca_inventory_capture(capture: dict, *, observed_at: datetime,
         "paper_base_url": capture["base_url"],
         "captured_at": captured_at.isoformat(),
         "paper_endpoint_verified": True,
+        "account_fenced": True,
         "positions_complete": True,
         "open_orders_complete": True,
-        "account": {name: account_body[name] for name in account_fields},
+        "account": fenced_after,
         "positions": [
             {name: row[name] for name in position_fields}
             for row in positions_body
@@ -395,13 +412,15 @@ def validate_crypto_account_preflight(snapshot: dict, *, contract: dict,
         raise ValueError("Snapshot and validated contract must be objects")
     required_snapshot = {
         "provider", "paper_base_url", "captured_at",
-        "paper_endpoint_verified", "positions_complete", "open_orders_complete",
+        "paper_endpoint_verified", "account_fenced", "positions_complete",
+        "open_orders_complete",
         "account", "positions", "open_orders",
     }
     if set(snapshot) != required_snapshot:
         raise ValueError("Exact account snapshot fields are required")
     if not all(snapshot[name] is True for name in (
-            "paper_endpoint_verified", "positions_complete", "open_orders_complete")):
+            "paper_endpoint_verified", "account_fenced", "positions_complete",
+            "open_orders_complete")):
         raise ValueError("Paper account inventory is incomplete or unverified")
     if (snapshot["provider"] != "alpaca"
             or snapshot["paper_base_url"] != "https://paper-api.alpaca.markets"):
