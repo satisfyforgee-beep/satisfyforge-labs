@@ -87,6 +87,14 @@ python3 algo-trading/data_preflight.py --keychain
 python3 algo-trading/data_preflight.py --keychain --network
 ```
 
+capture_alpaca_inventory reuses the same no-redirect, paper-host-only
+preflight transport to collect the four timestamped GET envelopes required by
+the trading-lab account read fence: account, positions, open orders, then
+account again. It accepts only the exact paper host and complete open-order
+query, keeps credentials out of the returned capture, and has no POST, logging,
+or persistence path. The raw response may still contain private account fields;
+pass it directly to normalize_alpaca_inventory_capture and never print it.
+
 - The default performs **no network calls or Keychain reads** and checks only
   for existing `TRADIER_SANDBOX_TOKEN`, `ALPACA_PAPER_KEY`, and
   `ALPACA_PAPER_SECRET` environment variables.

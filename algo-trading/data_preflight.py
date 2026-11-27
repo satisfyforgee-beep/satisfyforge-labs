@@ -12,6 +12,7 @@ import json
 import os
 import platform
 import subprocess
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlsplit
@@ -21,7 +22,13 @@ from zerocost_bot.alpaca import latest_equity_quotes
 
 
 TRADIER_SANDBOX_PROFILE = "https://sandbox.tradier.com/v1/user/profile"
-ALPACA_PAPER_ACCOUNT = "https://paper-api.alpaca.markets/v2/account"
+ALPACA_PAPER_BASE = "https://paper-api.alpaca.markets"
+ALPACA_PAPER_ACCOUNT = ALPACA_PAPER_BASE + "/v2/account"
+ALPACA_PAPER_POSITIONS = ALPACA_PAPER_BASE + "/v2/positions"
+ALPACA_PAPER_OPEN_ORDERS = (
+    ALPACA_PAPER_BASE
+    + "/v2/orders?status=open&limit=500&nested=false&direction=asc"
+)
 KEYCHAIN_ITEMS = {
     "TRADIER_SANDBOX_TOKEN": "com.satisfyforge.tradier.sandbox",
     "ALPACA_PAPER_KEY": "com.satisfyforge.alpaca.paper.key",
@@ -82,6 +89,92 @@ def _quote_json(request: Request, transport=None) -> dict:
         return transport(request)
     with _SAFE_HTTP.open(request, timeout=8) as response:
         return json.load(response)
+
+
+def _inventory_json(request: Request, transport=None) -> object:
+    """Perform one exact read-only paper-inventory request.
+
+    Redirects remain disabled by the shared opener so authenticated headers
+    cannot be forwarded to another host.  The returned body is intentionally
+    not logged or printed.
+    """
+    parsed = urlsplit(request.full_url)
+    allowed = (
+        parsed.scheme == "https"
+        and parsed.netloc == "paper-api.alpaca.markets"
+        and (
+            (parsed.path in {"/v2/account", "/v2/positions"} and not parsed.query)
+            or (
+                parsed.path == "/v2/orders"
+                and parse_qs(parsed.query) == {
+                    "status": ["open"],
+                    "limit": ["500"],
+                    "nested": ["false"],
+                    "direction": ["asc"],
+                }
+            )
+        )
+    )
+    if request.get_method() != "GET" or not allowed:
+        raise ValueError("Request is outside the paper-inventory GET allowlist")
+    if transport is not None:
+        return transport(request)
+    with _SAFE_HTTP.open(request, timeout=8) as response:
+        return json.load(response)
+
+
+def capture_alpaca_inventory(*, api_key: str, api_secret: str,
+                             transport=None, clock=None) -> dict:
+    """Capture the four GET envelopes required by the offline read fence.
+
+    This function performs no validation, submission, logging, or persistence.
+    Its raw in-memory result may contain private broker fields and must be passed
+    directly to normalize_alpaca_inventory_capture rather than printed.
+    """
+    if not isinstance(api_key, str) or not api_key \
+            or not isinstance(api_secret, str) or not api_secret:
+        raise RuntimeError("Complete Alpaca paper credentials are required")
+    now = clock or (lambda: datetime.now(timezone.utc))
+    headers = {
+        "APCA-API-KEY-ID": api_key,
+        "APCA-API-SECRET-KEY": api_secret,
+        "Accept": "application/json",
+    }
+    requests = (
+        ("account_before", ALPACA_PAPER_ACCOUNT, "/v2/account", {}, dict),
+        ("positions", ALPACA_PAPER_POSITIONS, "/v2/positions", {}, list),
+        (
+            "open_orders", ALPACA_PAPER_OPEN_ORDERS, "/v2/orders",
+            {"status": "open", "limit": 500, "nested": False,
+             "direction": "asc"},
+            list,
+        ),
+        ("account_after", ALPACA_PAPER_ACCOUNT, "/v2/account", {}, dict),
+    )
+    capture = {"provider": "alpaca", "base_url": ALPACA_PAPER_BASE}
+    for name, url, path, query, body_type in requests:
+        requested = now()
+        if not isinstance(requested, datetime) or requested.tzinfo is None:
+            raise ValueError("Capture clock must return timezone-aware datetimes")
+        body = _inventory_json(
+            Request(url, headers=headers, method="GET"), transport)
+        received = now()
+        if not isinstance(received, datetime) or received.tzinfo is None:
+            raise ValueError("Capture clock must return timezone-aware datetimes")
+        requested = requested.astimezone(timezone.utc)
+        received = received.astimezone(timezone.utc)
+        if received < requested or not isinstance(body, body_type):
+            raise ValueError(f"Malformed or reversed-time {name} response")
+        capture[name] = {
+            "method": "GET",
+            "path": path,
+            "query": query,
+            "status_code": 200,
+            "requested_at": requested.isoformat(),
+            "received_at": received.isoformat(),
+            "body": body,
+        }
+    return capture
 
 
 def classify_alpaca_cash_only_eligibility(
