@@ -2,11 +2,13 @@ import io
 import json
 import os
 import unittest
+from datetime import datetime, timedelta, timezone
 from urllib.error import HTTPError
 from urllib.request import Request
 from unittest import mock
 
-from data_preflight import (_get_json, _quote_json, _keychain_secret,
+from data_preflight import (_get_json, _inventory_json, _quote_json,
+                            _keychain_secret, capture_alpaca_inventory,
                             check_connections,
                             classify_alpaca_cash_only_eligibility,
                             load_credentials)
@@ -88,6 +90,72 @@ class PreflightTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _quote_json(Request("https://data.alpaca.markets/v2/stocks/quotes/latest?feed=sip&symbols=SOFI"),
                         transport=lambda request: {})
+
+    def test_inventory_capture_is_exactly_four_sequential_gets(self):
+        requests = []
+        account = {"status": "ACTIVE", "private_account_id": "not-for-output"}
+
+        def fake(request):
+            requests.append(request)
+            if request.full_url.endswith("/v2/positions"):
+                return []
+            if "/v2/orders?" in request.full_url:
+                return []
+            return account
+
+        base = datetime(2026, 11, 27, 10, 0, tzinfo=timezone.utc)
+        ticks = iter(base + timedelta(milliseconds=250 * index)
+                     for index in range(8))
+        capture = capture_alpaca_inventory(
+            api_key="private-key", api_secret="private-secret",
+            transport=fake, clock=lambda: next(ticks))
+
+        self.assertEqual(
+            [request.get_method() for request in requests], ["GET"] * 4)
+        self.assertEqual(
+            [request.full_url for request in requests],
+            [
+                "https://paper-api.alpaca.markets/v2/account",
+                "https://paper-api.alpaca.markets/v2/positions",
+                "https://paper-api.alpaca.markets/v2/orders"
+                "?status=open&limit=500&nested=false&direction=asc",
+                "https://paper-api.alpaca.markets/v2/account",
+            ],
+        )
+        self.assertEqual(
+            set(capture),
+            {"provider", "base_url", "account_before", "positions",
+             "open_orders", "account_after"},
+        )
+        self.assertEqual(capture["open_orders"]["query"], {
+            "status": "open", "limit": 500, "nested": False,
+            "direction": "asc",
+        })
+        self.assertNotIn("private-key", json.dumps(capture))
+        self.assertNotIn("private-secret", json.dumps(capture))
+
+    def test_inventory_allowlist_and_capture_inputs_fail_closed(self):
+        bad_requests = (
+            Request("https://api.alpaca.markets/v2/account", method="GET"),
+            Request("https://paper-api.alpaca.markets/v2/orders?status=all",
+                    method="GET"),
+            Request("https://paper-api.alpaca.markets/v2/account",
+                    method="POST"),
+        )
+        for request in bad_requests:
+            with self.subTest(url=request.full_url):
+                with self.assertRaises(ValueError):
+                    _inventory_json(request, transport=lambda _: {})
+        with self.assertRaises(RuntimeError):
+            capture_alpaca_inventory(
+                api_key="", api_secret="secret", transport=lambda _: {})
+        with self.assertRaises(ValueError):
+            capture_alpaca_inventory(
+                api_key="key", api_secret="secret",
+                transport=lambda request: (
+                    [] if not request.full_url.endswith("/account") else {}),
+                clock=lambda: datetime(2026, 11, 27, 10, 0),
+            )
 
     def test_keychain_lookup_is_opt_in_and_exact(self):
         with mock.patch.dict(os.environ, {"TRADIER_SANDBOX_TOKEN": "", "ALPACA_PAPER_KEY": "", "ALPACA_PAPER_SECRET": ""}), \
