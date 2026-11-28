@@ -89,6 +89,20 @@ provider fields. The downstream preflight requires this read fence, rechecks
 provider/host/freshness, and reserves standard option buys at the 100-share
 contract multiplier. Neither function performs a request or authorizes an order.
 
+`alpaca_inventory_probe.py` is the bounded operator bridge between the existing
+GET-only capture and that normalizer. It defaults to no credential read and no
+network; `--network --keychain` opts into exactly four paper-host GETs and the
+two exact Alpaca paper Keychain entries. Raw response bodies never reach stdout.
+The report contains only the fenced status, cash-only eligibility category,
+position/open-order counts, capture timestamp, and hardcoded disabled execution
+flags. A failed, incomplete, stale, changing, margin-like, or short inventory
+cannot be promoted to order authorization.
+
+```bash
+python3 trading-lab/alpaca_inventory_probe.py
+python3 trading-lab/alpaca_inventory_probe.py --network --keychain
+```
+
 ## Important boundaries and roadmap
 
 1. No broker API keys in this public GitHub repository or test logs. Future
